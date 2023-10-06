@@ -3,19 +3,25 @@ from analog.hash import SHA256Hasher
 
 
 class AnaLog:
-    def __init__(self, model, alpha=0.9, cov_computers=None, data_hasher=None):
-        self.model = model
+    def __init__(self, project, config=None, cov_computer=None, data_hasher=None):
+        self.project = project
+        self.config = config
+
         self.forward_hooks = []
         self.backward_hooks = []
         self.data_map = {}
         self.forward_covariances = {}
         self.backward_covariances = {}
-        self.alpha = alpha
 
         default_cov_computer = CovarianceHandler()
-        self.cov_computers = cov_computers
+        self.cov_computer = cov_computer
 
         self.data_hasher = data_hasher if data_hasher else SHA256Hasher()
+
+        # Track
+        self.track = None
+        self.covariance_algo = None
+        self.save = None
 
     def _hash_tensor(self, tensor):
         """Computes a hash for a tensor using the provided data hasher."""
@@ -56,19 +62,18 @@ class AnaLog:
 
     def __enter__(
         self,
-        input_tensor,
-        save_activations=True,
-        save_gradients=True,
-        compute_forward_cov=False,
-        compute_backward_cov=False,
+        data=None,
+        track=None,
+        covariance=None,
+        save=None,
     ):
-        self.current_input_hash = self._hash_tensor(input_tensor)
-        self.data_map.clear()
+        self.sanity_check(data, track, covariance, save)
 
-        self.save_activations = save_activations
-        self.save_gradients = save_gradients
-        self.compute_forward_cov = compute_forward_cov
-        self.compute_backward_cov = compute_backward_cov
+        self.current_data_hash = self._hash_tensor(data)
+
+        self.track = track
+        self.covariance_algo = covariance
+        self.save = save
 
         for hook in self.forward_hooks:
             hook.remove()
@@ -90,3 +95,16 @@ class AnaLog:
             hook.remove()
         for hook in self.backward_hooks:
             hook.remove()
+        self.clear()
+
+    def clear(self):
+        self.
+
+    def sanity_check(self, data, track, covariance, save):
+        if save and data is None:
+            raise ValueError("Must provide data to save gradients.")
+        if track is not None and track not in {"gradient", "full_activations", "activations"}:
+            raise ValueError("Invalid value for 'track'.")
+        if covariance is not None and covariance not in {"kfac", "shampoo"}:
+            raise ValueError("Invalid value for 'covariance'.")
+
