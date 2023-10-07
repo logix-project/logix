@@ -19,9 +19,9 @@ for input, target in data_loader:
 ### Analysis
 ```python
 # Debug (test_input, test_target)
-with analog(track="activation") as a:
+with analog(track="activation") as test_activations:
     test_out = model(test_input)
     test_loss = loss_fn(test_out, test_target)
     test_loss.backward()
-    a.if_all()
+analog.if_all(test_activations)
 ```
