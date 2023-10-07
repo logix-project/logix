@@ -14,6 +14,7 @@ for input, target in data_loader:
         out = model(input)
         loss = loss_fn(out, target)
         loss.backward()
+analog.finalize()
 ```
 
 ### Analysis
