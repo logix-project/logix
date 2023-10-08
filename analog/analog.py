@@ -20,7 +20,7 @@ class AnaLog:
 
         # Track
         self.track = None
-        self.covariance_algo = None
+        self.covariance = None
         self.save = None
 
     def _hash_tensor(self, tensor):
@@ -47,18 +47,21 @@ class AnaLog:
             cov = cov_computer.compute(grad_output[0])
             self.backward_covariances[module] = cov
 
-    def hook_by_type(self, module_type):
-        """Hooks all modules of a specific type."""
-        for _, module in self.model.named_modules():
-            if isinstance(module, module_type):
-                self.modules_to_hook.append(module)
+    def watch(self, model, type_filter=None, name_filter=None):
+        """Sets up the model to be watched."""
+        self.model = model
+        self.modules_to_hook = []
 
-    def hook_by_name(self, module_name):
-        """Hooks a module based on its name."""
         for name, module in self.model.named_modules():
-            if name == module_name:
-                self.modules_to_hook.append(module)
-                break
+            if type_filter is not None and not any(
+                isinstance(module, module_type) for module_type in type_filter
+            ):
+                continue
+            if name_filter is not None and not any(
+                keyword in name for keyword in name_filter
+            ):
+                continue
+            self.modules_to_hook.append(module)
 
     def __enter__(
         self,
@@ -67,6 +70,7 @@ class AnaLog:
         covariance=None,
         save=None,
     ):
+        """Sets up the context manager."""
         self.sanity_check(data, track, covariance, save)
 
         self.current_data_hash = self._hash_tensor(data)
@@ -75,22 +79,16 @@ class AnaLog:
         self.covariance_algo = covariance
         self.save = save
 
-        for hook in self.forward_hooks:
-            hook.remove()
-        for hook in self.backward_hooks:
-            hook.remove()
-        self.forward_hooks.clear()
-        self.backward_hooks.clear()
-
         for module in self.modules_to_hook:
             fwd_hook = module.register_forward_hook(self._forward_hook_fn)
             bwd_hook = module.register_backward_hook(self._backward_hook_fn)
             self.forward_hooks.append(fwd_hook)
             self.backward_hooks.append(bwd_hook)
 
-        return self.data_map, self.forward_covariances, self.backward_covariances
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        """Cleans up the context manager."""
         for hook in self.forward_hooks:
             hook.remove()
         for hook in self.backward_hooks:
@@ -98,13 +96,18 @@ class AnaLog:
         self.clear()
 
     def clear(self):
-        self.
+        self.track = None
+        self.covariance = None
+        self.save = None
 
     def sanity_check(self, data, track, covariance, save):
         if save and data is None:
             raise ValueError("Must provide data to save gradients.")
-        if track is not None and track not in {"gradient", "full_activations", "activations"}:
+        if track is not None and track not in {
+            "gradient",
+            "full_activations",
+            "activations",
+        }:
             raise ValueError("Invalid value for 'track'.")
         if covariance is not None and covariance not in {"kfac", "shampoo"}:
             raise ValueError("Invalid value for 'covariance'.")
-
