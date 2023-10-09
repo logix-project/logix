@@ -5,7 +5,6 @@
 
 ### Logging
 ```diff
-```diff
   import torch
   import torch.nn.functional as F
   from datasets import load_dataset
@@ -30,7 +29,7 @@
 
 ### Analysis
 ```diff
-# debug (test_input, test_target)
+  # debug (test_input, test_target)
 + with analog(track="activation", test=True) as al:
       test_out = model(test_input)
       test_loss = loss_fn(test_out, test_target)
