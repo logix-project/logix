@@ -1,56 +1,80 @@
+from analog.storage import StorageHandler
 from analog.covariance import CovarianceHandler
 from analog.hash import SHA256Hasher
 
 
 class AnaLog:
-    def __init__(self, project, config=None, cov_computer=None, data_hasher=None):
+    def __init__(self, project, config=None, covariance_handler=None, data_hasher=None):
         self.project = project
         self.config = config
 
+        # hook
+        self.modules_to_hook = []
         self.forward_hooks = []
         self.backward_hooks = []
-        self.data_map = {}
-        self.forward_covariances = {}
-        self.backward_covariances = {}
+        self.tensor_hooks = []
 
-        default_cov_computer = CovarianceHandler()
-        self.cov_computer = cov_computer
+        # handler
+        self.storage_handler = StorageHandler(config)
+        self.covariance_handler = covariance_handler or CovarianceHandler(config)
+        self.data_hasher = data_hasher or SHA256Hasher(config)
 
-        self.data_hasher = data_hasher if data_hasher else SHA256Hasher()
-
-        # Track
-        self.track = None
-        self.covariance = None
+        # log
+        self.log = None
+        self.hessian = None
         self.save = None
+        self.current_log = None
+
+        # TODO: analysis
+        self.data_analyzer = None
+        self.weight_analyzer = None
 
     def _hash_tensor(self, tensor):
         """Computes a hash for a tensor using the provided data hasher."""
         return self.data_hasher.hash(tensor)
 
-    def _forward_hook_fn(self, module, input, output):
-        if self.save_activations:
-            self.data_map[self.current_input_hash] = (output, None)
+    def _forward_hook_fn(self, module, inputs):
+        if self.hessian is not None:
+            covariance = self.covariance_handler.compute_covariance(module, inputs)
+            self.covariance_handler.update(module, "forward", covariance)
 
-        if self.compute_forward_cov:
-            cov_computer = self.cov_computers.get(module)
-            cov = cov_computer.compute(output)
-            self.forward_covariances[module] = cov
+        # offload
+        inputs = inputs.cpu()
 
-    def _backward_hook_fn(self, module, grad_input, grad_output):
-        if self.save_gradients:
-            if self.current_input_hash in self.data_map:
-                activation, _ = self.data_map[self.current_input_hash]
-                self.data_map[self.current_input_hash] = (activation, grad_output[0])
+        if self.save and "activations" in self.log:
+            self.storage_handler.push(self.current_data_hash, module, "forward", inputs)
 
-        if self.compute_backward_cov:
-            cov_computer = self.cov_computers.get(module)
-            cov = cov_computer.compute(grad_output[0])
-            self.backward_covariances[module] = cov
+    def _backward_hook_fn(self, module, grad_inputs, grad_outputs):
+        if self.hessian is not None:
+            covariance = self.covariance_handler.compute_covariance(
+                module, grad_outputs
+            )
+            self.covariance_handler.update(module, "backward", covariance)
+
+        # offload
+        grad_outputs = grad_outputs.cpu()
+
+        if self.save and self.log == "full_activations":
+            self.storage_handler.push(
+                self.current_data_hash, module, "backward", grad_outputs
+            )
+        elif self.save and self.log == "gradient":
+            raise NotImplementedError
+
+    def _tensor_hook_fn(self, name, grad):
+        if self.hessian is not None:
+            covariance = self.covariance_handler.compute_covariance(None, grad)
+            self.covariance_handler.update(name, "backward", covariance)
+
+        # offload
+        grad = grad.cpu()
+
+        if self.save and self.log == "full_activations":
+            self.storage_handler.push(self.current_data_hash, name, "backward", grad)
 
     def watch(self, model, type_filter=None, name_filter=None):
         """Sets up the model to be watched."""
         self.model = model
-        self.modules_to_hook = []
 
         for name, module in self.model.named_modules():
             if type_filter is not None and not any(
@@ -63,25 +87,53 @@ class AnaLog:
                 continue
             self.modules_to_hook.append(module)
 
+    def watch_activation(self, tensor_dict):
+        """Sets up the tensor to be watched."""
+        for name, tensor in tensor_dict.items():
+            self.tensor_hooks.append(tensor.register_hook(self._tensor_hook_fn))
+
+            if self.hessian is not None:
+                covariance = self.covariance_handler.compute_covariance(
+                    None, tensor_dict
+                )
+                self.covariance_handler.update(name, "forward", covariance)
+
+            # offload
+            tensor = tensor.cpu()
+
+            if self.save and self.log == "full_activations":
+                self.storage_handler.push(
+                    self.current_data_hash, name, "forward", tensor
+                )
+
+    def get_log(self):
+        raise self.current_log
+
+    def finalize(self):
+        raise NotImplementedError
+
     def __enter__(
         self,
         data=None,
-        track=None,
-        covariance=None,
+        log=None,
+        hessian=None,
         save=None,
+        test=None,
     ):
         """Sets up the context manager."""
-        self.sanity_check(data, track, covariance, save)
+        self.sanity_check(data, log, hessian, save)
 
+        self.current_log = None
         self.current_data_hash = self._hash_tensor(data)
 
-        self.track = track
-        self.covariance_algo = covariance
+        self.log = log
+        self.hessian = hessian
         self.save = save
+        self.test = test
 
         for module in self.modules_to_hook:
             fwd_hook = module.register_forward_hook(self._forward_hook_fn)
-            bwd_hook = module.register_backward_hook(self._backward_hook_fn)
+            bwd_hook = module.register_full_backward_hook(self._backward_hook_fn)
             self.forward_hooks.append(fwd_hook)
             self.backward_hooks.append(bwd_hook)
 
@@ -89,25 +141,33 @@ class AnaLog:
 
     def __exit__(self, exc_type, exc_value, traceback):
         """Cleans up the context manager."""
+        self.clear_for_exit()
+
+    def clear_for_exit(self):
         for hook in self.forward_hooks:
             hook.remove()
         for hook in self.backward_hooks:
             hook.remove()
-        self.clear()
+        for hook in self.tensor_hooks:
+            hook.remove()
+
+        self.log = None
+        self.hessian = None
+        self.save = None
+        self.test = None
 
     def clear(self):
-        self.track = None
-        self.covariance = None
-        self.save = None
+        self.clear_for_exit()
+        self.modules_to_hook = []
 
-    def sanity_check(self, data, track, covariance, save):
+    def sanity_check(self, data, log, hessian, save):
         if save and data is None:
             raise ValueError("Must provide data to save gradients.")
-        if track is not None and track not in {
+        if log is not None and log not in {
             "gradient",
             "full_activations",
             "activations",
         }:
             raise ValueError("Invalid value for 'track'.")
-        if covariance is not None and covariance not in {"kfac", "shampoo"}:
+        if hessian is not None and hessian not in {"kfac", "shampoo"}:
             raise ValueError("Invalid value for 'covariance'.")
