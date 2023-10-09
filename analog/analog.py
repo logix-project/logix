@@ -1,3 +1,5 @@
+from functools import partial
+
 from analog.storage import StorageHandler
 from analog.covariance import CovarianceHandler
 from analog.hash import SHA256Hasher
@@ -33,10 +35,10 @@ class AnaLog:
         """Computes a hash for a tensor using the provided data hasher."""
         return self.data_hasher.hash(tensor)
 
-    def _forward_hook_fn(self, module, inputs):
+    def _forward_hook_fn(self, module, inputs, module_name):
         if self.hessian is not None:
             covariance = self.covariance_handler.compute_covariance(module, inputs)
-            self.covariance_handler.update(module, "forward", covariance)
+            self.storage_handler.update_covariance(module_name, "forward", covariance)
 
         # offload
         inputs = inputs.cpu()
@@ -44,12 +46,14 @@ class AnaLog:
         if self.save and "activations" in self.log:
             self.storage_handler.push(self.current_data_hash, module, "forward", inputs)
 
-    def _backward_hook_fn(self, module, grad_inputs, grad_outputs):
+    def _backward_hook_fn(self, module, grad_inputs, grad_outputs, module_name):
+        del grad_inputs
+
         if self.hessian is not None:
             covariance = self.covariance_handler.compute_covariance(
                 module, grad_outputs
             )
-            self.covariance_handler.update(module, "backward", covariance)
+            self.storage_handler.update_covariance(module_name, "backward", covariance)
 
         # offload
         grad_outputs = grad_outputs.cpu()
@@ -61,16 +65,18 @@ class AnaLog:
         elif self.save and self.log == "gradient":
             raise NotImplementedError
 
-    def _tensor_hook_fn(self, name, grad):
+    def _tensor_hook_fn(self, grad, tensor_name):
         if self.hessian is not None:
             covariance = self.covariance_handler.compute_covariance(None, grad)
-            self.covariance_handler.update(name, "backward", covariance)
+            self.storage_handler.update_covariance(tensor_name, "backward", covariance)
 
         # offload
         grad = grad.cpu()
 
         if self.save and self.log == "full_activations":
-            self.storage_handler.push(self.current_data_hash, name, "backward", grad)
+            self.storage_handler.push(
+                self.current_data_hash, tensor_name, "backward", grad
+            )
 
     def watch(self, model, type_filter=None, name_filter=None):
         """Sets up the model to be watched."""
@@ -90,13 +96,15 @@ class AnaLog:
     def watch_activation(self, tensor_dict):
         """Sets up the tensor to be watched."""
         for name, tensor in tensor_dict.items():
-            self.tensor_hooks.append(tensor.register_hook(self._tensor_hook_fn))
+            self.tensor_hooks.append(
+                tensor.register_hook(partial(self._tensor_hook_fn, tensor_name=name))
+            )
 
             if self.hessian is not None:
                 covariance = self.covariance_handler.compute_covariance(
                     None, tensor_dict
                 )
-                self.covariance_handler.update(name, "forward", covariance)
+                self.storage_handler.update_covariance(name, "forward", covariance)
 
             # offload
             tensor = tensor.cpu()
@@ -131,9 +139,15 @@ class AnaLog:
         self.save = save
         self.test = test
 
+        # register hooks
         for module in self.modules_to_hook:
-            fwd_hook = module.register_forward_hook(self._forward_hook_fn)
-            bwd_hook = module.register_full_backward_hook(self._backward_hook_fn)
+            module_name = self.get_module_name(module)
+            fwd_hook = module.register_forward_hook(
+                partial(self._forward_hook_fn, module_name=module_name)
+            )
+            bwd_hook = module.register_full_backward_hook(
+                partial(self._backward_hook_fn, module_name=module_name)
+            )
             self.forward_hooks.append(fwd_hook)
             self.backward_hooks.append(bwd_hook)
 
