@@ -20,10 +20,11 @@
 + analog = AnaLog(project="analog")
 + analog.watch(model)
   for input, target in data_loader:
-+     with analog(data=input, track="activation", covariance="kfac", save=True):
++     with analog(data_id=input, log="activation", hessian="kfac", save=True):
           out = model(input)
           loss = loss_fn(out, target)
           loss.backward()
+          model.zero_grad()
 + analog.finalize()
 ```
 
