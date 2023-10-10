@@ -26,7 +26,7 @@ class AnaLog:
         self.log = None
         self.hessian = None
         self.save = None
-        self.current_log = None
+        self.current_log = {}
 
         # TODO: analysis
         self.data_analyzer = None
@@ -39,7 +39,7 @@ class AnaLog:
             self.storage_handler.update_covariance(module_name, "forward", covariance)
 
         if self.save and "activations" in self.log:
-            self.storage_handler.push(self.current_data_id, module, "forward", inputs)
+            self.storage_handler.add(module_name, "forward", inputs)
 
     def _backward_hook_fn(self, module, grad_inputs, grad_outputs, module_name):
         """backward hook for module"""
@@ -52,8 +52,8 @@ class AnaLog:
             self.storage_handler.update_covariance(module_name, "backward", covariance)
 
         if self.save and self.log == "full_activations":
-            self.storage_handler.push(
-                self.current_data_id, module, "backward", grad_outputs
+            self.storage_handler.add(
+                module_name, "backward", grad_outputs
             )
         elif self.save and self.log == "gradient":
             raise NotImplementedError
@@ -65,8 +65,8 @@ class AnaLog:
             self.storage_handler.update_covariance(tensor_name, "forward", covariance)
 
         if self.save and "activations" in self.log:
-            self.storage_handler.push(
-                self.current_data_id, tensor_name, "forward", tensor
+            self.storage_handler.add(
+                tensor_name, "forward", tensor
             )
 
     def _tensor_backward_hook_fn(self, grad, tensor_name):
@@ -76,8 +76,8 @@ class AnaLog:
             self.storage_handler.update_covariance(tensor_name, "backward", covariance)
 
         if self.save and self.log == "full_activations":
-            self.storage_handler.push(
-                self.current_data_id, tensor_name, "backward", grad
+            self.storage_handler.add(
+                tensor_name, "backward", grad
             )
 
     def watch(self, model, type_filter=None, name_filter=None):
@@ -137,6 +137,8 @@ class AnaLog:
         self.hessian = hessian
         self.save = save
         self.test = test
+
+        self.storage_handler.set_data_id(data_id)
 
         # register hooks
         for module in self.modules_to_hook:
