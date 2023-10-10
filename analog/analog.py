@@ -1,6 +1,6 @@
 from functools import partial
 
-from analog.storage import StorageHandler
+from analog.storage import StorageHandler, NestedDict
 from analog.covariance import CovarianceHandler
 
 
@@ -26,7 +26,8 @@ class AnaLog:
         self.log = None
         self.hessian = None
         self.save = None
-        self.current_log = {}
+        self.current_log = NestedDict()
+        self.data_id = None
 
         # TODO: analysis
         self.data_analyzer = None
@@ -38,8 +39,13 @@ class AnaLog:
             covariance = self.covariance_handler.compute_covariance(module, inputs)
             self.storage_handler.update_covariance(module_name, "forward", covariance)
 
+        # offload data to cpu
+        inputs = inputs.cpu()
+
         if self.save and "activations" in self.log:
             self.storage_handler.add(module_name, "forward", inputs)
+
+        self.current_log[module_name]["forward"] = inputs
 
     def _backward_hook_fn(self, module, grad_inputs, grad_outputs, module_name):
         """backward hook for module"""
@@ -51,12 +57,15 @@ class AnaLog:
             )
             self.storage_handler.update_covariance(module_name, "backward", covariance)
 
+        # offload data to cpu
+        grad_outputs = grad_outputs.cpu()
+
         if self.save and self.log == "full_activations":
-            self.storage_handler.add(
-                module_name, "backward", grad_outputs
-            )
+            self.storage_handler.add(module_name, "backward", grad_outputs)
         elif self.save and self.log == "gradient":
             raise NotImplementedError
+
+        self.current_log[module_name]["backward"] = grad_outputs
 
     def _tensor_forward_hook_fn(self, tensor, tensor_name):
         """Create forward tensor hook. It's not a real hook, but the name is kept for consistency."""
@@ -64,10 +73,13 @@ class AnaLog:
             covariance = self.covariance_handler.compute_covariance(None, tensor)
             self.storage_handler.update_covariance(tensor_name, "forward", covariance)
 
+        # offload data to cpu
+        tensor = tensor.cpu()
+
         if self.save and "activations" in self.log:
-            self.storage_handler.add(
-                tensor_name, "forward", tensor
-            )
+            self.storage_handler.add(tensor_name, "forward", tensor)
+
+        self.current_log[module_name]["forward"] = tensor
 
     def _tensor_backward_hook_fn(self, grad, tensor_name):
         """Create backward tensor hook"""
@@ -75,10 +87,13 @@ class AnaLog:
             covariance = self.covariance_handler.compute_covariance(None, grad)
             self.storage_handler.update_covariance(tensor_name, "backward", covariance)
 
+        # offload data to cpu
+        grad = grad.cpu()
+
         if self.save and self.log == "full_activations":
-            self.storage_handler.add(
-                tensor_name, "backward", grad
-            )
+            self.storage_handler.add(tensor_name, "backward", grad)
+
+        self.current_log[module_name]["backward"] = grad
 
     def watch(self, model, type_filter=None, name_filter=None):
         """Sets up modules in model to be watched."""
@@ -131,7 +146,6 @@ class AnaLog:
         self.sanity_check(data_id, log, hessian, save)
 
         self.current_log = None
-        self.current_data_id = data_id
 
         self.log = log
         self.hessian = hessian
@@ -157,6 +171,8 @@ class AnaLog:
     def __exit__(self, exc_type, exc_value, traceback):
         """Cleans up the context manager."""
         self.clear_for_exit()
+        self.storage_handler.clear()
+        self.storage_handler.push()
 
     def clear_for_exit(self):
         for hook in self.forward_hooks:
@@ -170,6 +186,8 @@ class AnaLog:
         self.hessian = None
         self.save = None
         self.test = None
+
+        self.current_log = NestedDict()
 
     def clear(self):
         self.clear_for_exit()
