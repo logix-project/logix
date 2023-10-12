@@ -150,9 +150,7 @@ class AnaLog:
             type_filter (list, optional): List of types of modules to be watched.
             name_filter (list, optional): List of keyword names for modules to be watched.
         """
-        self.model = model
-
-        for name, module in self.model.named_modules():
+        for name, module in model.named_modules():
             # only consider the leaf module
             if len(list(module.children())) > 0:
                 continue
