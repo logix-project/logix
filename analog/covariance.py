@@ -68,6 +68,7 @@ class GradientsHandler:
 
 class ActivationHandler:
     """Save activation instead of its covariance"""
+
     @classmethod
     def compute_cov_a(cls, acts, module):
         return cls.__call__(acts, module)
