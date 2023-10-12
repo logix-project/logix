@@ -1,3 +1,6 @@
+from abc import ABC
+
+
 class DatabaseHandlerBase(ABC):
     def __init__(self, config=None):
         """
@@ -7,7 +10,35 @@ class DatabaseHandlerBase(ABC):
             config (dict, optional): Configuration parameters for the handler.
         """
         self.config = config
+        self.buffer = []
         self.initialize()
+
+    def add(self, module_name, log_type, data):
+        """
+        Adds activation data to the buffer.
+
+        Args:
+            module_name (str): The name of the module.
+            log_type (str): Type of log (e.g., "forward", "backward", or "grad").
+            data: Data to be logged.
+        """
+        log_data = self.format_log(module_name, log_type, data)
+        self.buffer.extend(log_data)
+
+    def clear(self):
+        """
+        Clears the buffer.
+        """
+        self.buffer.clear()
+
+    def set_data_id(self, data_id):
+        """
+        Set the data ID for logging.
+
+        Args:
+            data_id: The ID associated with the data.
+        """
+        self.data_id = data_id
 
     @abstractmethod
     def initialize(self):
@@ -16,24 +47,15 @@ class DatabaseHandlerBase(ABC):
         """
         pass
 
-    @abstractmethod
-    def set_data_id(self, data_id):
-        """
-        Abstract method to set the data ID for logging.
-
-        Args:
-            data_id: The ID associated with the data.
-        """
-        pass
 
     @abstractmethod
-    def format_log(self, module_name, activation_type, data):
+    def format_log(self, module_name, log_type, data):
         """
         Abstract method to format the logging data.
 
         Args:
             module_name (str): The name of the module.
-            activation_type (str): The type of activation (e.g., "forward" or "backward").
+            log_type (str): The type of activation (e.g., "forward", "backward", or "grad").
             data: The data to be logged.
 
         Returns:
@@ -41,36 +63,7 @@ class DatabaseHandlerBase(ABC):
         """
         pass
 
-    @abstractmethod
-    def add_activation(self, module_name, activation_type, activation):
-        """
-        Abstract method to add activation data.
 
-        Args:
-            module_name (str): The name of the module.
-            activation_type (str): The type of activation (e.g., "forward" or "backward").
-            activation: The activation data.
-        """
-        pass
-
-    @abstractmethod
-    def add_covariance(self, module_name, activation_type, covariance):
-        """
-        Abstract method to add covariance data.
-
-        Args:
-            module_name (str): The name of the module.
-            activation_type (str): The type of activation (e.g., "forward" or "backward").
-            covariance: The covariance data.
-        """
-        pass
-
-    @abstractmethod
-    def clear(self):
-        """
-        Abstract method to clear stored data.
-        """
-        pass
 
     @abstractmethod
     def push(self):
