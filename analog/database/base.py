@@ -71,3 +71,16 @@ class DatabaseHandlerBase(ABC):
         Abstract method to push the stored data to the destination (e.g., database or file).
         """
         pass
+
+    @abstractmethod
+    def serialize_tensor(self, tensor):
+        """
+        Abstract method to serialize a tensor.
+
+        Args:
+            tensor: The tensor to be serialized.
+
+        Returns:
+            The serialized tensor.
+        """
+        pass

@@ -34,7 +34,7 @@ class JSONStorageHandler(AbstractStorageHandler):
                     "data_id": data_id,
                     "module_name": module_name,
                     "activation_type": activation_type,
-                    "data": datum,
+                    "data": serialize_tensor(datum),
                 }
             )
         return log
@@ -45,3 +45,15 @@ class JSONStorageHandler(AbstractStorageHandler):
         This can be a placeholder or used for any finalization operations.
         """
         pass
+
+    def serialize_tensor(self, tensor):
+        """
+        Serializes the given tensor.
+
+        Args:
+            tensor: The tensor to be serialized.
+
+        Returns:
+            The serialized tensor.
+        """
+        return tensor.tolist()
