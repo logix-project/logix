@@ -13,66 +13,31 @@ class RedisStorageHandler(AbstractStorageHandler):
             db=self.config.get("redis_db", 0),
         )
 
-    def set_data_id(self, data_id):
-        """
-        Set the data ID for subsequent logging.
-
-        Args:
-            data_id: The ID associated with the data.
-        """
-        self.data_id = data_id
-
-    def format_log(self, module_name, activation_type, data):
+    def format_log(self, module_name, log_type, data):
         """
         Formats the data in the structure needed for Redis.
 
         Args:
             module_name (str): The name of the module.
-            activation_type (str): The type of activation (e.g., "forward" or "backward").
+            log_type (str): The type of activation (e.g., "forward" or "backward").
             data: The data to be logged.
 
         Returns:
             str: The formatted log data.
         """
-        log = {
-            "data_id": self.data_id,
-            "module_name": module_name,
-            "activation_type": activation_type,
-            "data": data,
-        }
-        return json.dumps(log)
+        assert len(data) == len(self.data_id)
 
-    def add_activation(self, module_name, activation_type, activation):
-        """
-        Adds activation data to Redis.
-
-        Args:
-            module_name (str): The name of the module.
-            activation_type (str): Type of activation (e.g., "forward", "backward").
-            activation: Activation data to be logged.
-        """
-        key = f"{module_name}:{activation_type}:{self.data_id}"
-        value = self.format_log(module_name, activation_type, activation)
-        self.client.set(key, value)
-
-    def add_covariance(self, module_name, activation_type, covariance):
-        """
-        Adds covariance data to Redis.
-
-        Args:
-            module_name (str): The name of the module.
-            activation_type (str): The type of activation (e.g., "forward" or "backward").
-            covariance: The covariance data.
-        """
-        # This example assumes covariance is saved similarly to activations.
-        formatted_data = self.format_log(module_name, activation_type, covariance)
-
-    def clear(self):
-        """
-        Clear all the stored data in Redis.
-        BE CAUTIOUS: This deletes everything in the chosen Redis DB.
-        """
-        self.client.flushdb()
+        log = []
+        for datum, data_id in zip(data, self.data_id):
+            out.append(
+                {
+                    "data_id": data_id,
+                    "module_name": module_name,
+                    "activation_type": activation_type,
+                    "data": datum,
+                }
+            )
+        return log
 
     def push(self):
         """

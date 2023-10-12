@@ -59,7 +59,7 @@ class AnaLog:
         inputs = inputs.cpu()
 
         if self.save and "activations" in self.log:
-            self.database_handler.add_activation(module_name, "forward", inputs)
+            self.database_handler.add(module_name, "forward", inputs)
 
     def _backward_hook_fn(
         self,
@@ -87,7 +87,7 @@ class AnaLog:
         grad_outputs = grad_outputs.cpu()
 
         if self.save and self.log == "full_activations":
-            self.database_handler.add_activation(module_name, "backward", grad_outputs)
+            self.database_handler.add(module_name, "backward", grad_outputs)
         elif self.save and self.log == "gradient":
             raise NotImplementedError
 
