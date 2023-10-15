@@ -1,8 +1,10 @@
 from typing import Optional, Dict, Any
-import torch.nn as nn
-import torch.Tensor as Tensor
 
-from analog.database import DatabaseHandlerBase, JsonDatabaseHandler
+import torch
+import torch.nn as nn
+
+from analog.hook import HookManager
+from analog.storage import StorageHandlerBase, DefaultStorageHandler
 from analog.covariance import CovarianceHandler
 
 
@@ -12,7 +14,7 @@ class AnaLog:
         project: str,
         config: Optional[Dict[str, Any]] = None,
         covariance_handler: Optional[CovarianceHandler] = None,
-        database_handler: Optional[DatabaseHandlerBase] = None,
+        storage_handler: Optional[StorageHandlerBase] = None,
     ) -> None:
         """
         Initializes the AnaLog class for neural network logging.
@@ -21,7 +23,7 @@ class AnaLog:
             project (str): The name or identifier of the project.
             config (dict, optional): Configuration parameters for AnaLog.
             covariance_handler (object, optional): A handler for computing covariance.
-            database_handler (object, optional): A handler for storing logs.
+            storage_handler (object, optional): A handler for storing logs.
         """
         self.project = project
         self.config = config
@@ -29,8 +31,8 @@ class AnaLog:
         # Hook manager
         self.hook_manager = HookManager()
 
-        # Handlers for database and Hessian
-        self.database_handler = database_handler or JsonDatabaseHandler(config)
+        # Handlers for storage and Hessian
+        self.storage_handler = storage_handler or DefaultStorageHandler(config)
         self.covariance_handler = covariance_handler or CovarianceHandler(config)
 
         # Internal states
@@ -41,7 +43,7 @@ class AnaLog:
         self.save = None
 
     def _forward_hook_fn(
-        self, module: nn.Module, inputs: Tensor, module_name: str
+        self, module: nn.Module, inputs: torch.Tensor, module_name: str
     ) -> None:
         """
         Internal forward hook function.
@@ -59,13 +61,13 @@ class AnaLog:
         inputs = inputs.cpu()
 
         if self.save and "activations" in self.log:
-            self.database_handler.add(module_name, "forward", inputs)
+            self.storage_handler.add(module_name, "forward", inputs)
 
     def _backward_hook_fn(
         self,
         module: nn.Module,
-        grad_inputs: Optional[Tensor],
-        grad_outputs: Optional[Tensor],
+        grad_inputs: Optional[torch.Tensor],
+        grad_outputs: Optional[torch.Tensor],
         module_name: str,
     ) -> None:
         """
@@ -87,7 +89,7 @@ class AnaLog:
         grad_outputs = grad_outputs.cpu()
 
         if self.save and self.log == "full_activations":
-            self.database_handler.add(module_name, "backward", grad_outputs)
+            self.storage_handler.add(module_name, "backward", grad_outputs)
         elif self.save and self.log == "gradient":
             raise NotImplementedError
 
@@ -113,9 +115,9 @@ class AnaLog:
         tensor = tensor.cpu()
 
         if self.save and "activations" in self.log:
-            self.database_handler.add(tensor_name, "forward", tensor)
+            self.storage_handler.add(tensor_name, "forward", tensor)
 
-        self.current_log[module_name]["forward"] = tensor
+        self.current_log[tensor_name]["forward"] = tensor
 
     def _tensor_backward_hook_fn(self, grad: Tensor, tensor_name: str) -> None:
         """
@@ -137,9 +139,9 @@ class AnaLog:
         grad = grad.cpu()
 
         if self.save and self.log == "full_activations":
-            self.database_handler.add(tensor_name, "backward", grad)
+            self.storage_handler.add(tensor_name, "backward", grad)
 
-        self.current_log[module_name]["backward"] = grad
+        self.current_log[tensor_name]["backward"] = grad
 
     def watch(self, model, type_filter=None, name_filter=None):
         """
@@ -236,7 +238,7 @@ class AnaLog:
         self.save = save
         self.test = test
 
-        self.database_handler.set_data_id(data_id)
+        self.storage_handler.set_data_id(data_id)
 
         # register hooks
         for module in self.modules_to_hook:
@@ -257,8 +259,8 @@ class AnaLog:
         This method is essential for ensuring that there are no lingering hooks that could
         interfere with further operations on the model or with future logging sessions.
         """
-        self.database_handler.push()
-        self.database_handler.clear()
+        self.storage_handler.push()
+        self.storage_handler.clear()
         self.hook_manager.clear_hooks()
 
         self.clear()

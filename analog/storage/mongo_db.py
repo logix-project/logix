@@ -1,7 +1,11 @@
 import pymongo
 
+from analog.storage import StorageHandlerBase
+from analog.utils import to_numpy
+from analog.storage.utils import msgpack_serialize
 
-class MongoDBStorageHandler(AbstractStorageHandler):
+
+class MongoDBStorageHandler(StorageHandlerBase):
     def initialize(self):
         """
         Initializes a connection to the MongoDB client and sets up the required collections.
@@ -11,6 +15,8 @@ class MongoDBStorageHandler(AbstractStorageHandler):
         )
         self.db = self.client[self.config.get("db_name", "neural_logs")]
         self.logs_collection = self.db[self.config.get("collection_name", "logs")]
+
+        self.buffer = []
 
     def format_log(self, module_name, log_type, data):
         """
@@ -28,15 +34,27 @@ class MongoDBStorageHandler(AbstractStorageHandler):
 
         log = []
         for datum, data_id in zip(data, self.data_id):
-            out.append(
+            log.append(
                 {
                     "data_id": data_id,
                     "module_name": module_name,
-                    "activation_type": activation_type,
-                    "data": serialize_tensor(datum),
+                    "log_type": log_type,
+                    "data": self.serialize_tensor(datum),
                 }
             )
         return log
+
+    def add(self, module_name, log_type, data):
+        """
+        Adds activation data to the buffer.
+
+        Args:
+            module_name (str): The name of the module.
+            log_type (str): Type of log (e.g., "forward", "backward", or "grad").
+            data: Data to be logged.
+        """
+        log = self.fotmat_log(module_name, log_type, data)
+        self.buffer.extend(log)
 
     def push(self):
         """
@@ -44,7 +62,9 @@ class MongoDBStorageHandler(AbstractStorageHandler):
         Data is immediately committed with insert operations.
         Thus, this method can be a placeholder or handle any finalization you need.
         """
-        pass
+        if self.max_buffer_size > 0 and len(self.buffer) > self.max_buffer_size:
+            self.logs_collection.insert_many(self.buffer)
+            self.buffer.clear()
 
     def serialize_tensor(self, tensor):
         """
@@ -56,4 +76,5 @@ class MongoDBStorageHandler(AbstractStorageHandler):
         Returns:
             The serialized tensor.
         """
-        return tensor.tolist()
+        numpy_tensor = to_numpy(tensor)
+        return msgpack_serialize(numpy_tensor)

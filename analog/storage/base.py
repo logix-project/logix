@@ -1,29 +1,17 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 
 
-class DatabaseHandlerBase(ABC):
+class StorageHandlerBase(ABC):
     def __init__(self, config=None):
         """
-        Initializes the DatabaseHandlerBase.
+        Initializes the StorageHandlerBase.
 
         Args:
             config (dict, optional): Configuration parameters for the handler.
         """
         self.config = config
-        self.buffer = []
+        self.buffer = None
         self.initialize()
-
-    def add(self, module_name, log_type, data):
-        """
-        Adds activation data to the buffer.
-
-        Args:
-            module_name (str): The name of the module.
-            log_type (str): Type of log (e.g., "forward", "backward", or "grad").
-            data: Data to be logged.
-        """
-        log_data = self.format_log(module_name, log_type, data)
-        self.buffer.extend(log_data)
 
     def clear(self):
         """
@@ -47,7 +35,6 @@ class DatabaseHandlerBase(ABC):
         """
         pass
 
-
     @abstractmethod
     def format_log(self, module_name, log_type, data):
         """
@@ -63,7 +50,17 @@ class DatabaseHandlerBase(ABC):
         """
         pass
 
+    @abstractmethod
+    def add(self, module_name, log_type, data):
+        """
+        Adds activation data to the buffer.
 
+        Args:
+            module_name (str): The name of the module.
+            log_type (str): Type of log (e.g., "forward", "backward", or "grad").
+            data: Data to be logged.
+        """
+        pass
 
     @abstractmethod
     def push(self):
