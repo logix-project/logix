@@ -26,7 +26,6 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         pass
 
-
     def add(self, module_name, log_type, data):
         """
         Adds activation data to the buffer.
@@ -45,9 +44,7 @@ class DefaultStorageHandler(StorageHandlerBase):
         For the JSON handler, there's no batch operation needed since each add operation writes to the file.
         This can be a placeholder or used for any finalization operations.
         """
-        np.savez('data.npz', **self.buffer)
-
-            
+        np.savez("data.npz", **self.buffer)
 
     def serialize_tensor(self, tensor):
         """

@@ -1,11 +1,12 @@
 from typing import Optional, Dict, Any
+from functools import partial
 
 import torch
 import torch.nn as nn
 
 from analog.hook import HookManager
 from analog.storage import StorageHandlerBase, DefaultStorageHandler
-from analog.covariance import CovarianceHandler
+from analog.hessian import HessianHandlerBase, KFACHessianHandler
 
 
 class AnaLog:
@@ -13,7 +14,7 @@ class AnaLog:
         self,
         project: str,
         config: Optional[Dict[str, Any]] = None,
-        covariance_handler: Optional[CovarianceHandler] = None,
+        hessian_handler: Optional[HessianHandlerBase] = None,
         storage_handler: Optional[StorageHandlerBase] = None,
     ) -> None:
         """
@@ -22,7 +23,7 @@ class AnaLog:
         Args:
             project (str): The name or identifier of the project.
             config (dict, optional): Configuration parameters for AnaLog.
-            covariance_handler (object, optional): A handler for computing covariance.
+            hessian_handler (object, optional): A handler for computing covariance.
             storage_handler (object, optional): A handler for storing logs.
         """
         self.project = project
@@ -33,7 +34,7 @@ class AnaLog:
 
         # Handlers for storage and Hessian
         self.storage_handler = storage_handler or DefaultStorageHandler(config)
-        self.covariance_handler = covariance_handler or CovarianceHandler(config)
+        self.hessian_handler = hessian_handler or KFACHessianHandler(config)
 
         # Internal states
         self.modules_to_hook = []
@@ -54,9 +55,7 @@ class AnaLog:
             module_name (str): The name of the module.
         """
         if self.hessian is not None:
-            covariance = self.covariance_handler.update_covariance(
-                module, "forward", inputs
-            )
+            self.hessian_handler.update_hessian(module, module_name, "forward", inputs)
 
         inputs = inputs.cpu()
 
@@ -82,8 +81,8 @@ class AnaLog:
         del grad_inputs
 
         if self.hessian is not None:
-            covariance = self.covariance_handler.update_covariance(
-                module, "backward", grad_outputs
+            self.hessian_handler.update_hessian(
+                module, module_name, "backward", grad_outputs
             )
 
         grad_outputs = grad_outputs.cpu()
@@ -95,7 +94,7 @@ class AnaLog:
 
         self.current_log[module_name]["backward"] = grad_outputs
 
-    def _tensor_forward_hook_fn(self, tensor: Tensor, tensor_name: str) -> None:
+    def _tensor_forward_hook_fn(self, tensor: torch.Tensor, tensor_name: str) -> None:
         """
         Internal forward hook function specifically designed for tensors.
 
@@ -107,9 +106,7 @@ class AnaLog:
             tensor_name (str): A string identifier for the tensor, useful for logging.
         """
         if self.hessian is not None:
-            covariance = self.covariance_handler.update_covariance(
-                None, "forward", tensor
-            )
+            self.hessian_handler.update_hessian(None, tensor_name, "forward", tensor)
 
         # offload data to cpu
         tensor = tensor.cpu()
@@ -119,7 +116,7 @@ class AnaLog:
 
         self.current_log[tensor_name]["forward"] = tensor
 
-    def _tensor_backward_hook_fn(self, grad: Tensor, tensor_name: str) -> None:
+    def _tensor_backward_hook_fn(self, grad: torch.Tensor, tensor_name: str) -> None:
         """
         Internal backward hook function specifically designed for tensors.
 
@@ -131,9 +128,7 @@ class AnaLog:
             tensor_name (str): A string identifier for the tensor whose gradient is being tracked.
         """
         if self.hessian is not None:
-            covariance = self.covariance_handler.update_covariance(
-                None, "backward", grad
-            )
+            self.hessian_handler.update_hessian(None, tensor_name, "backward", grad)
 
         # offload data to cpu
         grad = grad.cpu()
@@ -168,7 +163,7 @@ class AnaLog:
             self.modules_to_hook.append(module)
             self.modules_to_name[module] = name
 
-    def watch_activation(self, tensor_dict):
+    def watch_activation(self, tensor_dict: Dict[str, torch.Tensor]):
         """
         Sets up tensors to be watched.
 
@@ -176,7 +171,7 @@ class AnaLog:
             tensor_dict (dict): Dictionary containing tensor names as keys and tensors as values.
         """
         for tensor_name, tensor in tensor_dict.items():
-            self._tensor_forward_hook_fn(tensor, name)
+            self._tensor_forward_hook_fn(tensor, tensor_name)
             self.hook_manager.register_tensor_hook(
                 tensor, partial(self._tensor_backward_hook_fn, tensor_name=tensor_name)
             )
@@ -190,7 +185,7 @@ class AnaLog:
         """
         return self.current_log
 
-    def get_module_name(self, module):
+    def get_module_name(self, module: nn.Module):
         """
         Retrieves the name of a module.
 
