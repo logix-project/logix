@@ -1,0 +1,6 @@
+torch
+numpy
+msgpack
+msgpack-numpy
+lz4
+pymongo
