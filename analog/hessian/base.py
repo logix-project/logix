@@ -21,3 +21,10 @@ class HessianHandlerBase(ABC):
         Compute the covariance for given data.
         """
         pass
+
+    @abstractmethod
+    def finalize(self):
+        """
+        Finalize the covariance computation.
+        """
+        pass
