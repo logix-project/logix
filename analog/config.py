@@ -3,6 +3,7 @@ import yaml
 
 from analog.logger import get_logger
 
+
 class Config:
     """
     Configuration management class.
@@ -10,8 +11,12 @@ class Config:
     """
 
     # Default values for each configuration
-    DEFAULTS = {}
-    
+    _DEFAULTS = {
+        "global": {},
+        "storage": {"type": "default", "file_path": "./ana_log"},
+        "hessian": {"type": "kfac", "damping": 1e-2},
+    }
+
     def __init__(self, config_file: str) -> None:
         """
         Initialize Config class with given configuration file.
@@ -19,7 +24,7 @@ class Config:
         :param config_file: Path to the YAML configuration file.
         """
         try:
-            with open(config_file, 'r') as file:
+            with open(config_file, "r") as file:
                 self.data: Dict[str, Any] = yaml.safe_load(file)
         except FileNotFoundError:
             get_logger().warning("Configuration file not found. Using default values.")
@@ -31,15 +36,7 @@ class Config:
 
         :return: Dictionary containing global configurations.
         """
-        return self.data.get('global', self.DEFAULTS['global'])
-
-    def get_logging_config(self) -> Dict[str, Any]:
-        """
-        Retrieve logging configuration.
-
-        :return: Dictionary containing logging configurations.
-        """
-        return self.data.get('logging', self.DEFAULTS['logging'])
+        return self.data.get("global", self._DEFAULTS["global"])
 
     def get_storage_config(self) -> Dict[str, Any]:
         """
@@ -47,7 +44,7 @@ class Config:
 
         :return: Dictionary containing storage configurations.
         """
-        return self.data.get('storage', self.DEFAULTS['storage'])
+        return self.data.get("storage", self._DEFAULTS["storage"])
 
     def get_hessian_config(self) -> Dict[str, Any]:
         """
@@ -55,4 +52,4 @@ class Config:
 
         :return: Dictionary containing Hessian configurations.
         """
-        return self.data.get('hessian', self.DEFAULTS['hessian'])
+        return self.data.get("hessian", self._DEFAULTS["hessian"])

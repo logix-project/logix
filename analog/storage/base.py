@@ -36,6 +36,13 @@ class StorageHandlerBase(ABC):
         pass
 
     @abstractmethod
+    def finalize(self):
+        """
+        Abstract method to finalize the StorageHandler.
+        """
+        pass
+
+    @abstractmethod
     def format_log(self, module_name, log_type, data):
         """
         Abstract method to format the logging data.

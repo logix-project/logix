@@ -5,43 +5,43 @@ import torch
 import torch.nn as nn
 
 from analog.hook import HookManager
-from analog.storage import StorageHandlerBase, DefaultStorageHandler
-from analog.hessian import HessianHandlerBase, KFACHessianHandler
+from analog.config import Config
+from analog.storage import init_storage_handler_from_config
+from analog.hessian import init_hessian_handler_from_config
 
 
 class AnaLog:
     def __init__(
         self,
         project: str,
-        config: Optional[Dict[str, Any]] = None,
-        hessian_handler: Optional[HessianHandlerBase] = None,
-        storage_handler: Optional[StorageHandlerBase] = None,
+        config: str = None,
     ) -> None:
         """
         Initializes the AnaLog class for neural network logging.
 
         Args:
             project (str): The name or identifier of the project.
-            config (dict, optional): Configuration parameters for AnaLog.
-            hessian_handler (object, optional): A handler for computing covariance.
-            storage_handler (object, optional): A handler for storing logs.
+            config (str): The path to the YAML configuration file.
         """
         self.project = project
-        self.config = config
+
+        # Config
+        self.config = Config(config)
 
         # Hook manager
         self.hook_manager = HookManager()
 
         # Handlers for storage and Hessian
-        self.storage_handler = storage_handler or DefaultStorageHandler(config)
-        self.hessian_handler = hessian_handler or KFACHessianHandler(config)
+        self.storage_handler = init_storage_handler_from_config(self.config)
+        self.hessian_handler = init_hessian_handler_from_config(self.config)
 
         # Internal states
         self.modules_to_hook = []
         self.modules_to_name = {}
         self.log = None
-        self.hessian = None
-        self.save = None
+        self.hessian = False
+        self.save = False
+        self.test = False
 
     def _forward_hook_fn(
         self, module: nn.Module, inputs: torch.Tensor, module_name: str
@@ -54,7 +54,7 @@ class AnaLog:
             inputs: The input to the module.
             module_name (str): The name of the module.
         """
-        if self.hessian is not None:
+        if self.hessian:
             self.hessian_handler.update_hessian(module, module_name, "forward", inputs)
 
         inputs = inputs.cpu()
@@ -80,7 +80,7 @@ class AnaLog:
         """
         del grad_inputs
 
-        if self.hessian is not None:
+        if self.hessian:
             self.hessian_handler.update_hessian(
                 module, module_name, "backward", grad_outputs
             )
@@ -105,7 +105,7 @@ class AnaLog:
             tensor: The tensor triggering the hook.
             tensor_name (str): A string identifier for the tensor, useful for logging.
         """
-        if self.hessian is not None:
+        if self.hessian:
             self.hessian_handler.update_hessian(None, tensor_name, "forward", tensor)
 
         # offload data to cpu
@@ -127,7 +127,7 @@ class AnaLog:
             grad: The gradient tensor triggering the hook.
             tensor_name (str): A string identifier for the tensor whose gradient is being tracked.
         """
-        if self.hessian is not None:
+        if self.hessian:
             self.hessian_handler.update_hessian(None, tensor_name, "backward", grad)
 
         # offload data to cpu
@@ -198,15 +198,16 @@ class AnaLog:
         return self.modules_to_name[module]
 
     def finalize(self):
-        raise NotImplementedError
+        self.hessian_handler.finalize()
+        self.storage_handler.finalize()
 
     def __enter__(
         self,
         data_id=None,
         log=None,
-        hessian=None,
-        save=None,
-        test=None,
+        hessian=False,
+        save=False,
+        test=False,
     ):
         """
         Sets up the context manager.
@@ -262,12 +263,13 @@ class AnaLog:
 
     def clear(self):
         self.log = None
-        self.hessian = None
-        self.save = None
-        self.test = None
+        self.hessian = False
+        self.save = False
+        self.test = False
 
     def clear_all(self):
         self.clear()
+        self.hook_manager.clear_hooks()
         self.modules_to_hook = []
         self.modules_to_name = {}
 
