@@ -218,9 +218,9 @@ class AnaLog:
         Args:
             data_id: A unique identifier associated with the data for the logging session.
             log (str, optional): Specifies which data to log (e.g. "gradient", "full_activations").
-            hessian (str, optional): Specifies if and which kind of hessian matrix approximation is required (e.g. "kfac").
+            hessian (bool, optional): Whether to compute the Hessian or not.
             save (bool, optional): Whether to save the logs or not.
-            test: Reserved for future use.
+            test (bool, optional): Whether the logging is for the test phase or not.
 
         Returns:
             self: Returns the instance of the AnaLog object.
@@ -282,5 +282,3 @@ class AnaLog:
             "activations",
         }:
             raise ValueError("Invalid value for 'track'.")
-        if hessian is not None and hessian not in {"kfac", "shampoo"}:
-            raise ValueError("Invalid value for 'covariance'.")
