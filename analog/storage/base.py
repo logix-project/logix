@@ -58,7 +58,7 @@ class StorageHandlerBase(ABC):
         pass
 
     @abstractmethod
-    def add(self, module_name, log_type, data):
+    def add(self, module_name, log_type, data, mask=None):
         """
         Adds activation data to the buffer.
 
