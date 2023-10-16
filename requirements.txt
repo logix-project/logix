@@ -1,5 +1,6 @@
 torch
 numpy
+pyyaml
 msgpack
 msgpack-numpy
 lz4
