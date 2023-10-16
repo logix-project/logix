@@ -20,13 +20,14 @@ class KFACHessianHandler(HessianHandlerBase):
     """
     Compute the Hessian via the K-FAC method.
     """
+
     def update_hessian(
-            self,
-            module: nn.Module,
-            module_name: str,
-            mode: str,
-            data: torch.Tensor,
-        ):
+        self,
+        module: nn.Module,
+        module_name: str,
+        mode: str,
+        data: torch.Tensor,
+    ):
         module_type = get_module_type_str(module)
         covariance_func = getattr(self, f"{module_type}_{mode}")
         covariance = covariance_func(data, module).cpu().detach()

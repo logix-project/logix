@@ -11,6 +11,12 @@ class DefaultStorageHandler(StorageHandlerBase):
         Checks if the file exists, and if not, creates an initial empty JSON structure.
         """
         self.buffer = nested_dict()
+        self.push_count = 0
+
+        # config
+        # TODO: create parse_config method
+        self.max_buffer_size = self.config.get("max_buffer_size", -1)
+        self.file_path = self.config.get("file_path")
 
     def format_log(self, module_name, log_type, data):
         """
@@ -44,7 +50,11 @@ class DefaultStorageHandler(StorageHandlerBase):
         For the JSON handler, there's no batch operation needed since each add operation writes to the file.
         This can be a placeholder or used for any finalization operations.
         """
-        np.savez("data.npz", **self.buffer)
+        if self.max_buffer_size > 0 and len(self.buffer) > self.max_buffer_size:
+            np.savez(f"{self.file_path}/data_{self.push_count}.npz", **self.buffer)
+
+            self.push_count += 1
+            self.buffer = nested_dict()
 
     def serialize_tensor(self, tensor):
         """
