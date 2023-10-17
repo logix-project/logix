@@ -43,7 +43,7 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         assert len(data) == len(self.data_id)
         for datum, data_id in zip(data, self.data_id):
-            self.buffer[data_id][module_name][log_type] = datum
+            self.buffer[data_id][module_name][log_type] = datum.cpu()
 
     def push(self):
         """
@@ -67,3 +67,7 @@ class DefaultStorageHandler(StorageHandlerBase):
             The serialized tensor.
         """
         pass
+
+    def finalize(self):
+        np.savez(f"{self.file_path}/data_{self.push_count}.npz", **self.buffer)
+

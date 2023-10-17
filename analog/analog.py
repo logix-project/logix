@@ -8,13 +8,14 @@ from analog.hook import HookManager
 from analog.config import Config
 from analog.storage import init_storage_handler_from_config
 from analog.hessian import init_hessian_handler_from_config
+from analog.utils import nested_dict
 
 
 class AnaLog:
     def __init__(
         self,
         project: str,
-        config: str = None,
+        config: str = '',
     ) -> None:
         """
         Initializes the AnaLog class for neural network logging.
@@ -43,6 +44,10 @@ class AnaLog:
         self.save = False
         self.test = False
 
+        # Current log
+        self.current_log = nested_dict()
+        self.data_id = None
+
     def _forward_hook_fn(
         self, module: nn.Module, inputs: torch.Tensor, module_name: str
     ) -> None:
@@ -54,13 +59,13 @@ class AnaLog:
             inputs: The input to the module.
             module_name (str): The name of the module.
         """
+        assert len(inputs) == 1
+        
         if self.hessian:
-            self.hessian_handler.update_hessian(module, module_name, "forward", inputs)
-
-        inputs = inputs.cpu()
+            self.hessian_handler.update_hessian(module, module_name, "forward", inputs[0])
 
         if self.save and "activations" in self.log:
-            self.storage_handler.add(module_name, "forward", inputs)
+            self.storage_handler.add(module_name, "forward", inputs[0])
 
     def _backward_hook_fn(
         self,
@@ -79,16 +84,15 @@ class AnaLog:
             module_name (str): The name of the module.
         """
         del grad_inputs
+        assert len(grad_outputs) == 1
 
         if self.hessian:
             self.hessian_handler.update_hessian(
-                module, module_name, "backward", grad_outputs
+                module, module_name, "backward", grad_outputs[0]
             )
 
-        grad_outputs = grad_outputs.cpu()
-
         if self.save and self.log == "full_activations":
-            self.storage_handler.add(module_name, "backward", grad_outputs)
+            self.storage_handler.add(module_name, "backward", grad_outputs[0])
         elif self.save and self.log == "gradient":
             raise NotImplementedError
 
@@ -108,9 +112,6 @@ class AnaLog:
         if self.hessian:
             self.hessian_handler.update_hessian(None, tensor_name, "forward", tensor)
 
-        # offload data to cpu
-        tensor = tensor.cpu()
-
         if self.save and "activations" in self.log:
             self.storage_handler.add(tensor_name, "forward", tensor)
 
@@ -129,9 +130,6 @@ class AnaLog:
         """
         if self.hessian:
             self.hessian_handler.update_hessian(None, tensor_name, "backward", grad)
-
-        # offload data to cpu
-        grad = grad.cpu()
 
         if self.save and self.log == "full_activations":
             self.storage_handler.add(tensor_name, "backward", grad)
@@ -201,7 +199,7 @@ class AnaLog:
         self.hessian_handler.finalize()
         self.storage_handler.finalize()
 
-    def __enter__(
+    def __call__(
         self,
         data_id=None,
         log=None,
@@ -210,11 +208,6 @@ class AnaLog:
         test=False,
     ):
         """
-        Sets up the context manager.
-
-        This method is automatically called when the `with` statement is used with an `AnaLog` object.
-        It sets up the logging environment based on the provided parameters.
-
         Args:
             data_id: A unique identifier associated with the data for the logging session.
             log (str, optional): Specifies which data to log (e.g. "gradient", "full_activations").
@@ -225,16 +218,27 @@ class AnaLog:
         Returns:
             self: Returns the instance of the AnaLog object.
         """
-        self.sanity_check(data_id, log, hessian, save)
-
-        self.current_log = None
-
+        self.data_id = data_id
         self.log = log
         self.hessian = hessian
         self.save = save
         self.test = test
 
-        self.storage_handler.set_data_id(data_id)
+        self.current_log = nested_dict()
+
+        self.sanity_check(self.data_id, self.log, self.hessian, self.save)
+
+        return self
+
+    def __enter__(self):
+        """
+        Sets up the context manager.
+
+        This method is automatically called when the `with` statement is used with an `AnaLog` object.
+        It sets up the logging environment based on the provided parameters.
+        """
+
+        self.storage_handler.set_data_id(self.data_id)
 
         # register hooks
         for module in self.modules_to_hook:
