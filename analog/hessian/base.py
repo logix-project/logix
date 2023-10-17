@@ -9,6 +9,8 @@ class HessianHandlerBase(ABC):
         self.hessian_state = nested_dict()
         self.sample_counter = nested_dict()
 
+        self.parse_config()
+
     @abstractmethod
     def parse_config(self):
         """

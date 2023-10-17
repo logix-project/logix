@@ -18,7 +18,7 @@ class HookManager:
         Returns:
             The hook handle.
         """
-        hook = module.register_forward_hook(hook_fn)
+        hook = module.register_forward_pre_hook(hook_fn)
         self.forward_hooks.append(hook)
         return hook
 

@@ -13,6 +13,8 @@ class KFACHessianHandler(HessianHandlerBase):
     """
     Compute the Hessian via the K-FAC method.
     """
+    def parse_config(self):
+        self.damping = self.config.get("damping", 1e-2)
 
     def update_hessian(
         self,
@@ -43,10 +45,10 @@ class KFACHessianHandler(HessianHandlerBase):
         """
         Compute the inverse of the covariance.
         """
-        for _, module_state in self.hessian_state.items():
+        for module_name, module_state in self.hessian_state.items():
             for mode, covariance in module_state.items():
                 module_state[mode] = torch.inverse(
-                    covariance + torch.trace(covariance) * self.config.damping
+                    covariance + torch.trace(covariance) * self.damping * torch.eye(covariance.size(0))
                 )
 
     def synchronize(self):

@@ -18,7 +18,7 @@ def init_hessian_handler_from_config(config: Config) -> HessianHandlerBase:
     hessian_config = config.get_hessian_config()
     hessian_type = hessian_config.get("type", "kfac")
     if hessian_type == "kfac":
-        hessian_handler = KFACHessianHandler(config)
+        hessian_handler = KFACHessianHandler(hessian_config)
     else:
         raise ValueError(f"Unknown Hessian type: {hessian_type}")
     return hessian_handler
