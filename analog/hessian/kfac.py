@@ -48,7 +48,10 @@ class KFACHessianHandler(HessianHandlerBase):
         for module_name, module_state in self.hessian_state.items():
             for mode, covariance in module_state.items():
                 module_state[mode] = torch.inverse(
-                    covariance + torch.trace(covariance) * self.damping * torch.eye(covariance.size(0))
+                    covariance
+                    + torch.trace(covariance)
+                    * self.damping
+                    * torch.eye(covariance.size(0))
                 )
 
     def synchronize(self):

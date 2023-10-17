@@ -1,3 +1,6 @@
+import os
+import random
+
 import numpy as np
 
 from analog.utils import nested_dict
@@ -5,6 +8,10 @@ from analog.storage import StorageHandlerBase
 
 
 class DefaultStorageHandler(StorageHandlerBase):
+    def parse_config(self):
+        self.max_buffer_size = self.config.get("max_buffer_size", -1)
+        self.file_path = self.config.get("file_path")
+
     def initialize(self):
         """
         Sets up the file path and prepares the JSON handler.
@@ -12,11 +19,6 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         self.buffer = nested_dict()
         self.push_count = 0
-
-        # config
-        # TODO: create parse_config method
-        self.max_buffer_size = self.config.get("max_buffer_size", -1)
-        self.file_path = self.config.get("file_path")
 
     def format_log(self, module_name, log_type, data):
         """
@@ -69,5 +71,6 @@ class DefaultStorageHandler(StorageHandlerBase):
         pass
 
     def finalize(self):
-        np.savez(f"{self.file_path}/data_{self.push_count}.npz", **self.buffer)
-
+        np.savez(
+            os.path.join(self.file_path, f"data_{self.push_count}.npz"), **self.buffer
+        )

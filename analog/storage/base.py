@@ -11,6 +11,8 @@ class StorageHandlerBase(ABC):
         """
         self.config = config
         self.buffer = None
+
+        self.parse_config()
         self.initialize()
 
     def clear(self):
@@ -27,6 +29,13 @@ class StorageHandlerBase(ABC):
             data_id: The ID associated with the data.
         """
         self.data_id = data_id
+
+    @abstractmethod
+    def parse_config(self):
+        """
+        Abstract method to parse the configuration.
+        """
+        pass
 
     @abstractmethod
     def initialize(self):
