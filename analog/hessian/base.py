@@ -31,3 +31,9 @@ class HessianHandlerBase(ABC):
         Finalize the covariance computation.
         """
         pass
+
+    def get_hessian_state(self):
+        """
+        Get the Hessian state.
+        """
+        return self.hessian_state

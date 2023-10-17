@@ -27,4 +27,3 @@ def prepare_everything(data_name: str, model_id: int = 0):
     model.eval()
 
     return model.to(DEVICE), eval_train_loader, valid_loader
-

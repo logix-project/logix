@@ -13,7 +13,7 @@ class Config:
     # Default values for each configuration
     _DEFAULTS = {
         "global": {},
-        "storage": {"type": "default", "file_path": "./ana_log"},
+        "storage": {"type": "default", "file_path": "./"},
         "hessian": {"type": "kfac", "damping": 1e-2},
     }
 

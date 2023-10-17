@@ -15,7 +15,7 @@ class AnaLog:
     def __init__(
         self,
         project: str,
-        config: str = '',
+        config: str = "",
     ) -> None:
         """
         Initializes the AnaLog class for neural network logging.
@@ -60,9 +60,11 @@ class AnaLog:
             module_name (str): The name of the module.
         """
         assert len(inputs) == 1
-        
+
         if self.hessian:
-            self.hessian_handler.update_hessian(module, module_name, "forward", inputs[0])
+            self.hessian_handler.update_hessian(
+                module, module_name, "forward", inputs[0]
+            )
 
         if self.save and "activations" in self.log:
             self.storage_handler.add(module_name, "forward", inputs[0])
@@ -260,7 +262,6 @@ class AnaLog:
         interfere with further operations on the model or with future logging sessions.
         """
         self.storage_handler.push()
-        self.storage_handler.clear()
         self.hook_manager.clear_hooks()
 
         self.clear()
@@ -286,3 +287,9 @@ class AnaLog:
             "activations",
         }:
             raise ValueError("Invalid value for 'track'.")
+
+    def get_hessian_state(self):
+        """
+        Returns the Hessian state from the Hessian handler.
+        """
+        return self.hessian_handler.get_hessian_state()
