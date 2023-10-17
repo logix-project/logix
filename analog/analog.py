@@ -6,12 +6,15 @@ import torch.nn as nn
 
 from analog.hook import HookManager
 from analog.config import Config
+from analog.constants import FORWARD, BACKWARD, GRAD, LOG_TYPES
 from analog.storage import init_storage_handler_from_config
 from analog.hessian import init_hessian_handler_from_config
 from analog.utils import nested_dict
 
 
 class AnaLog:
+    _SUPPORTED_MODULES = {nn.Linear, nn.Conv2d}
+
     def __init__(
         self,
         project: str,
@@ -62,12 +65,10 @@ class AnaLog:
         assert len(inputs) == 1
 
         if self.hessian:
-            self.hessian_handler.update_hessian(
-                module, module_name, "forward", inputs[0]
-            )
+            self.hessian_handler.update_hessian(module, module_name, FORWARD, inputs[0])
 
-        if self.save and "activations" in self.log:
-            self.storage_handler.add(module_name, "forward", inputs[0])
+        if self.save and FORWARD in self.log:
+            self.storage_handler.add(module_name, FORWARD, inputs[0])
 
     def _backward_hook_fn(
         self,
@@ -90,15 +91,15 @@ class AnaLog:
 
         if self.hessian:
             self.hessian_handler.update_hessian(
-                module, module_name, "backward", grad_outputs[0]
+                module, module_name, BACKWARD, grad_outputs[0]
             )
 
-        if self.save and self.log == "full_activations":
-            self.storage_handler.add(module_name, "backward", grad_outputs[0])
-        elif self.save and self.log == "gradient":
+        if self.save and BACKWARD in self.log:
+            self.storage_handler.add(module_name, BACKWARD, grad_outputs[0])
+        if self.save and GRAD in self.log:
             raise NotImplementedError
 
-        self.current_log[module_name]["backward"] = grad_outputs
+        self.current_log[module_name][BACKWARD] = grad_outputs
 
     def _tensor_forward_hook_fn(self, tensor: torch.Tensor, tensor_name: str) -> None:
         """
@@ -112,12 +113,12 @@ class AnaLog:
             tensor_name (str): A string identifier for the tensor, useful for logging.
         """
         if self.hessian:
-            self.hessian_handler.update_hessian(None, tensor_name, "forward", tensor)
+            self.hessian_handler.update_hessian(None, tensor_name, FORWARD, tensor)
 
-        if self.save and "activations" in self.log:
-            self.storage_handler.add(tensor_name, "forward", tensor)
+        if self.save and FORWARD in self.log:
+            self.storage_handler.add(tensor_name, FORWARD, tensor)
 
-        self.current_log[tensor_name]["forward"] = tensor
+        self.current_log[tensor_name][FORWARD] = tensor
 
     def _tensor_backward_hook_fn(self, grad: torch.Tensor, tensor_name: str) -> None:
         """
@@ -131,12 +132,12 @@ class AnaLog:
             tensor_name (str): A string identifier for the tensor whose gradient is being tracked.
         """
         if self.hessian:
-            self.hessian_handler.update_hessian(None, tensor_name, "backward", grad)
+            self.hessian_handler.update_hessian(None, tensor_name, BACKWARD, grad)
 
-        if self.save and self.log == "full_activations":
-            self.storage_handler.add(tensor_name, "backward", grad)
+        if self.save and BACKWARD in self.log:
+            self.storage_handler.add(tensor_name, BACKWARD, grad)
 
-        self.current_log[tensor_name]["backward"] = grad
+        self.current_log[tensor_name][BACKWARD] = grad
 
     def watch(self, model, type_filter=None, name_filter=None):
         """
@@ -151,7 +152,11 @@ class AnaLog:
             # only consider the leaf module
             if len(list(module.children())) > 0:
                 continue
-
+            if not any(
+                isinstance(module, module_type)
+                for module_type in self._SUPPORTED_MODULES
+            ):
+                continue
             if type_filter is not None and not any(
                 isinstance(module, module_type) for module_type in type_filter
             ):
@@ -204,8 +209,8 @@ class AnaLog:
     def __call__(
         self,
         data_id=None,
-        log=None,
-        hessian=False,
+        log=[FORWARD, BACKWARD],
+        hessian=True,
         save=False,
         test=False,
     ):
@@ -220,6 +225,8 @@ class AnaLog:
         Returns:
             self: Returns the instance of the AnaLog object.
         """
+        assert data_id is not None
+
         self.data_id = data_id
         self.log = log
         self.hessian = hessian
@@ -281,11 +288,7 @@ class AnaLog:
     def sanity_check(self, data, log, hessian, save):
         if save and data is None:
             raise ValueError("Must provide data to save gradients.")
-        if log is not None and log not in {
-            "gradient",
-            "full_activations",
-            "activations",
-        }:
+        if len(log) > 0 and len(set(log) - LOG_TYPES) > 0:
             raise ValueError("Invalid value for 'track'.")
 
     def get_hessian_state(self):

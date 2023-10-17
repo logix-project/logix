@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.distributed as dist
 
+from analog.constants import FORWARD
 from analog.utils import deep_get, get_world_size
 from analog.hessian.base import HessianHandlerBase
 from analog.hessian.utils import extract_activations, extract_gradients
@@ -13,6 +14,7 @@ class KFACHessianHandler(HessianHandlerBase):
     """
     Compute the Hessian via the K-FAC method.
     """
+
     def parse_config(self):
         self.damping = self.config.get("damping", 1e-2)
 
@@ -24,7 +26,7 @@ class KFACHessianHandler(HessianHandlerBase):
         data: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
     ):
-        extract_fn = extract_activations if mode == "forward" else extract_gradients
+        extract_fn = extract_activations if mode == FORWARD else extract_gradients
         activation = extract_fn(data, module, mask)
         covariance = torch.matmul(torch.t(activation), activation).cpu().detach()
         if deep_get(self.hessian_state, [module_name, mode]) is None:
@@ -39,7 +41,7 @@ class KFACHessianHandler(HessianHandlerBase):
             for mode, covariance in module_state.items():
                 covariance.div_(self.sample_counter[module_name][mode])
         self.synchronize()
-        self.hessian_inverse()
+        #self.hessian_inverse()
 
     def hessian_inverse(self):
         """
