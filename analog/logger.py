@@ -1,12 +1,11 @@
 import sys
-import abc
 import logging
 
 
 _logger = None
 
 
-def get_logger():
+def get_logger() -> logging.Logger:
     """
     Get global logger.
     """

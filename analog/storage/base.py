@@ -37,7 +37,7 @@ class StorageHandlerBase(ABC):
         pass
 
     @abstractmethod
-    def format_log(self, module_name, log_type, data):
+    def format_log(self, module_name: str, log_type: str, data):
         """
         Abstract method to format the logging data.
 
@@ -52,7 +52,7 @@ class StorageHandlerBase(ABC):
         pass
 
     @abstractmethod
-    def add(self, module_name, log_type, data, mask=None):
+    def add(self, module_name: str, log_type: str, data, mask=None):
         """
         Adds activation data to the buffer.
 

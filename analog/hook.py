@@ -1,5 +1,11 @@
+from typing import Callable
+
+import torch
+import torch.nn as nn
+
+
 class HookManager:
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initializes the HookManager with empty lists for hooks.
         """
@@ -7,7 +13,7 @@ class HookManager:
         self.backward_hooks = []
         self.tensor_hooks = []
 
-    def register_forward_hook(self, module, hook_fn):
+    def register_forward_hook(self, module: nn.Module, hook_fn: Callable):
         """
         Register a forward hook on the given module.
 
@@ -22,7 +28,7 @@ class HookManager:
         self.forward_hooks.append(hook)
         return hook
 
-    def register_backward_hook(self, module, hook_fn):
+    def register_backward_hook(self, module: nn.Module, hook_fn: Callable):
         """
         Register a backward hook on the given module.
 
@@ -37,7 +43,7 @@ class HookManager:
         self.backward_hooks.append(hook)
         return hook
 
-    def register_tensor_hook(self, tensor, hook_fn):
+    def register_tensor_hook(self, tensor: torch.Tensor, hook_fn: Callable):
         """
         Register a hook on the given tensor.
 
@@ -52,7 +58,7 @@ class HookManager:
         self.tensor_hooks.append(hook)
         return hook
 
-    def clear_hooks(self):
+    def clear_hooks(self) -> None:
         """
         Clear all registered hooks.
         """
