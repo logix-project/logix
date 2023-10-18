@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.distributed as dist
 
-from analog.constants import FORWARD
+from analog.constants import FORWARD, BACKWARD
 from analog.utils import deep_get, get_world_size
 from analog.hessian.base import HessianHandlerBase
 from analog.hessian.utils import extract_activations, extract_gradients
@@ -18,6 +18,7 @@ class KFACHessianHandler(HessianHandlerBase):
     def parse_config(self):
         self.damping = self.config.get("damping", 1e-2)
 
+    @torch.no_grad()
     def update_hessian(
         self,
         module: nn.Module,
@@ -26,7 +27,13 @@ class KFACHessianHandler(HessianHandlerBase):
         data: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
     ):
-        extract_fn = extract_activations if mode == FORWARD else extract_gradients
+        extract_fn = None
+        if mode == FORWARD:
+            extract_fn = extract_activations
+        elif mode == BACKWARD:
+            extract_fn = extract_gradients
+        else:
+            raise ValueError(f"Unknown mode: {mode}")
         activation = extract_fn(data, module, mask)
         covariance = torch.matmul(torch.t(activation), activation).cpu().detach()
         if deep_get(self.hessian_state, [module_name, mode]) is None:
