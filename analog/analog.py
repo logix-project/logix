@@ -201,9 +201,13 @@ class AnaLog:
         """
         return self.modules_to_name[module]
 
-    def finalize(self):
+    def finalize(self, clear=False):
         self.hessian_handler.finalize()
         self.storage_handler.finalize()
+
+        if clear:
+            self.hessian_handler.clear()
+            self.storage_handler.clear()
 
     def __call__(
         self,
@@ -234,7 +238,7 @@ class AnaLog:
 
         self.current_log = nested_dict()
 
-        self.sanity_check(self.data_id, self.log, self.hessian, self.save)
+        self.sanity_check(self.data_id, self.log)
 
         return self
 
@@ -270,23 +274,35 @@ class AnaLog:
         self.storage_handler.push()
         self.hook_manager.clear_hooks()
 
-        self.clear()
+        self.reset()
 
-    def clear(self):
+    def reset(self) -> None:
+        """
+        Reset the internal states.
+        """
         self.log = None
         self.hessian = False
         self.save = False
         self.test = False
 
-    def clear_all(self):
-        self.clear()
+    def clear(self) -> None:
+        """
+        Clear everything in AnaLog.
+        """
+        self.reset()
         self.hook_manager.clear_hooks()
         self.modules_to_hook = []
         self.modules_to_name = {}
 
-    def sanity_check(self, data, log, hessian, save):
-        if save and data is None:
-            raise ValueError("Must provide data to save gradients.")
+        self.storage_handler.clear()
+        self.hessian_handler.clear()
+
+    def sanity_check(self, data_id: Any, log) -> None:
+        """
+        Performs a sanity check on the provided parameters.
+        """
+        if data_id is None:
+            raise ValueError("Must provide data_id for logging.")
         if len(log) > 0 and len(set(log) - LOG_TYPES) > 0:
             raise ValueError("Invalid value for 'track'.")
 
@@ -295,3 +311,9 @@ class AnaLog:
         Returns the Hessian state from the Hessian handler.
         """
         return self.hessian_handler.get_hessian_state()
+
+    def get_storage_buffer(self):
+        """
+        Returns the storage buffer from the storage handler.
+        """
+        return self.storage_handler.get_buffer()

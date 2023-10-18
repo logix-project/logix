@@ -15,21 +15,6 @@ class StorageHandlerBase(ABC):
         self.parse_config()
         self.initialize()
 
-    def clear(self):
-        """
-        Clears the buffer.
-        """
-        self.buffer.clear()
-
-    def set_data_id(self, data_id):
-        """
-        Set the data ID for logging.
-
-        Args:
-            data_id: The ID associated with the data.
-        """
-        self.data_id = data_id
-
     @abstractmethod
     def parse_config(self):
         """
@@ -97,3 +82,27 @@ class StorageHandlerBase(ABC):
             The serialized tensor.
         """
         pass
+
+    def clear(self):
+        """
+        Clears the buffer.
+        """
+        self.buffer.clear()
+
+    def set_data_id(self, data_id):
+        """
+        Set the data ID for logging.
+
+        Args:
+            data_id: The ID associated with the data.
+        """
+        self.data_id = data_id
+
+    def get_buffer(self):
+        """
+        Returns the buffer.
+
+        Returns:
+            dict: The buffer.
+        """
+        return self.buffer
