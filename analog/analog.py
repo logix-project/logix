@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Iterable, Dict, Tuple, Any
 from functools import partial
 
 import torch
@@ -45,14 +45,13 @@ class AnaLog:
         self.log = None
         self.hessian = False
         self.save = False
-        self.test = False
 
         # Current log
         self.current_log = nested_dict()
         self.data_id = None
 
     def _forward_hook_fn(
-        self, module: nn.Module, inputs: torch.Tensor, module_name: str
+        self, module: nn.Module, inputs: Tuple[torch.Tensor], module_name: str
     ) -> None:
         """
         Internal forward hook function.
@@ -70,11 +69,13 @@ class AnaLog:
         if self.save and FORWARD in self.log:
             self.storage_handler.add(module_name, FORWARD, inputs[0])
 
+        self.current_log[module_name][FORWARD] = inputs[0]
+
     def _backward_hook_fn(
         self,
         module: nn.Module,
-        grad_inputs: Optional[torch.Tensor],
-        grad_outputs: Optional[torch.Tensor],
+        grad_inputs: Tuple[torch.Tensor],
+        grad_outputs: Tuple[torch.Tensor],
         module_name: str,
     ) -> None:
         """
@@ -98,7 +99,7 @@ class AnaLog:
         if self.save and GRAD in self.log:
             raise NotImplementedError
 
-        self.current_log[module_name][BACKWARD] = grad_outputs
+        self.current_log[module_name][BACKWARD] = grad_outputs[0]
 
     def _tensor_forward_hook_fn(self, tensor: torch.Tensor, tensor_name: str) -> None:
         """
@@ -138,7 +139,7 @@ class AnaLog:
 
         self.current_log[tensor_name][BACKWARD] = grad
 
-    def watch(self, model, type_filter=None, name_filter=None):
+    def watch(self, model, type_filter=None, name_filter=None) -> None:
         """
         Sets up modules in the model to be watched.
 
@@ -167,7 +168,7 @@ class AnaLog:
             self.modules_to_hook.append(module)
             self.modules_to_name[module] = name
 
-    def watch_activation(self, tensor_dict: Dict[str, torch.Tensor]):
+    def watch_activation(self, tensor_dict: Dict[str, torch.Tensor]) -> None:
         """
         Sets up tensors to be watched.
 
@@ -189,7 +190,7 @@ class AnaLog:
         """
         return self.current_log
 
-    def get_module_name(self, module: nn.Module):
+    def get_module_name(self, module: nn.Module) -> str:
         """
         Retrieves the name of a module.
 
@@ -201,7 +202,7 @@ class AnaLog:
         """
         return self.modules_to_name[module]
 
-    def finalize(self, clear=False):
+    def finalize(self, clear: bool = False) -> None:
         self.hessian_handler.finalize()
         self.storage_handler.finalize()
 
@@ -211,11 +212,11 @@ class AnaLog:
 
     def __call__(
         self,
-        data_id=None,
-        log=[FORWARD, BACKWARD],
-        hessian=True,
-        save=False,
-        test=False,
+        data_id: Optional[Iterable[Any]] = None,
+        log: Iterable[str] = [FORWARD, BACKWARD],
+        hessian: bool = True,
+        save: bool = False,
+        test: bool = False,
     ):
         """
         Args:
@@ -228,17 +229,12 @@ class AnaLog:
         Returns:
             self: Returns the instance of the AnaLog object.
         """
-        assert data_id is not None
-
         self.data_id = data_id
         self.log = log
-        self.hessian = hessian
-        self.save = save
-        self.test = test
+        self.hessian = hessian if not test else False
+        self.save = save if not test else False
 
-        self.current_log = nested_dict()
-
-        self.sanity_check(self.data_id, self.log)
+        self.sanity_check(self.data_id, self.log, test)
 
         return self
 
@@ -251,6 +247,7 @@ class AnaLog:
         """
 
         self.storage_handler.set_data_id(self.data_id)
+        self.current_log = nested_dict()
 
         # register hooks
         for module in self.modules_to_hook:
@@ -264,7 +261,7 @@ class AnaLog:
 
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
         """
         Clears the internal states and removes all the hooks.
 
@@ -283,7 +280,6 @@ class AnaLog:
         self.log = None
         self.hessian = False
         self.save = False
-        self.test = False
 
     def clear(self) -> None:
         """
@@ -297,14 +293,16 @@ class AnaLog:
         self.storage_handler.clear()
         self.hessian_handler.clear()
 
-    def sanity_check(self, data_id: Any, log) -> None:
+    def sanity_check(
+        self, data_id: Iterable[Any], log: Iterable[str], test: bool
+    ) -> None:
         """
         Performs a sanity check on the provided parameters.
         """
-        if data_id is None:
-            raise ValueError("Must provide data_id for logging.")
         if len(log) > 0 and len(set(log) - LOG_TYPES) > 0:
             raise ValueError("Invalid value for 'track'.")
+        if not test and data_id is None:
+            raise ValueError("Must provide data_id for logging.")
 
     def get_hessian_state(self):
         """

@@ -8,11 +8,14 @@ from analog.storage import StorageHandlerBase
 
 
 class DefaultStorageHandler(StorageHandlerBase):
-    def parse_config(self):
+    def parse_config(self) -> None:
+        """
+        Parse the configuration parameters.
+        """
         self.max_buffer_size = self.config.get("max_buffer_size", -1)
         self.file_path = self.config.get("file_path")
 
-    def initialize(self):
+    def initialize(self) -> None:
         """
         Sets up the file path and prepares the JSON handler.
         Checks if the file exists, and if not, creates an initial empty JSON structure.
@@ -20,7 +23,7 @@ class DefaultStorageHandler(StorageHandlerBase):
         self.buffer = nested_dict()
         self.push_count = 0
 
-    def format_log(self, module_name, log_type, data):
+    def format_log(self, module_name: str, log_type: str, data):
         """
         Formats the data in the structure needed for the JSON file.
 
@@ -34,7 +37,7 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         pass
 
-    def add(self, module_name, log_type, data):
+    def add(self, module_name: str, log_type: str, data) -> None:
         """
         Adds activation data to the buffer.
 
@@ -47,9 +50,9 @@ class DefaultStorageHandler(StorageHandlerBase):
         for datum, data_id in zip(data, self.data_id):
             self.buffer[data_id][module_name][log_type] = to_numpy(datum)
 
-    def push(self):
+    def push(self) -> None:
         """
-        For the JSON handler, there's no batch operation needed since each add operation writes to the file.
+        For the DefaultHandler, there's no batch operation needed since each add operation writes to the file.
         This can be a placeholder or used for any finalization operations.
         """
         if self.max_buffer_size > 0 and len(self.buffer) > self.max_buffer_size:
@@ -59,7 +62,7 @@ class DefaultStorageHandler(StorageHandlerBase):
             self.push_count += 1
             self.buffer.clear()
 
-    def serialize_tensor(self, tensor):
+    def serialize_tensor(self, tensor: torch.Tensor):
         """
         Serializes the given tensor.
 
@@ -71,6 +74,9 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         pass
 
-    def finalize(self):
+    def finalize(self) -> None:
+        """
+        Dump everything in the buffer to a disk.
+        """
         save_path = str(os.path.join(self.file_path, f"data_{self.push_count}.pt"))
         torch.save(self.buffer, save_path)

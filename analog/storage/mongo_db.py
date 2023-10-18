@@ -78,3 +78,6 @@ class MongoDBStorageHandler(StorageHandlerBase):
         """
         numpy_tensor = to_numpy(tensor)
         return msgpack_serialize(numpy_tensor)
+
+    def finalize(self):
+        self.logs_collection.insert_many(self.buffer)
