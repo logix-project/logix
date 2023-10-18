@@ -1,9 +1,9 @@
 import os
-import random
 
 import numpy as np
+import torch
 
-from analog.utils import nested_dict
+from analog.utils import nested_dict, to_numpy
 from analog.storage import StorageHandlerBase
 
 
@@ -45,7 +45,7 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         assert len(data) == len(self.data_id)
         for datum, data_id in zip(data, self.data_id):
-            self.buffer[data_id][module_name][log_type] = datum.cpu()
+            self.buffer[data_id][module_name][log_type] = to_numpy(datum)
 
     def push(self):
         """
@@ -53,10 +53,11 @@ class DefaultStorageHandler(StorageHandlerBase):
         This can be a placeholder or used for any finalization operations.
         """
         if self.max_buffer_size > 0 and len(self.buffer) > self.max_buffer_size:
-            np.savez(f"{self.file_path}/data_{self.push_count}.npz", **self.buffer)
+            save_path = str(os.path.join(self.file_path, f"data_{self.push_count}.pt"))
+            torch.save(self.buffer, save_path)
 
             self.push_count += 1
-            self.buffer = nested_dict()
+            self.buffer.clear()
 
     def serialize_tensor(self, tensor):
         """
@@ -71,6 +72,5 @@ class DefaultStorageHandler(StorageHandlerBase):
         pass
 
     def finalize(self):
-        np.savez(
-            os.path.join(self.file_path, f"data_{self.push_count}.npz"), **self.buffer
-        )
+        save_path = str(os.path.join(self.file_path, f"data_{self.push_count}.pt"))
+        torch.save(self.buffer, save_path)

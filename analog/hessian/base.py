@@ -45,3 +45,10 @@ class HessianHandlerBase(ABC):
         if mask is not None:
             return mask.sum().item()
         return data.size(0)
+
+    def clear(self):
+        """
+        Clear the Hessian state.
+        """
+        self.hessian_state.clear()
+        self.sample_counter.clear()
