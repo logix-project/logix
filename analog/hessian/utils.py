@@ -53,7 +53,7 @@ def extract_patches(
     return inputs
 
 
-def extract_activations(
+def extract_forward_activations(
     activations: torch.Tensor,
     module: nn.Module,
     activations_mask: Optional[torch.Tensor] = None,
@@ -107,7 +107,7 @@ def extract_activations(
     return reshaped_activations
 
 
-def extract_gradients(
+def extract_backward_activations(
     gradients: torch.Tensor,
     module: nn.Module,
     mask: Optional[torch.Tensor] = None,

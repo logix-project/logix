@@ -19,7 +19,7 @@ class HessianHandlerBase(ABC):
         pass
 
     @abstractmethod
-    def update_hessian(self, module, module_name, mode, data):
+    def update_hessian(self, module, module_name, mode, data, mask):
         """
         Compute the covariance for given data.
         """
@@ -37,3 +37,11 @@ class HessianHandlerBase(ABC):
         Get the Hessian state.
         """
         return self.hessian_state
+
+    def get_sample_size(self, data, mask):
+        """
+        Get the sample size for the given data.
+        """
+        if mask is not None:
+            return mask.sum().item()
+        return data.size(0)

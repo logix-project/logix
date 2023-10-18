@@ -7,7 +7,10 @@ import torch.distributed as dist
 from analog.constants import FORWARD, BACKWARD
 from analog.utils import deep_get, get_world_size
 from analog.hessian.base import HessianHandlerBase
-from analog.hessian.utils import extract_activations, extract_gradients
+from analog.hessian.utils import (
+    extract_forward_activations,
+    extract_backward_activations,
+)
 
 
 class KFACHessianHandler(HessianHandlerBase):
@@ -27,28 +30,25 @@ class KFACHessianHandler(HessianHandlerBase):
         data: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
     ):
-        extract_fn = None
-        if mode == FORWARD:
-            extract_fn = extract_activations
-        elif mode == BACKWARD:
-            extract_fn = extract_gradients
-        else:
-            raise ValueError(f"Unknown mode: {mode}")
-        activation = extract_fn(data, module, mask)
+        # extract activations
+        activation = self.extract_activations(module, mode, data, mask)
+
+        # compute covariance
         covariance = torch.matmul(torch.t(activation), activation).cpu().detach()
+
+        # update covariance
         if deep_get(self.hessian_state, [module_name, mode]) is None:
-            self.hessian_state[module_name][mode] = covariance
-            self.sample_counter[module_name][mode] = data.size(0)
-        else:
-            self.hessian_state[module_name][mode] += covariance
-            self.sample_counter[module_name][mode] += data.size(0)
+            self.hessian_state[module_name][mode] = torch.zeros_like(covariance)
+            self.sample_counter[module_name][mode] = 0
+        self.hessian_state[module_name][mode] += covariance
+        self.sample_counter[module_name][mode] += self.get_sample_size(data, mask)
 
     def finalize(self):
         for module_name, module_state in self.hessian_state.items():
             for mode, covariance in module_state.items():
                 covariance.div_(self.sample_counter[module_name][mode])
         self.synchronize()
-        #self.hessian_inverse()
+        # self.hessian_inverse()
 
     def hessian_inverse(self):
         """
@@ -73,3 +73,9 @@ class KFACHessianHandler(HessianHandlerBase):
                 for _, covariance in module_state.items():
                     covariance.div_(world_size)
                     dist.all_reduce(covariance, op=dist.ReduceOp.SUM)
+
+    def extract_activations(self, module, mode, data, mask):
+        if mode == FORWARD:
+            return extract_forward_activations(data, module, mask)
+        assert mode == BACKWARD
+        return extract_backward_activations(data, module, mask)
