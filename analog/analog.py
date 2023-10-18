@@ -86,7 +86,6 @@ class AnaLog:
             grad_outputs: The gradient of the output from the module.
             module_name (str): The name of the module.
         """
-        del grad_inputs
         assert len(grad_outputs) == 1
 
         if self.hessian:
