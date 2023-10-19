@@ -8,42 +8,46 @@ AnaLog is a scalable and interoperable machine learning debugging tool. It's bui
 2. **Analyze** log
 
 ### Logging
-```diff
-  import torch
-  import torch.nn.functional as F
-  from datasets import load_dataset
-+ from analog import AnaLog
+```python
+import torch
+import torch.nn.functional as F
+from datasets import load_dataset
+from analog import AnaLog
 
-  model = torch.nn.Transformer().to(device)
-  optimizer = torch.optim.Adam(model.parameters())
-  dataset = load_dataset('my_dataset')
-  data = torch.utils.data.DataLoader(dataset, shuffle=True)
+model = torch.nn.Transformer().to(device)
+optimizer = torch.optim.Adam(model.parameters())
+dataset = load_dataset('my_dataset')
+data = torch.utils.data.DataLoader(dataset, shuffle=True)
 
- ''' Your Training Code '''
-
-+ analog = AnaLog(project="analog")
-+ analog.watch(model)
-  for input, target in data_loader:
-+     with analog(data_id=input, log="activation", hessian=True, save=True):
-          out = model(input)
-          loss = loss_fn(out, target)
-          loss.backward()
-          model.zero_grad()
-+ analog.finalize()
+##############################################################
+### Logging is as easy as adding one `with` statement line ###
+##############################################################
+analog = AnaLog(project="analog")
+analog.watch(model)
+for input, target in data_loader:
+    with analog(data_id=input, log=["forward", "backward"], hessian=True, save=True):
+        out = model(input)
+        loss = loss_fn(out, target)
+        loss.backward()
+        model.zero_grad()
+analog.finalize()
 ```
 
 ### Analysis
-```diff
-  # debug (test_input, test_target)
-+ with analog(track="activation", test=True) as al:
-      test_out = model(test_input)
-      test_loss = loss_fn(test_out, test_target)
-      test_loss.backward()
-+     test_activations = al.get_log()
+```python
+# debug test data
+with analog(log=["forward", "backward"], test=True) as al:
+    test_out = model(test_input)
+    test_loss = loss_fn(test_out, test_target)
+    test_loss.backward()
+    test_log = al.get_log()
 
-  # influence scores for all training data
-+ analog.if_all(test_activations)
+# add preferred analysis plugins (e.g. influence function)
+from analog.analysis import InfluenceFunction
 
-  # self-influence score
-+ analog.self_if(test_activations)
+analog.add_analysis({"influence": InfluenceFunction})
+
+analog.infleunce.compute_influence(test_log, train_log)
+analog.influence.compute_influence_all(test_log)
+analog.influence.compute_self_influence(test_log)
 ```
