@@ -15,6 +15,7 @@ class Config:
         "global": {},
         "storage": {"type": "default", "file_path": "./"},
         "hessian": {"type": "kfac", "damping": 1e-2},
+        "analysis": {}
     }
 
     def __init__(self, config_file: str) -> None:
@@ -53,3 +54,11 @@ class Config:
         :return: Dictionary containing Hessian configurations.
         """
         return self.data.get("hessian", self._DEFAULTS["hessian"])
+
+    def get_analysis_config(self) -> Dict[str, Any]:
+        """
+        Retrieve analysis configuration.
+
+        :return: Dictionary containing analysis configurations.
+        """
+        return self.data.get("analysis", self._DEFAULTS["analysis"])
