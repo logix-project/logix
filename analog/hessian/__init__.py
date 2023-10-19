@@ -4,7 +4,7 @@ from .base import HessianHandlerBase
 from .kfac import KFACHessianHandler
 
 
-def init_hessian_handler_from_config(config: Config) -> HessianHandlerBase:
+def init_hessian_handler_from_config(hessian_config: Config) -> HessianHandlerBase:
     """
     Initialize a Hessian handler from the configuration.
 
@@ -15,7 +15,6 @@ def init_hessian_handler_from_config(config: Config) -> HessianHandlerBase:
         The initialized Hessian handler.
     """
     hessian_handler = None
-    hessian_config = config.get_hessian_config()
     hessian_type = hessian_config.get("type", "kfac")
     if hessian_type == "kfac":
         hessian_handler = KFACHessianHandler(hessian_config)

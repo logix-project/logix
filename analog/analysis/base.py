@@ -2,13 +2,11 @@ from abc import ABC, abstractmethod
 
 
 class AnalysisBase(ABC):
-    def __init__(self, analog):
-        self.analog = analog
+    def __init__(self, config, storage_handler, hessian_handler):
+        self.storage_handler = storage_handler
+        self.hessian_handler = hessian_handler
 
-        self.storage_handler = analog.storage_handler
-        self.hessian_handler = analog.hessian_handler
-
-        self.config = analog.config.get_analysis_config()
+        self.config = config
         self.parse_config()
 
     @abstractmethod

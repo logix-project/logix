@@ -5,7 +5,7 @@ from .default import DefaultStorageHandler
 from .mongo_db import MongoDBStorageHandler
 
 
-def init_storage_handler_from_config(config: Config) -> StorageHandlerBase:
+def init_storage_handler_from_config(storage_config: Config) -> StorageHandlerBase:
     """
     Initialize a storage handler from the configuration.
 
@@ -16,7 +16,6 @@ def init_storage_handler_from_config(config: Config) -> StorageHandlerBase:
         The initialized storage handler.
     """
     storage_handler = None
-    storage_config = config.get_storage_config()
     storage_type = storage_config.get("type", "default")
     if storage_type == "default":
         storage_handler = DefaultStorageHandler(storage_config)

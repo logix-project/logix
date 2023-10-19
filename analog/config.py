@@ -1,7 +1,7 @@
 from typing import Dict, Any
 import yaml
 
-from analog.logger import get_logger
+from analog.utils import get_logger
 
 
 class Config:
@@ -13,9 +13,10 @@ class Config:
     # Default values for each configuration
     _DEFAULTS = {
         "global": {},
+        "logging": {},
         "storage": {"type": "default", "file_path": "./"},
         "hessian": {"type": "kfac", "damping": 1e-2},
-        "analysis": {}
+        "analysis": {},
     }
 
     def __init__(self, config_file: str) -> None:
@@ -38,6 +39,14 @@ class Config:
         :return: Dictionary containing global configurations.
         """
         return self.data.get("global", self._DEFAULTS["global"])
+
+    def get_logging_config(self) -> Dict[str, Any]:
+        """
+        Retrieve logging configuration.
+
+        :return: Dictionary containing logging configurations.
+        """
+        return self.data.get("logging", self._DEFAULTS["logging"])
 
     def get_storage_config(self) -> Dict[str, Any]:
         """

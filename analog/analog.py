@@ -1,15 +1,14 @@
 from typing import Optional, Iterable, Dict, Tuple, Any
-from functools import partial
 
 import torch
 import torch.nn as nn
 
-from analog.hook import HookManager
 from analog.config import Config
 from analog.constants import FORWARD, BACKWARD, GRAD, LOG_TYPES
+from analog.logging import LoggingHandler
 from analog.storage import init_storage_handler_from_config
 from analog.hessian import init_hessian_handler_from_config
-from analog.utils import nested_dict
+from analog.analysis import AnalysisBase
 
 
 class AnaLog:
@@ -30,117 +29,29 @@ class AnaLog:
         self.project = project
 
         # Config
-        self.config = Config(config)
+        config = Config(config)
+        self.config = config.get_global_config()
 
-        # Hook manager
-        self.hook_manager = HookManager()
-
-        # Handlers for storage and Hessian
-        self.storage_handler = init_storage_handler_from_config(self.config)
-        self.hessian_handler = init_hessian_handler_from_config(self.config)
+        # Initialize storage, hessian, and logging handlers from config as well as
+        # inject dependencies between handlers.
+        self.storage_handler = init_storage_handler_from_config(
+            config.get_storage_config()
+        )
+        self.hessian_handler = init_hessian_handler_from_config(
+            config.get_hessian_config()
+        )
+        self.logging_handler = LoggingHandler(
+            config.get_logging_config(), self.storage_handler, self.hessian_handler
+        )
 
         # Analysis plugins
         self.analysis_plugins = {}
 
         # Internal states
-        self.modules_to_hook = []
-        self.modules_to_name = {}
         self.log = None
         self.hessian = False
         self.save = False
-
-        # Current log
-        self.current_log = nested_dict()
-        self.data_id = None
-
-    def _forward_hook_fn(
-        self, module: nn.Module, inputs: Tuple[torch.Tensor], module_name: str
-    ) -> None:
-        """
-        Internal forward hook function.
-
-        Args:
-            module: The module triggering the hook.
-            inputs: The input to the module.
-            module_name (str): The name of the module.
-        """
-        assert len(inputs) == 1
-
-        if self.hessian:
-            self.hessian_handler.update_hessian(module, module_name, FORWARD, inputs[0])
-
-        if self.save and FORWARD in self.log:
-            self.storage_handler.add(module_name, FORWARD, inputs[0])
-
-        self.current_log[module_name][FORWARD] = inputs[0]
-
-    def _backward_hook_fn(
-        self,
-        module: nn.Module,
-        grad_inputs: Tuple[torch.Tensor],
-        grad_outputs: Tuple[torch.Tensor],
-        module_name: str,
-    ) -> None:
-        """
-        Internal backward hook function.
-
-        Args:
-            module: The module triggering the hook.
-            grad_inputs: The gradient of the input to the module.
-            grad_outputs: The gradient of the output from the module.
-            module_name (str): The name of the module.
-        """
-        assert len(grad_outputs) == 1
-
-        if self.hessian:
-            self.hessian_handler.update_hessian(
-                module, module_name, BACKWARD, grad_outputs[0]
-            )
-
-        if self.save and BACKWARD in self.log:
-            self.storage_handler.add(module_name, BACKWARD, grad_outputs[0])
-        if self.save and GRAD in self.log:
-            raise NotImplementedError
-
-        self.current_log[module_name][BACKWARD] = grad_outputs[0]
-
-    def _tensor_forward_hook_fn(self, tensor: torch.Tensor, tensor_name: str) -> None:
-        """
-        Internal forward hook function specifically designed for tensors.
-
-        This method allows you to track the activations of tensors that are not
-        necessarily tied to any specific module, but are still of interest.
-
-        Args:
-            tensor: The tensor triggering the hook.
-            tensor_name (str): A string identifier for the tensor, useful for logging.
-        """
-        if self.hessian:
-            self.hessian_handler.update_hessian(None, tensor_name, FORWARD, tensor)
-
-        if self.save and FORWARD in self.log:
-            self.storage_handler.add(tensor_name, FORWARD, tensor)
-
-        self.current_log[tensor_name][FORWARD] = tensor
-
-    def _tensor_backward_hook_fn(self, grad: torch.Tensor, tensor_name: str) -> None:
-        """
-        Internal backward hook function specifically designed for tensors.
-
-        This method allows you to track the gradients associated with specific
-        tensors that are not necessarily tied to any specific module, but are still of interest.
-
-        Args:
-            grad: The gradient tensor triggering the hook.
-            tensor_name (str): A string identifier for the tensor whose gradient is being tracked.
-        """
-        if self.hessian:
-            self.hessian_handler.update_hessian(None, tensor_name, BACKWARD, grad)
-
-        if self.save and BACKWARD in self.log:
-            self.storage_handler.add(tensor_name, BACKWARD, grad)
-
-        self.current_log[tensor_name][BACKWARD] = grad
+        self.test = False
 
     def watch(self, model, type_filter=None, name_filter=None) -> None:
         """
@@ -168,8 +79,7 @@ class AnaLog:
                 keyword in name for keyword in name_filter
             ):
                 continue
-            self.modules_to_hook.append(module)
-            self.modules_to_name[module] = name
+            self.logging_handler.add_module(name, module)
 
     def watch_activation(self, tensor_dict: Dict[str, torch.Tensor]) -> None:
         """
@@ -178,15 +88,14 @@ class AnaLog:
         Args:
             tensor_dict (dict): Dictionary containing tensor names as keys and tensors as values.
         """
-        for tensor_name, tensor in tensor_dict.items():
-            self._tensor_forward_hook_fn(tensor, tensor_name)
-            self.hook_manager.register_tensor_hook(
-                tensor, partial(self._tensor_backward_hook_fn, tensor_name=tensor_name)
-            )
+        self.logging_handler.register_all_tensor_hooks(tensor_dict)
 
-    def add_analysis(self, analysis_dict: Dict[str, Any]) -> None:
+    def add_analysis(self, analysis_dict: Dict[str, AnalysisBase]) -> None:
         """
         Adds analysis plugins to AnaLog.
+
+        Args:
+            analysis_dict (dict): Dictionary containing analysis names as keys and analysis classes as values.
         """
         for analysis_name, analysis_cls in analysis_dict.items():
             if hasattr(self, analysis_name):
@@ -197,6 +106,9 @@ class AnaLog:
     def remove_analysis(self, analysis_name: str) -> None:
         """
         Removes analysis plugins from AnaLog.
+
+        Args:
+            analysis_name (str): Name of the analysis to be removed.
         """
         if analysis_name not in self.analysis_plugins:
             print(f"Analysis {analysis_name} does not exist. Nothing to remove.")
@@ -211,19 +123,7 @@ class AnaLog:
         Returns:
             dict: The current log.
         """
-        return self.current_log
-
-    def get_module_name(self, module: nn.Module) -> str:
-        """
-        Retrieves the name of a module.
-
-        Args:
-            module: The module whose name needs to be retrieved.
-
-        Returns:
-            str: The name of the module.
-        """
-        return self.modules_to_name[module]
+        return self.logging_handler.current_log
 
     def finalize(self, clear: bool = False) -> None:
         self.hessian_handler.finalize()
@@ -256,8 +156,9 @@ class AnaLog:
         self.log = log
         self.hessian = hessian if not test else False
         self.save = save if not test else False
+        self.test = test
 
-        self.sanity_check(self.data_id, self.log, test)
+        self.sanity_check(self.data_id, self.log, self.test)
 
         return self
 
@@ -270,17 +171,9 @@ class AnaLog:
         """
 
         self.storage_handler.set_data_id(self.data_id)
-        self.current_log = nested_dict()
 
-        # register hooks
-        for module in self.modules_to_hook:
-            module_name = self.get_module_name(module)
-            self.hook_manager.register_forward_hook(
-                module, partial(self._forward_hook_fn, module_name=module_name)
-            )
-            self.hook_manager.register_backward_hook(
-                module, partial(self._backward_hook_fn, module_name=module_name)
-            )
+        self.logging_handler.set_states(self.log, self.hessian, self.save, self.test)
+        self.logging_handler.register_all_module_hooks()
 
         return self
 
@@ -292,7 +185,7 @@ class AnaLog:
         interfere with further operations on the model or with future logging sessions.
         """
         self.storage_handler.push()
-        self.hook_manager.clear_hooks()
+        self.logging_handler.clear()
 
         self.reset()
 
@@ -303,18 +196,18 @@ class AnaLog:
         self.log = None
         self.hessian = False
         self.save = False
+        self.test = False
 
     def clear(self) -> None:
         """
         Clear everything in AnaLog.
         """
         self.reset()
-        self.hook_manager.clear_hooks()
-        self.modules_to_hook = []
-        self.modules_to_name = {}
-
+        self.logging_handler.clear()
         self.storage_handler.clear()
         self.hessian_handler.clear()
+        for key in self.analysis_plugins:
+            self.remove_analysis(key)
 
     def sanity_check(
         self, data_id: Iterable[Any], log: Iterable[str], test: bool
