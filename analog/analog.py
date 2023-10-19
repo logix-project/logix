@@ -39,6 +39,9 @@ class AnaLog:
         self.storage_handler = init_storage_handler_from_config(self.config)
         self.hessian_handler = init_hessian_handler_from_config(self.config)
 
+        # Analysis plugins
+        self.analysis_plugins = {}
+
         # Internal states
         self.modules_to_hook = []
         self.modules_to_name = {}
@@ -180,6 +183,26 @@ class AnaLog:
             self.hook_manager.register_tensor_hook(
                 tensor, partial(self._tensor_backward_hook_fn, tensor_name=tensor_name)
             )
+
+    def add_analysis(self, analysis_dict: Dict[str, Any]) -> None:
+        """
+        Adds analysis plugins to AnaLog.
+        """
+        for analysis_name, analysis_cls in analysis_dict.items():
+            if hasattr(self, analysis_name):
+                raise ValueError(f"Analysis name {analysis_name} is reserved.")
+            setattr(self, analysis_name, analysis_cls(self))
+            self.analysis_plugins[analysis_name] = getattr(self, analysis_name)
+
+    def remove_analysis(self, analysis_name: str) -> None:
+        """
+        Removes analysis plugins from AnaLog.
+        """
+        if analysis_name not in self.analysis_plugins:
+            print(f"Analysis {analysis_name} does not exist. Nothing to remove.")
+            return None
+        del self.analysis_plugins[analysis_name]
+        delattr(self, analysis_name)
 
     def get_log(self):
         """
