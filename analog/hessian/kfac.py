@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.distributed as dist
 
 from analog.constants import FORWARD, BACKWARD
-from analog.utils import deep_get, get_world_size
+from analog.utils import deep_get, get_world_size, nested_dict, get_logger
 from analog.hessian.base import HessianHandlerBase
 from analog.hessian.utils import (
     extract_forward_activations,
@@ -48,20 +48,34 @@ class KFACHessianHandler(HessianHandlerBase):
             for mode, covariance in module_state.items():
                 covariance.div_(self.sample_counter[module_name][mode])
         self.synchronize()
-        # self.hessian_inverse()
 
-    def hessian_inverse(self):
+    def hessian_inverse(self, override=False):
         """
         Compute the inverse of the covariance.
         """
+        if self.hessian_inverse_with_override:
+            get_logger().warning("Hessian inverse already computed with override.")
+            return
+
+        if not override:
+            self.hessian_inverse_state = nested_dict()
         for module_name, module_state in self.hessian_state.items():
             for mode, covariance in module_state.items():
-                module_state[mode] = torch.inverse(
-                    covariance
-                    + torch.trace(covariance)
-                    * self.damping
-                    * torch.eye(covariance.size(0))
-                )
+                if override:
+                    module_state[mode] = torch.inverse(
+                        covariance
+                        + torch.trace(covariance)
+                        * self.damping
+                        * torch.eye(covariance.size(0))
+                    )
+                else:
+                    self.hessian_inverse_state[module_name][mode] = torch.inverse(
+                        covariance
+                        + torch.trace(covariance)
+                        * self.damping
+                        * torch.eye(covariance.size(0))
+                    )
+        self.hessian_inverse_with_override = True
 
     def synchronize(self):
         """

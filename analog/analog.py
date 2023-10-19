@@ -181,17 +181,23 @@ class AnaLog:
         """
         return self.logging_handler.current_log
 
+    def get_storage_buffer(self):
+        """
+        Returns the storage buffer from the storage handler.
+        """
+        return self.storage_handler.get_buffer()
+
     def get_hessian_state(self) -> Dict[str, Dict[str, torch.Tensor]]:
         """
         Returns the Hessian state from the Hessian handler.
         """
         return self.hessian_handler.get_hessian_state()
 
-    def get_storage_buffer(self):
+    def hessian_inverse(self, override: bool = False) -> None:
         """
-        Returns the storage buffer from the storage handler.
+        Compute the inverse of the Hessian.
         """
-        return self.storage_handler.get_buffer()
+        self.hessian_handler.hessian_inverse(override)
 
     def finalize(self, clear: bool = False) -> None:
         """
