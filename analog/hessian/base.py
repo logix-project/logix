@@ -32,13 +32,16 @@ class HessianHandlerBase(ABC):
         """
         pass
 
-    def get_hessian_state(self):
+    def get_hessian_state(self, name: str = None):
         """
         Get the Hessian state.
         """
-        return self.hessian_state
+        if name is None:
+            return self.hessian_state
+        assert name in self.hessian_state
+        return self.hessian_state[name]
 
-    def get_sample_size(self, data, mask):
+    def get_sample_size(self, data, mask) -> int:
         """
         Get the sample size for the given data.
         """
@@ -46,7 +49,7 @@ class HessianHandlerBase(ABC):
             return mask.sum().item()
         return data.size(0)
 
-    def clear(self):
+    def clear(self) -> None:
         """
         Clear the Hessian state.
         """
