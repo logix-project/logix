@@ -1,3 +1,6 @@
+import sys
+import logging
+from typing import Any, List
 from collections import defaultdict
 
 import hashlib
@@ -5,6 +8,32 @@ import hashlib
 import numpy as np
 import torch
 import torch.distributed as dist
+
+
+_logger = None
+
+
+def get_logger() -> logging.Logger:
+    """
+    Get global logger.
+    """
+    global _logger
+    if _logger:
+        return _logger
+    logger = logging.getLogger("AnaLog")
+    log_format = logging.Formatter(
+        "[%(asctime)s] [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S"
+    )
+
+    logger.propagate = False
+    logger.setLevel(logging.INFO)
+    ch = logging.StreamHandler(stream=sys.stdout)
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(log_format)
+    logger.addHandler(ch)
+
+    _logger = logger
+    return _logger
 
 
 def to_numpy(tensor):
@@ -16,7 +45,7 @@ def to_numpy(tensor):
         raise ValueError("Unsupported tensor type. Supported libraries: NumPy, PyTorch")
 
 
-def get_world_size(group=None):
+def get_world_size(group=None) -> int:
     if dist.is_initialized():
         return dist.get_rank(group)
     else:
@@ -42,7 +71,7 @@ class DataIDGenerator:
         if mode == "index":
             self.count = 0
 
-    def __call__(self, data):
+    def __call__(self, data: Any):
         if self.mode == "hash":
             return self.generate_hash_id(data)
         elif self.mode == "index":
@@ -50,7 +79,7 @@ class DataIDGenerator:
         else:
             raise ValueError(f"Unsupported mode: {self.mode}")
 
-    def generate_hash_id(self, data):
+    def generate_hash_id(self, data: Any) -> List[str]:
         data_id = []
         for d in data:
             ndarray = to_numpy(d)
@@ -58,7 +87,7 @@ class DataIDGenerator:
             data_id.append(hashlib.sha256(ndarray.tobytes()).hexdigest())
         return data_id
 
-    def generate_index_id(self, data):
+    def generate_index_id(self, data: Any) -> List[int]:
         data_id = np.arange(self.count, self.count + len(data))
         self.count += len(data)
         return data_id
