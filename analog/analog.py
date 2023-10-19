@@ -116,23 +116,6 @@ class AnaLog:
         del self.analysis_plugins[analysis_name]
         delattr(self, analysis_name)
 
-    def get_log(self):
-        """
-        Returns the current log.
-
-        Returns:
-            dict: The current log.
-        """
-        return self.logging_handler.current_log
-
-    def finalize(self, clear: bool = False) -> None:
-        self.hessian_handler.finalize()
-        self.storage_handler.finalize()
-
-        if clear:
-            self.hessian_handler.clear()
-            self.storage_handler.clear()
-
     def __call__(
         self,
         data_id: Optional[Iterable[Any]] = None,
@@ -189,6 +172,52 @@ class AnaLog:
 
         self.reset()
 
+    def get_log(self) -> Dict[str, Dict[str, torch.Tensor]]:
+        """
+        Returns the current log.
+
+        Returns:
+            dict: The current log.
+        """
+        return self.logging_handler.current_log
+
+    def get_hessian_state(self) -> Dict[str, Dict[str, torch.Tensor]]:
+        """
+        Returns the Hessian state from the Hessian handler.
+        """
+        return self.hessian_handler.get_hessian_state()
+
+    def get_storage_buffer(self):
+        """
+        Returns the storage buffer from the storage handler.
+        """
+        return self.storage_handler.get_buffer()
+
+    def finalize(self, clear: bool = False) -> None:
+        """
+        Finalizes the logging session.
+
+        Args:
+            clear (bool, optional): Whether to clear the internal states or not.
+        """
+        self.hessian_handler.finalize()
+        self.storage_handler.finalize()
+
+        if clear:
+            self.hessian_handler.clear()
+            self.storage_handler.clear()
+
+    def sanity_check(
+        self, data_id: Iterable[Any], log: Iterable[str], test: bool
+    ) -> None:
+        """
+        Performs a sanity check on the provided parameters.
+        """
+        if len(log) > 0 and len(set(log) - LOG_TYPES) > 0:
+            raise ValueError("Invalid value for 'track'.")
+        if not test and data_id is None:
+            raise ValueError("Must provide data_id for logging.")
+
     def reset(self) -> None:
         """
         Reset the internal states.
@@ -208,26 +237,3 @@ class AnaLog:
         self.hessian_handler.clear()
         for key in self.analysis_plugins:
             self.remove_analysis(key)
-
-    def sanity_check(
-        self, data_id: Iterable[Any], log: Iterable[str], test: bool
-    ) -> None:
-        """
-        Performs a sanity check on the provided parameters.
-        """
-        if len(log) > 0 and len(set(log) - LOG_TYPES) > 0:
-            raise ValueError("Invalid value for 'track'.")
-        if not test and data_id is None:
-            raise ValueError("Must provide data_id for logging.")
-
-    def get_hessian_state(self):
-        """
-        Returns the Hessian state from the Hessian handler.
-        """
-        return self.hessian_handler.get_hessian_state()
-
-    def get_storage_buffer(self):
-        """
-        Returns the storage buffer from the storage handler.
-        """
-        return self.storage_handler.get_buffer()
