@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 
 from analog.utils import nested_dict, to_numpy
 from analog.storage import StorageHandlerBase
-from analog.storage.utils import stack_tensor
+from analog.utils import stack_tensor
 
 
 class DefaultStorageHandler(StorageHandlerBase):
@@ -108,6 +108,9 @@ class DefaultStorageHandler(StorageHandlerBase):
         save_path = str(os.path.join(self.file_path, f"data_{self.push_count}.pt"))
         torch.save(self.buffer, save_path)
 
+    def build_log_dataloader(self):
+        pass
+
 
 class DefaultLogDataset(Dataset):
     def __init__(self, data_dir):
@@ -122,3 +125,6 @@ class DefaultLogDataset(Dataset):
         self.total_samples = sum(
             [torch.load(os.path.join(data_dir, f)).shape[0] for f in self.data_files]
         )
+
+    def __len__(self):
+        return self.total_samples
