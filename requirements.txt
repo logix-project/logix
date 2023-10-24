@@ -1,7 +1,10 @@
-torch
 numpy
+torch
+einops
+
 pyyaml
+
+pymongo
 msgpack
 msgpack-numpy
 lz4
-pymongo

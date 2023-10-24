@@ -8,6 +8,7 @@ import hashlib
 import numpy as np
 import torch
 import torch.distributed as dist
+from einsum import rearrange
 
 
 _logger = None
@@ -91,3 +92,7 @@ class DataIDGenerator:
         data_id = np.arange(self.count, self.count + len(data))
         self.count += len(data)
         return data_id
+
+
+def stack_tensor(tensor_list):
+    return rearrange(tensor_list, "a ... -> a ...")

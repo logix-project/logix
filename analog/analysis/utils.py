@@ -1,4 +1,5 @@
 import torch
+from einops import einsum
 
 
 def reconstruct_grad(log):
@@ -20,4 +21,4 @@ def do_decompose(src_log, tgt_log):
 
 
 def rescaled_dot_product(src, tgt, scale):
-    return
+    return einsum(src, scale, tgt, "a b, b c, a c -> a")

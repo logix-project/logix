@@ -71,6 +71,27 @@ class StorageHandlerBase(ABC):
         pass
 
     @abstractmethod
+    def query(self, data_id):
+        """
+        Abstract method to query the destination for data.
+        """
+        pass
+
+    @abstractmethod
+    def query_batch(self, data_ids):
+        """
+        Abstract method to query the destination for data.
+        """
+        pass
+
+    @abstractmethod
+    def build_log_dataloader(self):
+        """
+        Abstract method to build the log dataloader.
+        """
+        pass
+
+    @abstractmethod
     def serialize_tensor(self, tensor):
         """
         Abstract method to serialize a tensor.
