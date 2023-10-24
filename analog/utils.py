@@ -8,7 +8,7 @@ import hashlib
 import numpy as np
 import torch
 import torch.distributed as dist
-from einsum import rearrange
+from einops import rearrange
 
 
 _logger = None
