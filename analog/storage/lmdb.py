@@ -7,10 +7,10 @@ from torch.utils.data import Dataset
 
 from analog.utils import nested_dict, to_numpy
 from analog.storage import StorageHandlerBase
-from analog.storage.utils import stack_tensor
+from analog.storage.utils import msgpack_deserialize, msgpack_serialize
 
 
-class DefaultStorageHandler(StorageHandlerBase):
+class LMDBStorageHandler(StorageHandlerBase):
     def parse_config(self) -> None:
         """
         Parse the configuration parameters.
@@ -109,16 +109,22 @@ class DefaultStorageHandler(StorageHandlerBase):
         torch.save(self.buffer, save_path)
 
 
-class DefaultLogDataset(Dataset):
-    def __init__(self, data_dir):
-        self.data_dir = data_dir
-        self.data_files = sorted(
-            [
-                f
-                for f in os.listdir(data_dir)
-                if f.startswith("data_") and f.endswith(".pt")
-            ]
+class LmdbLogDataset(data.Dataset):
+    def __init__(self, db_path):
+        self.env = lmdb.open(
+            db_path, readonly=True, lock=False, readahead=False, meminit=False
         )
-        self.total_samples = sum(
-            [torch.load(os.path.join(data_dir, f)).shape[0] for f in self.data_files]
-        )
+        with self.env.begin(write=False) as txn:
+            self.length = txn.stat()["entries"]
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, index):
+        with self.env.begin(write=False) as txn:
+            raw_data = txn.get(str(index).encode())
+        data = msgpack_deserialize(raw_data)
+        for idx2 in data:
+            for idx3 in data[idx2]:
+                data[idx2][idx3] = torch.tensor(data[idx2][idx3])
+        return data
