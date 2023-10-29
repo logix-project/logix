@@ -14,7 +14,7 @@ class Config:
     _DEFAULTS = {
         "global": {},
         "logging": {},
-        "storage": {"type": "default", "file_path": "./"},
+        "storage": {"type": "default", "file_path": "./", "flush_threshold": 100, "worker": 5},
         "hessian": {"type": "kfac", "damping": 1e-2},
         "analysis": {},
     }
