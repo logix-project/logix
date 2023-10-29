@@ -56,7 +56,7 @@ class MongoDBStorageHandler(StorageHandlerBase):
         log = self.fotmat_log(module_name, log_type, data)
         self.buffer.extend(log)
 
-    def push(self):
+    def flush(self):
         """
         In the context of MongoDB, there's no batch operation needed like in in-memory operations.
         Data is immediately committed with insert operations.

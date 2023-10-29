@@ -163,3 +163,5 @@ cython_debug/
 *.pth
 *.npz
 *.npy
+**/.DS_Store
+.idea
