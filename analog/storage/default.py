@@ -144,7 +144,7 @@ class DefaultStorageHandler(StorageHandlerBase):
         pass
 
     def finalize(self) -> None:
-        """ad
+        """
         Dump everything in the buffer to a disk.
         """
         save_path = str(os.path.join(self.file_path, f"data_{self.push_count}.pt"))
