@@ -11,7 +11,7 @@ class StorageHandlerBase(ABC):
         """
         self.config = config
         self.buffer = None
-
+        self.lock = None
         self.parse_config()
         self.initialize()
 
@@ -64,7 +64,7 @@ class StorageHandlerBase(ABC):
         pass
 
     @abstractmethod
-    def push(self):
+    def flush(self):
         """
         Abstract method to push the stored data to the destination (e.g., database or file).
         """

@@ -167,7 +167,7 @@ class AnaLog:
         This method is essential for ensuring that there are no lingering hooks that could
         interfere with further operations on the model or with future logging sessions.
         """
-        self.storage_handler.push()
+        self.storage_handler.flush()
         self.logging_handler.clear()
 
         self.reset()

@@ -53,7 +53,7 @@ class LMDBStorageHandler(StorageHandlerBase):
         for datum, data_id in zip(data, self.data_id):
             self.buffer[data_id][module_name][log_type] = to_numpy(datum)
 
-    def push(self) -> None:
+    def flush(self) -> None:
         """
         For the DefaultHandler, there's no batch operation needed since each add operation writes to the file.
         This can be a placeholder or used for any finalization operations.
