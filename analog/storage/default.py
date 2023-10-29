@@ -1,5 +1,7 @@
 import os
 from typing import Any, List
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 
 import numpy as np
 import torch
@@ -15,8 +17,11 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         Parse the configuration parameters.
         """
-        self.max_buffer_size = self.config.get("max_buffer_size", -1)
+        self.flush_threshold = self.config.get("flush_threshold", -1)
         self.file_path = self.config.get("file_path")
+        self.max_workers = self.config.get("worker")
+        if self.max_workers > 1:
+            self.allow_async = True
 
     def initialize(self) -> None:
         """
@@ -25,6 +30,8 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         self.buffer = nested_dict()
         self.push_count = 0
+        if self.allow_async:
+            self.lock = Lock()
 
     def format_log(self, module_name: str, log_type: str, data):
         """
@@ -53,17 +60,52 @@ class DefaultStorageHandler(StorageHandlerBase):
         for datum, data_id in zip(data, self.data_id):
             self.buffer[data_id][module_name][log_type] = to_numpy(datum)
 
-    def push(self) -> None:
+    def _flush_unsafe(self, buffer, push_count) -> str:
+        """
+        _flush_unsafe is thread unsafe flush of current buffer. No shared variable must be allowed.
+        """
+        save_path = str(os.path.join(self.file_path, f"data_{push_count}.pt"))
+        torch.save(buffer, save_path)
+        return save_path
+
+    def _flush_safe(self) -> str:
+        """
+        _flush_safe is thread safe flush of current buffer.
+        """
+        buffer_copy = self.buffer.copy()
+        push_count_copy = self.push_count
+        self.push_count += 1
+        self.buffer.clear()
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            save_path = executor.submit(self._flush_unsafe, buffer_copy, push_count_copy)
+        return save_path
+
+    def _flush_serialized(self) -> str:
+        """
+        _flush_serialized executes the flushing of the buffers in serialized manner.
+        """
+        save_path = str(os.path.join(self.file_path, f"data_{self.push_count}.pt"))
+        torch.save(self.buffer, save_path)
+        self.push_count += 1
+        self.buffer.clear()
+        return save_path
+
+    def flush(self) -> None:
         """
         For the DefaultHandler, there's no batch operation needed since each add operation writes to the file.
         This can be a placeholder or used for any finalization operations.
         """
-        if self.max_buffer_size > 0 and len(self.buffer) > self.max_buffer_size:
-            save_path = str(os.path.join(self.file_path, f"data_{self.push_count}.pt"))
-            torch.save(self.buffer, save_path)
+        if 0 < self.flush_threshold < len(self.buffer):
+            if self.allow_async:
+                self._flush_safe()
+                return
+            self._flush_serialized()
 
-            self.push_count += 1
-            self.buffer.clear()
+    def verify_flush(self):
+        """
+        verify flush somehow..
+        """
+        raise NotImplementedError
 
     def query(self, data_id: Any):
         """
@@ -102,7 +144,7 @@ class DefaultStorageHandler(StorageHandlerBase):
         pass
 
     def finalize(self) -> None:
-        """
+        """ad
         Dump everything in the buffer to a disk.
         """
         save_path = str(os.path.join(self.file_path, f"data_{self.push_count}.pt"))
