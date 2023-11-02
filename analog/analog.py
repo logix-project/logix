@@ -226,9 +226,11 @@ class AnaLog:
         Performs a sanity check on the provided parameters.
         """
         if len(log) > 0 and len(set(log) - LOG_TYPES) > 0:
-            raise ValueError("Invalid value for 'track'.")
+            raise ValueError("Invalid value for 'log'.")
         if not test and data_id is None:
             raise ValueError("Must provide data_id for logging.")
+        if GRAD in log and len(log) > 1:
+            raise ValueError("Cannot log 'grad' with other log types.")
 
     def reset(self) -> None:
         """
