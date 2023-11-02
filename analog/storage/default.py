@@ -10,6 +10,7 @@ from torch.utils.data import Dataset
 from analog.utils import nested_dict, to_numpy
 from analog.storage import StorageHandlerBase
 from analog.utils import stack_tensor
+from analog.constants import GRAD
 
 
 class DefaultStorageHandler(StorageHandlerBase):
@@ -58,7 +59,10 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         assert len(data) == len(self.data_id)
         for datum, data_id in zip(data, self.data_id):
-            self.buffer[data_id][module_name][log_type] = to_numpy(datum)
+            if log_type == GRAD:
+                self.buffer[data_id][module_name] = to_numpy(datum)
+            else:
+                self.buffer[data_id][module_name][log_type] = to_numpy(datum)
 
     def _flush_unsafe(self, buffer, push_count) -> str:
         """
@@ -148,7 +152,9 @@ class DefaultStorageHandler(StorageHandlerBase):
         Dump everything in the buffer to a disk.
         """
         save_path = str(os.path.join(self.file_path, f"data_{self.push_count}.pt"))
+        print("save start")
         torch.save(self.buffer, save_path)
+        print("end")
 
     def build_log_dataloader(self):
         pass

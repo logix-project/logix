@@ -10,6 +10,20 @@ from analog.hessian import HessianHandlerBase
 from analog.utils import nested_dict
 
 
+def compute_per_sample_gradient(fwd, bwd, module):
+    if isinstance(module, nn.Linear):
+        return torch.einsum("ni,nj->nij", bwd, fwd)
+    elif isinstance(module, nn.Conv2d):
+        bsz = fwd.shape[0]
+        fwd_unfold = torch.nn.functional.unfold(fwd, module.kernel_size)
+        bwd = bwd.reshape(bsz, -1, fwd_unfold.shape[-1])
+        grad = torch.einsum("ijk,ilk->ijl", bwd, fwd_unfold)
+        shape = [bsz] + list(module.weight.shape)
+        return grad.reshape(shape)
+    else:
+        raise ValueError(f"Unsupported module type: {type(module)}")
+
+
 class LoggingHandler:
     def __init__(
         self,
@@ -58,7 +72,8 @@ class LoggingHandler:
         if self.save and FORWARD in self.log:
             self.storage_handler.add(module_name, FORWARD, inputs[0])
 
-        self.current_log[module_name][FORWARD] = inputs[0]
+        if FORWARD in self.log or GRAD in self.log:
+            self.current_log[module_name][FORWARD] = inputs[0]
 
     def _backward_hook_fn(
         self,
@@ -85,10 +100,15 @@ class LoggingHandler:
 
         if self.save and BACKWARD in self.log:
             self.storage_handler.add(module_name, BACKWARD, grad_outputs[0])
+            self.current_log[module_name][BACKWARD] = grad_outputs[0]
         if self.save and GRAD in self.log:
-            raise NotImplementedError
+            fwd = self.current_log[module_name][FORWARD].detach()
+            bwd = grad_outputs[0].detach()
+            per_sample_grad = compute_per_sample_gradient(fwd, bwd, module)
+            self.storage_handler.add(module_name, GRAD, per_sample_grad)
 
-        self.current_log[module_name][BACKWARD] = grad_outputs[0]
+            del self.current_log[module_name][FORWARD]
+            self.current_log[module_name] = per_sample_grad
 
     def _tensor_forward_hook_fn(self, tensor: torch.Tensor, tensor_name: str) -> None:
         """
