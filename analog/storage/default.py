@@ -152,9 +152,7 @@ class DefaultStorageHandler(StorageHandlerBase):
         Dump everything in the buffer to a disk.
         """
         save_path = str(os.path.join(self.file_path, f"data_{self.push_count}.pt"))
-        print("save start")
         torch.save(self.buffer, save_path)
-        print("end")
 
     def build_log_dataloader(self):
         pass
