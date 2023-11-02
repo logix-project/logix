@@ -19,10 +19,9 @@ class DefaultStorageHandler(StorageHandlerBase):
         Parse the configuration parameters.
         """
         self.flush_threshold = self.config.get("flush_threshold", -1)
-        self.file_path = self.config.get("file_path")
-        self.max_workers = self.config.get("worker")
-        if self.max_workers > 1:
-            self.allow_async = True
+        self.file_path = self.config.get("file_path", "analog")
+        self.max_workers = self.config.get("worker", 0)
+        self.allow_async = True if self.max_workers > 1 else False
 
     def initialize(self) -> None:
         """
