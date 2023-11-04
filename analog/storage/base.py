@@ -12,6 +12,7 @@ class StorageHandlerBase(ABC):
         self.config = config
         self.buffer = None
         self.lock = None
+        self.buffer_size = 0
         self.parse_config()
         self.initialize()
 
