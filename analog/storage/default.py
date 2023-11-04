@@ -2,6 +2,7 @@ import os
 from typing import Any, List
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
+from collections import OrderedDict
 
 import json
 import numpy as np
@@ -63,6 +64,7 @@ class DefaultStorageHandler(StorageHandlerBase):
                 self.buffer[data_id][module_name] = to_numpy(datum)
             else:
                 self.buffer[data_id][module_name][log_type] = to_numpy(datum)
+            self.buffer_size += data.size
 
     def _flush_unsafe(self, buffer, push_count) -> str:
         """
@@ -80,6 +82,7 @@ class DefaultStorageHandler(StorageHandlerBase):
         push_count_copy = self.push_count
         self.push_count += 1
         self.buffer.clear()
+        self.buffer_size = 0
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             save_path = executor.submit(
                 self._flush_unsafe, buffer_copy, push_count_copy
@@ -94,6 +97,7 @@ class DefaultStorageHandler(StorageHandlerBase):
         torch.save(self.buffer, save_path)
         self.push_count += 1
         self.buffer.clear()
+        self.buffer_size = 0
         return save_path
 
     def flush(self) -> None:
@@ -101,7 +105,7 @@ class DefaultStorageHandler(StorageHandlerBase):
         For the DefaultHandler, there's no batch operation needed since each add operation writes to the file.
         This can be a placeholder or used for any finalization operations.
         """
-        if 0 < self.flush_threshold < len(self.buffer):
+        if 0 < self.flush_threshold < self.buffer_size:
             if self.allow_async:
                 self._flush_safe()
                 return
@@ -165,7 +169,7 @@ class DefaultLogDataset(Dataset):
         self.log_dir = log_dir
         self.schemas = []
         self.memmaps = []
-        self.data_id_to_chunk = {}
+        self.data_id_to_chunk = OrderedDict()
 
         # Find all chunk indices
         chunk_indices = self._find_chunk_indices(log_dir)
@@ -198,45 +202,42 @@ class DefaultLogDataset(Dataset):
         self.memmaps.append(mmap)
 
         # Update the mapping from data_id to chunk
-        chunk_data_ids = {entry['data_id'] for entry in schema}
-        for data_id in chunk_data_ids:
-            assert data_id not in self.data_id_to_chunk
-            self.data_id_to_chunk[data_id] = chunk_index
+        for entry in schema:
+            self.data_id_to_chunk[entry["data_id"]] = chunk_index
 
     def __getitem__(self, index):
-        data_id = self.data_ids[index]
+        data_id = list(self.data_id_to_chunk.keys())[index]
+        chunk_idx = self.data_id_to_chunk[data_id]
 
-        # We will collect parts of the nested dict here
         nested_dict = {}
 
-        # Loop through all chunks and schemas to collect parts for this data_id
-        for chunk_idx, schema in enumerate(self.schemas):
-            mmap = self.memmaps[chunk_idx]
-            for entry in schema:
-                if entry["data_id"] == data_id:
-                    # Read the data and put it into the nested dictionary
-                    path = entry["path"]
-                    offset = entry["offset"]
-                    shape = tuple(entry["shape"])
-                    dtype = np.dtype(entry["dtype"])
+        mmap = self.memmaps[chunk_idx]
+        schema = self.schemas[chunk_idx]
+        for entry in schema:
+            if entry["data_id"] == data_id:
+                # Read the data and put it into the nested dictionary
+                path = entry["path"]
+                offset = entry["offset"]
+                shape = tuple(entry["shape"])
+                dtype = np.dtype(entry["dtype"])
 
-                    array = np.ndarray(
-                        shape, dtype, buffer=mmap, offset=offset, order="C"
-                    )
-                    tensor = torch.as_tensor(array)
+                array = np.ndarray(
+                    shape, dtype, buffer=mmap, offset=offset, order="C"
+                )
+                tensor = torch.as_tensor(array)
 
-                    # Place the tensor in the correct location within the nested dictionary
-                    current_level = nested_dict
-                    for key in path[:-1]:
-                        if key not in current_level:
-                            current_level[key] = {}
-                        current_level = current_level[key]
-                    current_level[path[-1]] = tensor
+                # Place the tensor in the correct location within the nested dictionary
+                current_level = nested_dict
+                for key in path[:-1]:
+                    if key not in current_level:
+                        current_level[key] = {}
+                    current_level = current_level[key]
+                current_level[path[-1]] = tensor
 
         return data_id, nested_dict
 
     def __len__(self):
-        return len(self.data_ids)
+        return len(self.data_id_to_chunk)
 
     def close(self):
         for mmap in self.memmaps:
