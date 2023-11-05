@@ -172,26 +172,25 @@ class DefaultLogDataset(Dataset):
         self.data_id_to_chunk = OrderedDict()
 
         # Find all chunk indices
-        chunk_indices = self._find_chunk_indices(log_dir)
+        self.chunk_indices = self._find_chunk_indices(log_dir)
 
         # Add schemas and mmap files for all indices
         for chunk_index in self.chunk_indices:
             mmap_filename = os.path.join(log_dir, f"log_chunk_{chunk_index}.mmap")
-            schema_filename = os.path.join(log_dir, f"metadata_chunk_{chunk_index}.json")
-            self._add_schema_and_mmap(schema_filename, mmap_filename)
+            schema_filename = os.path.join(log_dir, f"metadata_chunk_{chunk_index}.json") # does the different chunks have different schemas?
+            self._add_schema_and_mmap(schema_filename, mmap_filename, chunk_index)
 
     def _find_chunk_indices(self, directory):
-        chunk_indices = set()
+        chunk_indices = []
         for filename in os.listdir(directory):
             if filename.endswith(".mmap"):
                 parts = filename.rstrip('.mmap').split('_')
-                chunk_index = parts[-1]
+                if len(parts) != 0:
+                    chunk_index = parts[-1]
                 chunk_indices.add(int(chunk_index))
         return sorted(chunk_indices)
 
-    def _add_schema_and_mmap(self, chunk_index, dtype='uint8'):
-        mmap_filename = str(os.path.join(self.log_dir, f"log_chunk_{chunk_index}.mmap"))
-        schema_filename = str(os.path.join(self.log_dir, f"log_chunk_{chunk_index}.mmap"))
+    def _add_schema_and_mmap(self, schema_filename, mmap_filename, chunk_index, dtype='uint8'):
         # Load the schema
         with open(schema_filename, 'r') as f:
             schema = json.load(f)
