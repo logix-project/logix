@@ -177,7 +177,7 @@ class DefaultLogDataset(Dataset):
         # Add schemas and mmap files for all indices
         for chunk_index in self.chunk_indices:
             mmap_filename = os.path.join(log_dir, f"log_chunk_{chunk_index}.mmap")
-            schema_filename = os.path.join(log_dir, f"metadata_chunk_{chunk_index}.json") # does the different chunks have different schemas?
+            schema_filename = os.path.join(log_dir, f"metadata_chunk_{chunk_index}.json")
             self._add_schema_and_mmap(schema_filename, mmap_filename, chunk_index)
 
     def _find_chunk_indices(self, directory):
