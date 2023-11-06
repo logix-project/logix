@@ -172,11 +172,17 @@ class AnaLog:
 
         self.reset()
 
-    def build_log_data_loader(self):
+    def build_log_dataset(self):
         """
         Constructs the log dataset from the storage handler.
         """
-        raise NotImplementedError
+        return self.storage_handler.build_log_dataset()
+
+    def build_log_dataloader(self):
+        """
+        Constructs the log dataloader from the storage handler.
+        """
+        return self.storage_handler.build_log_dataloader()
 
     def get_log(self) -> Dict[str, Dict[str, torch.Tensor]]:
         """

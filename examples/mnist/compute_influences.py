@@ -56,8 +56,9 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
 
     for inputs, targets in train_loader:
         data_id = id_gen(inputs)
-        with analog(data_id=data_id, log=["grad"], save=True):
-        #with analog(data_id=data_id, log=["forward", "backward"], save=True):
+        # with analog(data_id=data_id, log=["grad"], save=True):
+        with analog(data_id=data_id, log=["forward", "backward"], save=True):
+            inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
             model.zero_grad()
             outs = model(inputs)
             loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
@@ -65,6 +66,9 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
     analog.finalize()
     hs = analog.get_hessian_state()
     print(hs)
+
+    dataset = analog.build_log_dataset()
+    print(dataset[0])
 
 
 if __name__ == "__main__":

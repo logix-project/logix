@@ -14,7 +14,7 @@ class Config:
     _DEFAULTS = {
         "global": {},
         "logging": {},
-        "storage": {"type": "default", "file_path": "./"},
+        "storage": {"type": "default", "log_dir": "./analog"},
         "hessian": {"type": "kfac", "damping": 1e-2},
         "analysis": {},
     }

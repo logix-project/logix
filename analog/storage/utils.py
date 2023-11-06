@@ -26,7 +26,7 @@ def extract_arrays(obj, base_path=()):
         yield base_path, obj
 
 
-def save_to_mmap(data_buffer, chunk_index, log_dir, dtype="uint8"):
+def save_mmap(data_buffer, chunk_index, log_dir, dtype="uint8"):
     mmap_filename = str(os.path.join(log_dir, f"log_chunk_{chunk_index}.mmap"))
     schema_filename = str(os.path.join(log_dir, f"metadata_chunk_{chunk_index}.json"))
 
@@ -39,7 +39,7 @@ def save_to_mmap(data_buffer, chunk_index, log_dir, dtype="uint8"):
     for data_id, nested_dict in data_buffer:
         for path, arr in extract_arrays(nested_dict):
             bytes = arr.nbytes
-            mmap[offset: offset + bytes] = arr.ravel().view(dtype)
+            mmap[offset : offset + bytes] = arr.ravel().view(dtype)
             schema.append(
                 {
                     "data_id": data_id,

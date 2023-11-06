@@ -7,10 +7,11 @@ from collections import OrderedDict
 import json
 import numpy as np
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader, default_collate
 
-from analog.utils import nested_dict, to_numpy
+from analog.utils import nested_dict, to_numpy, get_logger
 from analog.storage import StorageHandlerBase
+from analog.storage.utils import save_mmap
 from analog.utils import stack_tensor
 from analog.constants import GRAD
 
@@ -21,7 +22,7 @@ class DefaultStorageHandler(StorageHandlerBase):
         Parse the configuration parameters.
         """
         self.flush_threshold = self.config.get("flush_threshold", -1)
-        self.file_path = self.config.get("file_path", "analog")
+        self.log_dir = self.config.get("log_dir", "analog")
         self.max_workers = self.config.get("worker", 0)
         self.allow_async = True if self.max_workers > 1 else False
 
@@ -34,6 +35,10 @@ class DefaultStorageHandler(StorageHandlerBase):
         self.push_count = 0
         if self.allow_async:
             self.lock = Lock()
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
+        else:
+            get_logger().warning(f"Log directory {self.log_dir} already exists. ")
 
     def format_log(self, module_name: str, log_type: str, data):
         """
@@ -60,17 +65,18 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         assert len(data) == len(self.data_id)
         for datum, data_id in zip(data, self.data_id):
+            numpy_datum = to_numpy(datum)
             if log_type == GRAD:
-                self.buffer[data_id][module_name] = to_numpy(datum)
+                self.buffer[data_id][module_name] = numpy_datum
             else:
-                self.buffer[data_id][module_name][log_type] = to_numpy(datum)
-            self.buffer_size += data.size
+                self.buffer[data_id][module_name][log_type] = numpy_datum
+            self.buffer_size += numpy_datum.size
 
     def _flush_unsafe(self, buffer, push_count) -> str:
         """
         _flush_unsafe is thread unsafe flush of current buffer. No shared variable must be allowed.
         """
-        save_path = str(os.path.join(self.file_path, f"data_{push_count}.pt"))
+        save_path = str(os.path.join(self.log_dir, f"data_{push_count}.pt"))
         torch.save(buffer, save_path)
         return save_path
 
@@ -93,12 +99,13 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         _flush_serialized executes the flushing of the buffers in serialized manner.
         """
-        save_path = str(os.path.join(self.file_path, f"data_{self.push_count}.pt"))
-        torch.save(self.buffer, save_path)
+        buffer_list = [(k, v) for k, v in self.buffer.items()]
+        save_mmap(buffer_list, self.push_count, self.log_dir)
         self.push_count += 1
+        del buffer_list
         self.buffer.clear()
         self.buffer_size = 0
-        return save_path
+        return self.log_dir
 
     def flush(self) -> None:
         """
@@ -157,11 +164,22 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         Dump everything in the buffer to a disk.
         """
-        save_path = str(os.path.join(self.file_path, f"data_{self.push_count}.pt"))
-        torch.save(self.buffer, save_path)
+        self._flush_serialized()
+
+    def build_log_dataset(self, log_dir=None):
+        """
+        Constructs the log dataset from the storage handler.
+        """
+        if log_dir is None:
+            log_dir = self.log_dir
+        return DefaultLogDataset(log_dir)
 
     def build_log_dataloader(self):
-        pass
+        log_dataset = self.build_log_dataset()
+        log_dataloader = DataLoader(
+            log_dataset, batch_size=16, shuffle=False, collate_fn=collate_nested_dicts
+        )
+        return log_dataloader
 
 
 class DefaultLogDataset(Dataset):
@@ -177,27 +195,31 @@ class DefaultLogDataset(Dataset):
         # Add schemas and mmap files for all indices
         for chunk_index in self.chunk_indices:
             mmap_filename = os.path.join(log_dir, f"log_chunk_{chunk_index}.mmap")
-            schema_filename = os.path.join(log_dir, f"metadata_chunk_{chunk_index}.json")
+            schema_filename = os.path.join(
+                log_dir, f"metadata_chunk_{chunk_index}.json"
+            )
             self._add_schema_and_mmap(schema_filename, mmap_filename, chunk_index)
 
     def _find_chunk_indices(self, directory):
         chunk_indices = []
         for filename in os.listdir(directory):
             if filename.endswith(".mmap"):
-                parts = filename.rstrip('.mmap').split('_')
+                parts = filename.rstrip(".mmap").split("_")
                 if len(parts) != 0:
                     chunk_index = parts[-1]
-                chunk_indices.add(int(chunk_index))
+                chunk_indices.append(int(chunk_index))
         return sorted(chunk_indices)
 
-    def _add_schema_and_mmap(self, schema_filename, mmap_filename, chunk_index, dtype='uint8'):
+    def _add_schema_and_mmap(
+        self, schema_filename, mmap_filename, chunk_index, dtype="uint8"
+    ):
         # Load the schema
-        with open(schema_filename, 'r') as f:
+        with open(schema_filename, "r") as f:
             schema = json.load(f)
             self.schemas.append(schema)
-        
+
         # Load the memmap file
-        mmap = np.memmap(mmap_filename, dtype=dtype, mode='r')
+        mmap = np.memmap(mmap_filename, dtype=dtype, mode="r")
         self.memmaps.append(mmap)
 
         # Update the mapping from data_id to chunk
@@ -220,9 +242,7 @@ class DefaultLogDataset(Dataset):
                 shape = tuple(entry["shape"])
                 dtype = np.dtype(entry["dtype"])
 
-                array = np.ndarray(
-                    shape, dtype, buffer=mmap, offset=offset, order="C"
-                )
+                array = np.ndarray(shape, dtype, buffer=mmap, offset=offset, order="C")
                 tensor = torch.as_tensor(array)
 
                 # Place the tensor in the correct location within the nested dictionary
@@ -241,3 +261,54 @@ class DefaultLogDataset(Dataset):
     def close(self):
         for mmap in self.memmaps:
             del mmap
+
+
+def collate_nested_dicts(batch):
+    # `batch` is a list of tuples, each tuple is (data_id, nested_dict)
+    batched_data_ids = [data_id for data_id, _ in batch]
+
+    # Initialize the batched_nested_dicts by deep copying the first nested_dict structure
+    # Replace all tensors with lists to hold tensors from all items in the batch
+    first_nested_dict = batch[0][1]
+    batched_nested_dicts = {
+        k: _init_collate_structure(v) for k, v in first_nested_dict.items()
+    }
+
+    # Now iterate through all items and populate the batched_nested_dicts
+    for _, nested_dict in batch:
+        _merge_dicts(batched_nested_dicts, nested_dict)
+
+    # Finally, we should collate the lists of tensors into batched tensors
+    _collate_tensors_in_structure(batched_nested_dicts)
+
+    return batched_data_ids, batched_nested_dicts
+
+
+def _init_collate_structure(nested_dict):
+    # Initialize the collate structure based on the first item
+    if isinstance(nested_dict, dict):
+        return {k: _init_collate_structure(v) for k, v in nested_dict.items()}
+    else:
+        return []
+
+
+def _merge_dicts(accumulator, new_data):
+    # Merge new_data into the accumulator recursively
+    for key, value in new_data.items():
+        if isinstance(value, dict):
+            # Recursive call if the value is a dictionary
+            _merge_dicts(accumulator[key], value)
+        else:
+            # Assume the value is a tensor, append it to the list in accumulator
+            accumulator[key].append(value)
+
+
+def _collate_tensors_in_structure(nested_dict):
+    # Collate all lists of tensors within the nested structure
+    for key, value in nested_dict.items():
+        if isinstance(value, dict):
+            # Recursive call if the value is a dictionary
+            _collate_tensors_in_structure(value)
+        else:
+            # Stack all tensors in the list along a new batch dimension
+            nested_dict[key] = default_collate(value)
