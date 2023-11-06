@@ -38,10 +38,12 @@ def save_to_mmap(data_buffer, chunk_index, log_dir, dtype="uint8"):
 
     for data_id, nested_dict in data_buffer:
         for path, arr in extract_arrays(nested_dict):
-            mmap[offset : offset + arr.nbytes] = arr.ravel().view(dtype)
+            bytes = arr.nbytes
+            mmap[offset: offset + bytes] = arr.ravel().view(dtype)
             schema.append(
                 {
                     "data_id": data_id,
+                    "size": bytes,
                     "path": path,
                     "offset": offset,
                     "shape": arr.shape,
