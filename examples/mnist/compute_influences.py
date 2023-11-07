@@ -1,3 +1,4 @@
+import time
 import torch
 
 from train import (
@@ -65,6 +66,8 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
             loss.backward()
     analog.finalize()
     hs = analog.get_hessian_state()
+    analog.hessian_inverse(override=False)
+    print(hs)
 
     log_loader = analog.build_log_dataloader()
 
@@ -83,9 +86,12 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
         )
         test_loss.backward()
         test_log = al.get_log()
-    print(test_log)
+    start = time.time()
     if_scores = analog.influence.compute_influence_all(test_log, log_loader)
-    print(if_scores)
+    if_scores = if_scores.numpy().tolist()
+    torch.save(if_scores, "if_analog.pt")
+    print("Computation time:", time.time() - start)
+    print(sorted(if_scores)[:10], sorted(if_scores)[-10:])
 
 
 if __name__ == "__main__":

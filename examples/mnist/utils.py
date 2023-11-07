@@ -19,11 +19,11 @@ def construct_mlp(num_inputs=784, num_classes=10, seed=0):
     set_seed(seed)
     model = torch.nn.Sequential(
         nn.Flatten(),
-        nn.Linear(num_inputs, 512, bias=True),
+        nn.Linear(num_inputs, 512, bias=False),
         nn.ReLU(),
-        nn.Linear(512, 256, bias=True),
+        nn.Linear(512, 256, bias=False),
         nn.ReLU(),
-        nn.Linear(256, num_classes, bias=True),
+        nn.Linear(256, num_classes, bias=False),
     )
     return model
 

@@ -174,10 +174,14 @@ class DefaultStorageHandler(StorageHandlerBase):
             log_dir = self.log_dir
         return DefaultLogDataset(log_dir)
 
-    def build_log_dataloader(self):
+    def build_log_dataloader(self, batch_size=16, num_workers=0):
         log_dataset = self.build_log_dataset()
         log_dataloader = DataLoader(
-            log_dataset, batch_size=16, shuffle=False, collate_fn=collate_nested_dicts
+            log_dataset,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            shuffle=False,
+            collate_fn=collate_nested_dicts,
         )
         return log_dataloader
 
@@ -243,7 +247,7 @@ class DefaultLogDataset(Dataset):
                 dtype = np.dtype(entry["dtype"])
 
                 array = np.ndarray(shape, dtype, buffer=mmap, offset=offset, order="C")
-                tensor = torch.as_tensor(array)
+                tensor = torch.Tensor(array)
 
                 # Place the tensor in the correct location within the nested dictionary
                 current_level = nested_dict
