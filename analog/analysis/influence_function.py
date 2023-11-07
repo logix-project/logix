@@ -12,7 +12,7 @@ class InfluenceFunction(AnalysisBase):
     @torch.no_grad()
     def precondition(self, src):
         preconditioned = {}
-        for module_name in src.items():
+        for module_name in src.keys():
             hessian_inv = self.hessian_handler.get_hessian_state(module_name)
             src_log = src[module_name]
             preconditioned[module_name] = einsum(
@@ -31,13 +31,12 @@ class InfluenceFunction(AnalysisBase):
         total_influence = 0.0
         for module_name in src.keys():
             src_log, tgt_log = src[module_name], tgt[module_name]
-            assert src_log.shape == tgt_log.shape
             module_influence = reduce(
                 src_log * tgt_log, "batch a b ... -> batch", "sum"
             )
             total_influence += module_influence.squeeze()
 
-        return total_influence
+        return total_influence.cpu().numpy().tolist()
 
     def compute_self_influence(self, src):
         return self.compute_influence(src, src)
