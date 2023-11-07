@@ -84,7 +84,8 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
         test_loss.backward()
         test_log = al.get_log()
     print(test_log)
-    analog.influence.compute_influence_all(test_log, log_loader)
+    if_scores = analog.influence.compute_influence_all(test_log, log_loader)
+    print(if_scores)
 
 
 if __name__ == "__main__":
