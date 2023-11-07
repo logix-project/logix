@@ -57,7 +57,9 @@ class KFACHessianHandler(HessianHandlerBase):
             get_logger().warning("Hessian inverse already computed with override.")
             return
 
-        if not override:
+        if override:
+            self.hessian_inverse_with_override = True
+        else:
             self.hessian_inverse_state = nested_dict()
         for module_name, module_state in self.hessian_state.items():
             for mode, covariance in module_state.items():
@@ -75,7 +77,6 @@ class KFACHessianHandler(HessianHandlerBase):
                         * self.damping
                         * torch.eye(covariance.size(0))
                     )
-        self.hessian_inverse_with_override = True
 
     def synchronize(self):
         """

@@ -13,7 +13,7 @@ class InfluenceFunction(AnalysisBase):
     def precondition(self, src):
         preconditioned = {}
         for module_name in src.keys():
-            hessian_inv = self.hessian_handler.get_hessian_state(module_name)
+            hessian_inv = self.hessian_handler.get_hessian_inverse_state(module_name)
             src_log = src[module_name]
             preconditioned[module_name] = einsum(
                 hessian_inv["backward"],
@@ -38,7 +38,6 @@ class InfluenceFunction(AnalysisBase):
                 src_log_expanded * tgt_log_expanded, "n m a b -> n m", "sum"
             )
             total_influence += module_influence.squeeze()
-        print(total_influence.shape)
         return total_influence
 
     def compute_self_influence(self, src):
