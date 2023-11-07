@@ -41,7 +41,13 @@ class InfluenceFunction(AnalysisBase):
         return total_influence
 
     def compute_self_influence(self, src):
-        return self.compute_influence(src, src)
+        src_pc = self.precondition(src)
+        total_influence = 0.0
+        for module_name in src_pc.keys():
+            src_pc_log, src_log = src_pc[module_name], src[module_name]
+            module_influence = reduce(src_pc_log * src_log, "n a b -> n", "sum")
+            total_influence += module_influence.squeeze()
+        return total_influence
 
     def compute_influence_all(self, src, loader):
         if_scores = []
