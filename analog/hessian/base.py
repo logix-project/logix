@@ -43,6 +43,22 @@ class HessianHandlerBase(ABC):
         assert name in self.hessian_state
         return self.hessian_state[name]
 
+    def get_hessian_inverse_state(self, name: str = None):
+        """
+        Get the Hessian inverse state.
+        """
+        if name is None:
+            return (
+                self.hessian_state
+                if self.hessian_inverse_with_override
+                else self.hessian_inverse_state
+            )
+        return (
+            self.hessian_state[name]
+            if self.hessian_inverse_with_override
+            else self.hessian_inverse_state[name]
+        )
+
     def get_sample_size(self, data, mask) -> int:
         """
         Get the sample size for the given data.

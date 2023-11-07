@@ -186,11 +186,11 @@ class AnaLog:
         """
         return self.storage_handler.build_log_dataset()
 
-    def build_log_dataloader(self):
+    def build_log_dataloader(self, batch_size=16, num_workers=0):
         """
         Constructs the log dataloader from the storage handler.
         """
-        return self.storage_handler.build_log_dataloader()
+        return self.storage_handler.build_log_dataloader(batch_size, num_workers)
 
     def get_log(self) -> Dict[str, Dict[str, torch.Tensor]]:
         """
