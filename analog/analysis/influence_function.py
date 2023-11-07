@@ -1,5 +1,5 @@
 import torch
-from einops import einsum, reduce
+from einops import einsum, rearrange, reduce
 
 from analog.analysis import AnalysisBase
 from analog.analysis.utils import reconstruct_grad, do_decompose, rescaled_dot_product
@@ -31,12 +31,15 @@ class InfluenceFunction(AnalysisBase):
         total_influence = 0.0
         for module_name in src.keys():
             src_log, tgt_log = src[module_name], tgt[module_name]
+            assert src_log.shape[1:] == tgt_log.shape[1:]
+            src_log_expanded = rearrange(src_log, "n ... -> n 1 ...")
+            tgt_log_expanded = rearrange(tgt_log, "m ... -> 1 m ...")
             module_influence = reduce(
-                src_log * tgt_log, "batch a b ... -> batch", "sum"
+                src_log_expanded * tgt_log_expanded, "n m a b -> n m", "sum"
             )
             total_influence += module_influence.squeeze()
-
-        return total_influence.cpu().numpy().tolist()
+        print(total_influence.shape)
+        return total_influence
 
     def compute_self_influence(self, src):
         return self.compute_influence(src, src)
@@ -45,5 +48,5 @@ class InfluenceFunction(AnalysisBase):
         if_scores = []
         src = self.precondition(src)
         for tgt_ids, tgt in loader:
-            if_scores.extend(self.compute_influence(src, tgt, preconditioned=True))
-        return if_scores
+            if_scores.append(self.compute_influence(src, tgt, preconditioned=True))
+        return torch.cat(if_scores, dim=-1)
