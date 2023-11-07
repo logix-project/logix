@@ -139,7 +139,7 @@ def _collate_tensors_in_structure(nested_dict):
             nested_dict[key] = default_collate(value)
 
 
-ds = DefaultLogDataset(".")
+ds = DefaultLogDataset("./analog")
 print(ds[0])
 dl = DataLoader(ds, batch_size=16, shuffle=False, collate_fn=collate_nested_dicts)
 if True:
@@ -149,7 +149,6 @@ if True:
     for data_ids, data in dl:
         print(data_ids)
         for key, value in data.items():
-            for k2, v2 in value.items():
-                print(f"[{key}][{k2}]: {v2.shape}")
+            print(f"[{key}]: {value.shape}")
     end = time.time()
     print(end - start)

@@ -98,17 +98,18 @@ class LoggingHandler:
                 module, module_name, BACKWARD, grad_outputs[0]
             )
 
-        if self.save and BACKWARD in self.log:
-            self.storage_handler.add(module_name, BACKWARD, grad_outputs[0])
+        if BACKWARD in self.log:
             self.current_log[module_name][BACKWARD] = grad_outputs[0]
-        if self.save and GRAD in self.log:
+            if self.save:
+                self.storage_handler.add(module_name, BACKWARD, grad_outputs[0])
+        if GRAD in self.log:
             fwd = self.current_log[module_name][FORWARD].detach()
             bwd = grad_outputs[0].detach()
             per_sample_grad = compute_per_sample_gradient(fwd, bwd, module)
-            self.storage_handler.add(module_name, GRAD, per_sample_grad)
-
             del self.current_log[module_name][FORWARD]
             self.current_log[module_name] = per_sample_grad
+            if self.save:
+                self.storage_handler.add(module_name, GRAD, per_sample_grad)
 
     def _tensor_forward_hook_fn(self, tensor: torch.Tensor, tensor_name: str) -> None:
         """
