@@ -30,7 +30,7 @@ class AnaLog:
 
         # Config
         config = Config(config)
-        self.config = config.get_global_config()
+        self.config = config
 
         # Initialize storage, hessian, and logging handlers from config as well as
         # inject dependencies between handlers.
@@ -100,7 +100,15 @@ class AnaLog:
         for analysis_name, analysis_cls in analysis_dict.items():
             if hasattr(self, analysis_name):
                 raise ValueError(f"Analysis name {analysis_name} is reserved.")
-            setattr(self, analysis_name, analysis_cls(self))
+            setattr(
+                self,
+                analysis_name,
+                analysis_cls(
+                    self.config.get_analysis_config(),
+                    self.storage_handler,
+                    self.hessian_handler,
+                ),
+            )
             self.analysis_plugins[analysis_name] = getattr(self, analysis_name)
 
     def remove_analysis(self, analysis_name: str) -> None:
