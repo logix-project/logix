@@ -51,8 +51,8 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
     from analog import AnaLog
     from analog.utils import DataIDGenerator
 
-    analog = AnaLog(project="test")
-    analog.watch(model, type_filter=[torch.nn.Linear])
+    analog = AnaLog(project="test", config="./examples/mnist/config.yaml")
+    analog.watch(model, type_filter=[torch.nn.Linear], lora = False)
     id_gen = DataIDGenerator()
 
     for inputs, targets in train_loader:
@@ -74,7 +74,6 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
     from analog.analysis import InfluenceFunction
 
     analog.add_analysis({"influence": InfluenceFunction})
-
     query_iter = iter(query_loader)
     with analog(log=["grad"], test=True) as al:
         test_input, test_target = next(query_iter)
@@ -89,7 +88,7 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
     start = time.time()
     if_scores = analog.influence.compute_influence_all(test_log, log_loader)
     if_scores = if_scores.numpy().tolist()
-    torch.save(if_scores, "if_analog.pt")
+    torch.save(if_scores, "if_analog_2.pt")
     print("Computation time:", time.time() - start)
     print(sorted(if_scores)[:10], sorted(if_scores)[-10:])
 
