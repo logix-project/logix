@@ -15,20 +15,20 @@ class LoraLinear(nn.Linear):
 
         super().__init__(in_features, out_features)
 
-        self.lora_A = nn.Linear(in_features, r, bias=False)
-        self.lora_B = nn.Linear(r, r, bias=False)
-        self.lora_C = nn.Linear(r, out_features, bias=False)
+        self.analog_lora_A = nn.Linear(in_features, r, bias=False)
+        self.analog_lora_B = nn.Linear(r, r, bias=False)
+        self.analog_lora_C = nn.Linear(r, out_features, bias=False)
 
-        nn.init.kaiming_uniform_(self.lora_A.weight, a=math.sqrt(5))
-        nn.init.zeros_(self.lora_B.weight)
-        nn.init.kaiming_uniform_(self.lora_C.weight, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
+        nn.init.zeros_(self.analog_lora_B.weight)
+        nn.init.kaiming_uniform_(self.analog_lora_C.weight, a=math.sqrt(5))
 
         self._linear = linear
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
 
         result = self._linear(x)
-        result += self.lora_C(self.lora_B(self.lora_A(x)))
+        result += self.analog_lora_C(self.analog_lora_B(self.analog_lora_A(x)))
 
         return result
     
