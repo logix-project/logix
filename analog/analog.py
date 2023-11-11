@@ -9,7 +9,7 @@ from analog.logging import LoggingHandler
 from analog.storage import init_storage_handler_from_config
 from analog.hessian import init_hessian_handler_from_config
 from analog.analysis import AnalysisBase
-from analog.lora import LoraTransformer
+from analog.lora import LoRAHandler
 
 
 class AnaLog:
@@ -44,7 +44,7 @@ class AnaLog:
         self.logging_handler = LoggingHandler(
             config.get_logging_config(), self.storage_handler, self.hessian_handler
         )
-        self.lora_transformer = LoraTransformer(
+        self.lora_handler = LoRAHandler(
             config.get_lora_config()
         )
 
@@ -57,7 +57,7 @@ class AnaLog:
         self.save = False
         self.test = False
 
-    def watch(self, model, type_filter: List[str] = None, name_filter: List[str] = None, lora : bool = False) -> None:
+    def watch(self, model, type_filter=None, name_filter=None, lora=False) -> None:
         """
         Sets up modules in the model to be watched.
 
@@ -69,11 +69,11 @@ class AnaLog:
         """
 
         if lora:
-            self.lora_transformer.add_lora_linear(model)
+            self.lora_handler.add_lora(model, type_filter, name_filter)
             if name_filter is None:
-                name_filter = ["lora_B"]
+                name_filter = ["analog_lora_B"]
             else:
-                name_filter.append("lora_B")
+                name_filter.append("analog_lora_B")
 
         for name, module in model.named_modules():
             # only consider the leaf module
