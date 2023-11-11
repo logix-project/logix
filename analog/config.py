@@ -17,6 +17,7 @@ class Config:
         "storage": {"type": "default", "log_dir": "./analog"},
         "hessian": {"type": "kfac", "damping": 1e-2},
         "analysis": {},
+        "lora": {"type": "random", "rank": 64}
     }
 
     def __init__(self, config_file: str) -> None:
@@ -71,3 +72,11 @@ class Config:
         :return: Dictionary containing analysis configurations.
         """
         return self.data.get("analysis", self._DEFAULTS["analysis"])
+
+    def get_lora_config(self) -> Dict[str, Any]:
+        """
+        Retrieve LoRA configuration.
+
+        :return: Dictionary containing LoRA configurations.
+        """
+        return self.data.get("lora", self._DEFAULTS["lora"])

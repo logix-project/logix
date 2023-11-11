@@ -14,7 +14,7 @@ class InfluenceFunction(AnalysisBase):
         preconditioned = {}
         for module_name in src.keys():
             hessian_inv = self.hessian_handler.get_hessian_inverse_state(module_name)
-            src_log = src[module_name]
+            src_log = src[module_name].to("cpu")
             preconditioned[module_name] = einsum(
                 hessian_inv["backward"],
                 src_log,
