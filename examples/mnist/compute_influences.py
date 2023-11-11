@@ -88,7 +88,7 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
     start = time.time()
     if_scores = analog.influence.compute_influence_all(test_log, log_loader)
     if_scores = if_scores.numpy().tolist()
-    torch.save(if_scores, "if_analog_2.pt")
+    torch.save(if_scores, "if_analog.pt")
     print("Computation time:", time.time() - start)
     print(sorted(if_scores)[:10], sorted(if_scores)[-10:])
 

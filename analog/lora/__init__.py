@@ -1,1 +1,1 @@
-from .lora import LoraTransformer
+from .lora import LoRAHandler
