@@ -13,7 +13,7 @@ from analog.lora import LoRAHandler
 
 
 class AnaLog:
-    _SUPPORTED_MODULES = {nn.Linear, nn.Conv2d}
+    _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d}
 
     def __init__(
         self,
@@ -44,9 +44,7 @@ class AnaLog:
         self.logging_handler = LoggingHandler(
             config.get_logging_config(), self.storage_handler, self.hessian_handler
         )
-        self.lora_handler = LoRAHandler(
-            config.get_lora_config()
-        )
+        self.lora_handler = LoRAHandler(config.get_lora_config(), self.hessian_handler)
 
         # Analysis plugins
         self.analysis_plugins = {}
@@ -276,4 +274,3 @@ class AnaLog:
         self.hessian_handler.clear()
         for key in self.analysis_plugins:
             self.remove_analysis(key)
-
