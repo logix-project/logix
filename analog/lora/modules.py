@@ -1,6 +1,8 @@
 import math
+
 import torch
 import torch.nn as nn
+
 
 class LoraLinear(nn.Linear):
     def __init__(self, r: int, linear: nn.Linear):
@@ -26,9 +28,7 @@ class LoraLinear(nn.Linear):
         self._linear = linear
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-
         result = self._linear(x)
         result += self.analog_lora_C(self.analog_lora_B(self.analog_lora_A(x)))
 
         return result
-    
