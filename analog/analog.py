@@ -1,4 +1,4 @@
-from typing import Optional, Iterable, Dict, Tuple, Any
+from typing import Optional, Iterable, Dict, Any, List
 
 import torch
 import torch.nn as nn
@@ -9,6 +9,7 @@ from analog.logging import LoggingHandler
 from analog.storage import init_storage_handler_from_config
 from analog.hessian import init_hessian_handler_from_config
 from analog.analysis import AnalysisBase
+from analog.lora import LoRAHandler
 
 
 class AnaLog:
@@ -43,6 +44,9 @@ class AnaLog:
         self.logging_handler = LoggingHandler(
             config.get_logging_config(), self.storage_handler, self.hessian_handler
         )
+        self.lora_handler = LoRAHandler(
+            config.get_lora_config()
+        )
 
         # Analysis plugins
         self.analysis_plugins = {}
@@ -53,7 +57,7 @@ class AnaLog:
         self.save = False
         self.test = False
 
-    def watch(self, model, type_filter=None, name_filter=None) -> None:
+    def watch(self, model, type_filter=None, name_filter=None, lora=False) -> None:
         """
         Sets up modules in the model to be watched.
 
@@ -61,7 +65,12 @@ class AnaLog:
             model: The neural network model.
             type_filter (list, optional): List of types of modules to be watched.
             name_filter (list, optional): List of keyword names for modules to be watched.
+            lora (bool, optional): Whether to use LoRA to watch the model.
         """
+
+        if lora:
+            self.lora_handler.add_lora(model, type_filter, name_filter)
+
         for name, module in model.named_modules():
             # only consider the leaf module
             if len(list(module.children())) > 0:
@@ -78,6 +87,8 @@ class AnaLog:
             if name_filter is not None and not any(
                 keyword in name for keyword in name_filter
             ):
+                continue
+            if lora and "analog_lora_B" not in name:
                 continue
             self.logging_handler.add_module(name, module)
 
@@ -265,3 +276,4 @@ class AnaLog:
         self.hessian_handler.clear()
         for key in self.analysis_plugins:
             self.remove_analysis(key)
+
