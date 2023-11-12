@@ -67,9 +67,15 @@ class DefaultStorageHandler(StorageHandlerBase):
         for datum, data_id in zip(data, self.data_id):
             numpy_datum = to_numpy(datum)
             if log_type == GRAD:
-                self.buffer[data_id][module_name] = numpy_datum
+                if self.buffer[data_id][module_name] is None:
+                    self.buffer[data_id][module_name] = numpy_datum
+                else:
+                    self.buffer[data_id][module_name] += numpy_datum
             else:
-                self.buffer[data_id][module_name][log_type] = numpy_datum
+                if self.buffer[data_id][module_name][log_type] is None:
+                    self.buffer[data_id][module_name][log_type] = numpy_datum
+                else:
+                    self.buffer[data_id][module_name][log_type] += numpy_datum
             self.buffer_size += numpy_datum.size
 
     def _flush_unsafe(self, buffer, push_count) -> str:
