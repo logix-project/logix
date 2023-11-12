@@ -70,10 +70,6 @@ class AnaLog:
 
         if lora:
             self.lora_handler.add_lora(model, type_filter, name_filter)
-            if name_filter is None:
-                name_filter = ["analog_lora_B"]
-            else:
-                name_filter.append("analog_lora_B")
 
         for name, module in model.named_modules():
             # only consider the leaf module
@@ -91,6 +87,8 @@ class AnaLog:
             if name_filter is not None and not any(
                 keyword in name for keyword in name_filter
             ):
+                continue
+            if lora and "analog_lora_B" not in name:
                 continue
             self.logging_handler.add_module(name, module)
 
