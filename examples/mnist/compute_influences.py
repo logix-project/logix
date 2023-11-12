@@ -51,7 +51,7 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
     from analog import AnaLog
     from analog.utils import DataIDGenerator
 
-    analog = AnaLog(project="test", config="./examples/mnist/config.yaml")
+    analog = AnaLog(project="test", config="config.yaml")
     analog.watch(model, type_filter=[torch.nn.Linear], lora=False)
     id_gen = DataIDGenerator()
 
