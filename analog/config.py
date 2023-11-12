@@ -17,7 +17,7 @@ class Config:
         "storage": {"type": "default", "log_dir": "./analog"},
         "hessian": {"type": "kfac", "damping": 1e-2},
         "analysis": {},
-        "lora": {"type": "random", "rank": 64}
+        "lora": {"type": "random", "rank": 64},
     }
 
     def __init__(self, config_file: str) -> None:
