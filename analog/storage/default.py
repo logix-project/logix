@@ -67,12 +67,12 @@ class DefaultStorageHandler(StorageHandlerBase):
         for datum, data_id in zip(data, self.data_id):
             numpy_datum = to_numpy(datum)
             if log_type == GRAD:
-                if self.buffer[data_id][module_name] is None:
+                if module_name not in self.buffer[data_id]:
                     self.buffer[data_id][module_name] = numpy_datum
                 else:
                     self.buffer[data_id][module_name] += numpy_datum
             else:
-                if self.buffer[data_id][module_name][log_type] is None:
+                if log_type not in self.buffer[data_id][module_name]:
                     self.buffer[data_id][module_name][log_type] = numpy_datum
                 else:
                     self.buffer[data_id][module_name][log_type] += numpy_datum
