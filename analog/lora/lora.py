@@ -3,9 +3,6 @@ import torch.nn as nn
 from analog.lora.modules import LoraLinear
 from analog.hessian import HessianHandlerBase
 
-from analog.constants import FORWARD, BACKWARD
-from analog.lora.utils import compute_top_k_singular_vectors
-
 class LoRAHandler:
     """
     Transforms a model into a Lora model.
@@ -50,21 +47,16 @@ class LoRAHandler:
                 continue
 
             # Add Lora to filtered modules
+            lora_cls = None
             if isinstance(module, nn.Linear):
-                rank = min(self.rank, module.weight.shape[0], module.weight.shape[1])
-                new_module = LoraLinear(rank, module).to(device)
-                if self.type == "random":
-                    new_module.init_weight()
-                elif self.type == "pca":
-                    top_r_singular_vector_forward = compute_top_k_singular_vectors(hessian_state[name][FORWARD], rank)
-                    top_r_singular_vector_backward = compute_top_k_singular_vectors(hessian_state[name][BACKWARD], rank)
-
-                    new_module.init_weight(
-                        weight_A = top_r_singular_vector_forward.T,
-                        weight_C = top_r_singular_vector_backward
-                    )
-                setattr(model, name, new_module)
+                lora_cls = LoraLinear
             elif isinstance(module, nn.Conv1d):
                 raise NotImplementedError
             elif isinstance(module, nn.Conv2d):
                 raise NotImplementedError
+
+            lora_module = lora_cls(self.rank, module)
+            lora_module.init_weight(self.type, hessian_state[name])
+            lora_module.to(device)
+
+            setattr(model, name, lora_module)
