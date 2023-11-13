@@ -3,6 +3,8 @@ import torch.nn as nn
 from analog.lora.modules import LoraLinear
 from analog.hessian import HessianHandlerBase
 
+from analog.constants import FORWARD, BACKWARD
+from analog.lora.utils import compute_top_k_singular_vectors
 
 class LoRAHandler:
     """
@@ -25,6 +27,10 @@ class LoRAHandler:
         """
         Add LoRA modules to a model.
         """
+        if self.type == "pca" and self.hessian_handler is None:
+            raise ValueError("hessian_state must be provided for pca LoRA")
+
+        hessian_state = self.hessian_handler.get_hessian_state()
         device = next(model.parameters()).device
         for name, module in model.named_modules():
             if len(list(module.children())) > 0:
@@ -45,7 +51,18 @@ class LoRAHandler:
 
             # Add Lora to filtered modules
             if isinstance(module, nn.Linear):
-                new_module = LoraLinear(self.rank, module).to(device)
+                rank = min(self.rank, module.weight.shape[0], module.weight.shape[1])
+                new_module = LoraLinear(rank, module).to(device)
+                if self.type == "random":
+                    new_module.init_weight()
+                elif self.type == "pca":
+                    top_r_singular_vector_forward = compute_top_k_singular_vectors(hessian_state[name][FORWARD], rank)
+                    top_r_singular_vector_backward = compute_top_k_singular_vectors(hessian_state[name][BACKWARD], rank)
+
+                    new_module.init_weight(
+                        weight_A = top_r_singular_vector_forward.T,
+                        weight_C = top_r_singular_vector_backward
+                    )
                 setattr(model, name, new_module)
             elif isinstance(module, nn.Conv1d):
                 raise NotImplementedError
