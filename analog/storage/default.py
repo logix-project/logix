@@ -105,6 +105,8 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         _flush_serialized executes the flushing of the buffers in serialized manner.
         """
+        if len(self.buffer) == 0:
+            return self.log_dir
         buffer_list = [(k, v) for k, v in self.buffer.items()]
         save_mmap(buffer_list, self.push_count, self.log_dir)
         self.push_count += 1
