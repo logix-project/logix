@@ -3,7 +3,6 @@ import torch.nn as nn
 from analog.lora.modules import LoraLinear
 from analog.hessian import HessianHandlerBase
 
-
 class LoRAHandler:
     """
     Transforms a model into a Lora model.
@@ -25,6 +24,10 @@ class LoRAHandler:
         """
         Add LoRA modules to a model.
         """
+        if self.type == "pca" and self.hessian_handler is None:
+            raise ValueError("hessian_state must be provided for pca LoRA")
+
+        hessian_state = self.hessian_handler.get_hessian_state()
         device = next(model.parameters()).device
         for name, module in model.named_modules():
             if len(list(module.children())) > 0:
@@ -44,10 +47,16 @@ class LoRAHandler:
                 continue
 
             # Add Lora to filtered modules
+            lora_cls = None
             if isinstance(module, nn.Linear):
-                new_module = LoraLinear(self.rank, module).to(device)
-                setattr(model, name, new_module)
+                lora_cls = LoraLinear
             elif isinstance(module, nn.Conv1d):
                 raise NotImplementedError
             elif isinstance(module, nn.Conv2d):
                 raise NotImplementedError
+
+            lora_module = lora_cls(self.rank, module)
+            lora_module.init_weight(self.type, hessian_state[name])
+            lora_module.to(device)
+
+            setattr(model, name, lora_module)
