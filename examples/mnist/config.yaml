@@ -1,5 +1,3 @@
 storage:
   type: default
   log_dir: "./analog/log/lora"
-lora:
-  type: "pca"
