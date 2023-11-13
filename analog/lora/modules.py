@@ -21,14 +21,26 @@ class LoraLinear(nn.Linear):
         self.analog_lora_B = nn.Linear(r, r, bias=False)
         self.analog_lora_C = nn.Linear(r, out_features, bias=False)
 
-        nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
         nn.init.zeros_(self.analog_lora_B.weight)
-        nn.init.kaiming_uniform_(self.analog_lora_C.weight, a=math.sqrt(5))
 
         self._linear = linear
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        result = self._linear(x)
-        result += self.analog_lora_C(self.analog_lora_B(self.analog_lora_A(x)))
+    def forward(self, input) -> torch.Tensor:
+        result = self._linear(input)
+        result += self.analog_lora_C(self.analog_lora_B(self.analog_lora_A(input)))
 
         return result
+
+    def init_weight(self, weight_A = None, weight_C = None):
+        device = next(self.parameters()).device
+        if weight_A is None:
+            nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
+        else:
+            assert(weight_A.shape == self.analog_lora_A.weight.shape)
+            self.analog_lora_A.weight.data = weight_A.to(device)
+
+        if weight_C is None:
+            nn.init.kaiming_uniform_(self.analog_lora_C.weight, a=math.sqrt(5))
+        else:
+            assert(weight_C.shape == self.analog_lora_C.weight.shape)
+            self.analog_lora_C.weight.data = weight_C.to(device)
