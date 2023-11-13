@@ -65,7 +65,7 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
             loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
             loss.backward()
     analog.finalize()
-    analog.logging_handler.clear()
+    # analog.unwatch()
 
     analog.watch(model, type_filter=[torch.nn.Linear], lora = True)
     for inputs, targets in train_loader:

@@ -3,23 +3,26 @@ import math
 import torch
 import torch.nn as nn
 
+from analog.constants import FORWARD, BACKWARD
+from analog.lora.utils import compute_top_k_singular_vectors
 
 class LoraLinear(nn.Linear):
-    def __init__(self, r: int, linear: nn.Linear):
+    def __init__(self, rank: int, linear: nn.Linear):
         """Transforms a linear layer into a LoraLinear layer.
 
         Args:
-            r (int): The rank of lora
+            rank (int): The rank of lora
             linear (nn.Linear): The linear layer to transform
         """
         in_features = linear.in_features
         out_features = linear.out_features
 
         super().__init__(in_features, out_features)
+        self.rank = min(rank, in_features, out_features)
 
-        self.analog_lora_A = nn.Linear(in_features, r, bias=False)
-        self.analog_lora_B = nn.Linear(r, r, bias=False)
-        self.analog_lora_C = nn.Linear(r, out_features, bias=False)
+        self.analog_lora_A = nn.Linear(in_features, self.rank, bias=False)
+        self.analog_lora_B = nn.Linear(self.rank, self.rank, bias=False)
+        self.analog_lora_C = nn.Linear(self.rank, out_features, bias=False)
 
         nn.init.zeros_(self.analog_lora_B.weight)
 
@@ -31,16 +34,18 @@ class LoraLinear(nn.Linear):
 
         return result
 
-    def init_weight(self, weight_A = None, weight_C = None):
-        device = next(self.parameters()).device
-        if weight_A is None:
-            nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
-        else:
-            assert(weight_A.shape == self.analog_lora_A.weight.shape)
-            self.analog_lora_A.weight.data = weight_A.to(device)
+    def init_weight(self, projection_type, hessian):
+        """Initialize the weight of the LoraLinear layer.
 
-        if weight_C is None:
+        Args:
+            projection_type (str): The type of projection to use
+            hessian (dict): The forward and backward hessian of the layer
+        """
+        if projection_type == "random":
+            nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
             nn.init.kaiming_uniform_(self.analog_lora_C.weight, a=math.sqrt(5))
-        else:
-            assert(weight_C.shape == self.analog_lora_C.weight.shape)
-            self.analog_lora_C.weight.data = weight_C.to(device)
+        elif projection_type == "pca":
+            top_r_singular_vector_forward = compute_top_k_singular_vectors(hessian[FORWARD], self.rank)
+            top_r_singular_vector_backward = compute_top_k_singular_vectors(hessian[BACKWARD], self.rank)
+            self.analog_lora_A.weight.data = top_r_singular_vector_forward.T
+            self.analog_lora_C.weight.data = top_r_singular_vector_backward
