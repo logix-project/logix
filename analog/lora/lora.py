@@ -1,7 +1,8 @@
+from typing import List
+
 import torch.nn as nn
 
 from analog.lora.modules import LoraLinear
-from analog.hessian import HessianHandlerBase
 
 
 class LoRAHandler:
@@ -11,9 +12,7 @@ class LoRAHandler:
 
     _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d}
 
-    def __init__(self, config, hessian_handler: HessianHandlerBase):
-        self.hessian_handler = hessian_handler
-
+    def __init__(self, config):
         self.config = config
         self.parse_config()
 
@@ -21,14 +20,19 @@ class LoRAHandler:
         self.type = self.config.get("type", "random")
         self.rank = self.config.get("rank", 64)
 
-    def add_lora(self, model, type_filter, name_filter):
+    def add_lora(
+        self,
+        model: nn.Module,
+        type_filter: List[nn.Module],
+        name_filter: List[str],
+        hessian_state=None,
+    ):
         """
         Add LoRA modules to a model.
         """
-        if self.type == "pca" and self.hessian_handler is None:
+        if self.type == "pca" and hessian_state is None:
             raise ValueError("hessian_state must be provided for pca LoRA")
 
-        hessian_state = self.hessian_handler.get_hessian_state()
         device = next(model.parameters()).device
         for name, module in model.named_modules():
             if len(list(module.children())) > 0:

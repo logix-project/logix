@@ -22,40 +22,25 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
     )
     model.eval()
 
-    if data_name == "mnist":
-        train_loader = get_mnist_dataloader(
-            batch_size=512, split="train", shuffle=False, subsample=True
-        )
-        sb_train_loader = get_mnist_dataloader(
-            batch_size=1, split="train", shuffle=False, subsample=True
-        )
-        lissa_train_loader = get_mnist_dataloader(
-            batch_size=8, split="train", shuffle=True, subsample=True
-        )
-        query_loader = get_mnist_dataloader(
-            batch_size=1, split="valid", shuffle=False, indices=eval_idxs
-        )
-    else:
-        train_loader = get_fmnist_dataloader(
-            batch_size=512, split="train", shuffle=False, subsample=True
-        )
-        sb_train_loader = get_fmnist_dataloader(
-            batch_size=1, split="train", shuffle=False, subsample=True
-        )
-        lissa_train_loader = get_fmnist_dataloader(
-            batch_size=8, split="train", shuffle=True, subsample=True
-        )
-        query_loader = get_fmnist_dataloader(
-            batch_size=1, split="valid", shuffle=False, indices=eval_idxs
-        )
+    dataloader_fn = (
+        get_mnist_dataloader if data_name == "mnist" else get_fmnist_dataloader
+    )
+    train_loader = dataloader_fn(
+        batch_size=512, split="train", shuffle=False, subsample=True
+    )
+    query_loader = dataloader_fn(
+        batch_size=1, split="valid", shuffle=False, indices=eval_idxs
+    )
 
+    # Set-up
     from analog import AnaLog
     from analog.utils import DataIDGenerator
 
     analog = AnaLog(project="test", config="./examples/mnist/config.yaml")
+
+    # Hessian logging
     analog.watch(model, type_filter=[torch.nn.Linear])
     id_gen = DataIDGenerator()
-
     for inputs, targets in train_loader:
         data_id = id_gen(inputs)
         with analog(data_id=data_id, log=["grad"]):
@@ -65,25 +50,26 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
             loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
             loss.backward()
     analog.finalize()
-    analog.unwatch()
+    hessian_state = analog.get_hessian_state(copy=True)
+    analog.clear()
 
-    analog.watch(model, type_filter=[torch.nn.Linear], lora=True)
+    # Compressed gradient logging
+    analog.watch(
+        model, type_filter=[torch.nn.Linear], lora=True, hessian_state=hessian_state
+    )
     for inputs, targets in train_loader:
         data_id = id_gen(inputs)
         with analog(data_id=data_id, log=["grad"], save=True):
-            # with analog(data_id=data_id, log=["forward", "backward"], save=True):
             inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
             model.zero_grad()
             outs = model(inputs)
             loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
             loss.backward()
-    analog.finalize()
-    hs = analog.get_hessian_state()
-    analog.hessian_inverse(override=False)
-    print(hs)
+    analog.finalize(hessian_inverse=True, hessian_override=True)
 
     log_loader = analog.build_log_dataloader()
 
+    # Influence Analysis
     from analog.analysis import InfluenceFunction
 
     analog.add_analysis({"influence": InfluenceFunction})
@@ -100,6 +86,8 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
         test_log = al.get_log()
     start = time.time()
     if_scores = analog.influence.compute_influence_all(test_log, log_loader)
+
+    # Save
     if_scores = if_scores.numpy().tolist()
     torch.save(if_scores, "if_analog_lora64_pca.pt")
     print("Computation time:", time.time() - start)
