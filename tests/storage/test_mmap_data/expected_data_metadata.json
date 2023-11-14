@@ -1,0 +1,50 @@
+[
+  {
+    "data_id": 0,
+    "size": 32,
+    "path": [
+      "dummy_data"
+    ],
+    "offset": 0,
+    "shape": [
+      8
+    ],
+    "dtype": "float32"
+  },
+  {
+    "data_id": 1,
+    "size": 64,
+    "path": [
+      "dummy_data"
+    ],
+    "offset": 32,
+    "shape": [
+      8
+    ],
+    "dtype": "float64"
+  },
+  {
+    "data_id": 2,
+    "size": 64,
+    "path": [
+      "dummy_data"
+    ],
+    "offset": 96,
+    "shape": [
+      8
+    ],
+    "dtype": "float64"
+  },
+  {
+    "data_id": 3,
+    "size": 64,
+    "path": [
+      "dummy_data"
+    ],
+    "offset": 160,
+    "shape": [
+      8
+    ],
+    "dtype": "float64"
+  }
+]
