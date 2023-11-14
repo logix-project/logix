@@ -44,7 +44,7 @@ class AnaLog:
         self.logging_handler = LoggingHandler(
             config.get_logging_config(), self.storage_handler, self.hessian_handler
         )
-        self.lora_handler = LoRAHandler(config.get_lora_config(), self.hessian_handler)
+        self.lora_handler = LoRAHandler(config.get_lora_config())
 
         # Analysis plugins
         self.analysis_plugins = {}
@@ -55,7 +55,14 @@ class AnaLog:
         self.save = False
         self.test = False
 
-    def watch(self, model, type_filter=None, name_filter=None, lora=False) -> None:
+    def watch(
+        self,
+        model: nn.Module,
+        type_filter: List[nn.Module] = None,
+        name_filter: List[str] = None,
+        lora: bool = False,
+        hessian_state=None,
+    ) -> None:
         """
         Sets up modules in the model to be watched.
 
@@ -67,7 +74,7 @@ class AnaLog:
         """
 
         if lora:
-            self.lora_handler.add_lora(model, type_filter, name_filter)
+            self.lora_handler.add_lora(model, type_filter, name_filter, hessian_state)
             self.hessian_handler.clear()
 
         for name, module in model.named_modules():
@@ -99,12 +106,6 @@ class AnaLog:
             tensor_dict (dict): Dictionary containing tensor names as keys and tensors as values.
         """
         self.logging_handler.register_all_tensor_hooks(tensor_dict)
-
-    def unwatch(self) -> None:
-        """
-        Removes all the hooks.
-        """
-        self.logging_handler.clear(clear_modules=True)
 
     def add_analysis(self, analysis_dict: Dict[str, AnalysisBase]) -> None:
         """
@@ -223,11 +224,16 @@ class AnaLog:
         """
         return self.storage_handler.get_buffer()
 
-    def get_hessian_state(self) -> Dict[str, Dict[str, torch.Tensor]]:
+    def get_hessian_state(
+        self, copy: bool = False
+    ) -> Dict[str, Dict[str, torch.Tensor]]:
         """
         Returns the Hessian state from the Hessian handler.
         """
-        return self.hessian_handler.get_hessian_state()
+        hessian_state = self.hessian_handler.get_hessian_state()
+        if copy:
+            return hessian_state.copy()
+        return hessian_state
 
     def hessian_inverse(self, override: bool = False) -> None:
         """
