@@ -228,7 +228,12 @@ class AnaLog:
         """
         self.hessian_handler.hessian_inverse(override)
 
-    def finalize(self, clear: bool = False) -> None:
+    def finalize(
+        self,
+        clear: bool = False,
+        hessian_inverse: bool = False,
+        hessian_override: bool = False,
+    ) -> None:
         """
         Finalizes the logging session.
 
@@ -241,6 +246,9 @@ class AnaLog:
         if clear:
             self.hessian_handler.clear()
             self.storage_handler.clear()
+
+        if hessian_inverse:
+            self.hessian_inverse(hessian_override)
 
     def sanity_check(
         self, data_id: Iterable[Any], log: Iterable[str], test: bool
@@ -269,7 +277,7 @@ class AnaLog:
         Clear everything in AnaLog.
         """
         self.reset()
-        self.logging_handler.clear()
+        self.logging_handler.clear(clear_modules=True)
         self.storage_handler.clear()
         self.hessian_handler.clear()
         for key in self.analysis_plugins:

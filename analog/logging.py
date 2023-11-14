@@ -218,9 +218,12 @@ class LoggingHandler:
         """
         return self.modules_to_name[module]
 
-    def clear(self) -> None:
+    def clear(self, clear_modules: bool = False) -> None:
         self.clear_hooks()
         self.clear_internal_states()
+        if clear_modules:
+            self.modules_to_hook = []
+            self.modules_to_name = {}
 
     def clear_hooks(self) -> None:
         """
