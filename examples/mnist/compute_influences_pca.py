@@ -67,7 +67,7 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
     analog.finalize()
     # analog.unwatch()
 
-    analog.watch(model, type_filter=[torch.nn.Linear], lora = True)
+    analog.watch(model, type_filter=[torch.nn.Linear], lora=True)
     for inputs, targets in train_loader:
         data_id = id_gen(inputs)
         with analog(data_id=data_id, log=["grad"], save=True):
