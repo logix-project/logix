@@ -99,6 +99,12 @@ class AnaLog:
         """
         self.logging_handler.register_all_tensor_hooks(tensor_dict)
 
+    def unwatch(self) -> None:
+        """
+        Removes all the hooks.
+        """
+        self.logging_handler.clear(clear_modules=True)
+
     def add_analysis(self, analysis_dict: Dict[str, AnalysisBase]) -> None:
         """
         Adds analysis plugins to AnaLog.
