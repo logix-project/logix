@@ -68,6 +68,7 @@ class AnaLog:
 
         if lora:
             self.lora_handler.add_lora(model, type_filter, name_filter)
+            self.hessian_handler.clear()
 
         for name, module in model.named_modules():
             # only consider the leaf module
