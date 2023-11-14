@@ -51,6 +51,7 @@ class LoggingHandler:
         self.modules_to_name = {}
         self.forward_hooks = []
         self.backward_hooks = []
+        self.grad_hooks = []
         self.tensor_hooks = []
 
     def _forward_hook_fn(
@@ -69,11 +70,10 @@ class LoggingHandler:
         if self.hessian:
             self.hessian_handler.update_hessian(module, module_name, FORWARD, inputs[0])
 
-        if self.save and FORWARD in self.log:
-            self.storage_handler.add(module_name, FORWARD, inputs[0])
-
-        if FORWARD in self.log or GRAD in self.log:
+        if FORWARD in self.log:
             self.current_log[module_name][FORWARD] = inputs[0]
+            if self.save:
+                self.storage_handler.add(module_name, FORWARD, inputs[0])
 
     def _backward_hook_fn(
         self,
@@ -102,14 +102,36 @@ class LoggingHandler:
             self.current_log[module_name][BACKWARD] = grad_outputs[0]
             if self.save:
                 self.storage_handler.add(module_name, BACKWARD, grad_outputs[0])
-        if GRAD in self.log:
-            fwd = self.current_log[module_name][FORWARD].detach()
-            bwd = grad_outputs[0].detach()
-            per_sample_grad = compute_per_sample_gradient(fwd, bwd, module)
-            del self.current_log[module_name][FORWARD]
-            self.current_log[module_name] = per_sample_grad
-            if self.save:
-                self.storage_handler.add(module_name, GRAD, per_sample_grad)
+
+    def _grad_hook_fn(
+        self,
+        module: nn.Module,
+        inputs: Tuple[torch.Tensor],
+        outputs: Tuple[torch.Tensor],
+        module_name: str,
+    ) -> None:
+        """
+        Internal gradient hook function.
+
+        Args:
+            module: The module triggering the hook.
+            inputs: The input to the module.
+            outputs: The output from the module.
+            module_name (str): The name of the module.
+        """
+        assert len(inputs) == 1
+
+        def _grad_backward_hook_fn(grad: torch.Tensor):
+            if GRAD in self.log:
+                per_sample_gradient = compute_per_sample_gradient(
+                    inputs[0], grad, module
+                )
+                self.current_log[module_name] = per_sample_gradient
+                if self.save:
+                    self.storage_handler.add(module_name, GRAD, per_sample_gradient)
+
+        tensor_hook = outputs.register_hook(_grad_backward_hook_fn)
+        self.tensor_hooks.append(tensor_hook)
 
     def _tensor_forward_hook_fn(self, tensor: torch.Tensor, tensor_name: str) -> None:
         """
@@ -161,8 +183,12 @@ class LoggingHandler:
             backward_hook = module.register_full_backward_hook(
                 partial(self._backward_hook_fn, module_name=module_name)
             )
+            grad_hook = module.register_forward_hook(
+                partial(self._grad_hook_fn, module_name=module_name)
+            )
             self.forward_hooks.append(forward_hook)
             self.backward_hooks.append(backward_hook)
+            self.grad_hooks.append(grad_hook)
 
     def register_all_tensor_hooks(self, tensor_dict: Dict[str, torch.Tensor]) -> None:
         """
@@ -232,6 +258,8 @@ class LoggingHandler:
         for hook in self.forward_hooks:
             hook.remove()
         for hook in self.backward_hooks:
+            hook.remove()
+        for hook in self.grad_hooks:
             hook.remove()
         for hook in self.tensor_hooks:
             hook.remove()
