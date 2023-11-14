@@ -72,4 +72,6 @@ class HessianHandlerBase(ABC):
         Clear the Hessian state.
         """
         self.hessian_state.clear()
+        if hasattr(self, "hessian_inverse_state"):
+            del self.hessian_inverse_state
         self.sample_counter.clear()
