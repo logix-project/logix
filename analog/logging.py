@@ -3,6 +3,7 @@ from typing import Optional, Callable, List, Dict, Tuple
 
 import torch
 import torch.nn as nn
+from einops import einsum, reduce
 
 from analog.constants import FORWARD, BACKWARD, GRAD, LOG_TYPES
 from analog.storage import StorageHandlerBase
@@ -12,7 +13,8 @@ from analog.utils import nested_dict
 
 def compute_per_sample_gradient(fwd, bwd, module):
     if isinstance(module, nn.Linear):
-        return torch.einsum("ni,nj->nij", bwd, fwd)
+        outer_product = einsum(bwd, fwd, "... i, ... j -> ... i j")
+        return reduce(outer_product, "n ... i j -> n i j", "sum")
     elif isinstance(module, nn.Conv2d):
         bsz = fwd.shape[0]
         fwd_unfold = torch.nn.functional.unfold(fwd, module.kernel_size)
