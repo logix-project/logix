@@ -10,6 +10,7 @@ from analog.storage import init_storage_handler_from_config
 from analog.hessian import init_hessian_handler_from_config
 from analog.analysis import AnalysisBase
 from analog.lora import LoRAHandler
+from analog.utils import get_logger
 
 
 class AnaLog:
@@ -97,6 +98,7 @@ class AnaLog:
             if lora and "analog_lora_B" not in name:
                 continue
             self.logging_handler.add_module(name, module)
+        self.print_tracked_modules()
 
     def watch_activation(self, tensor_dict: Dict[str, torch.Tensor]) -> None:
         """
@@ -295,3 +297,14 @@ class AnaLog:
         self.hessian_handler.clear()
         for key in self.analysis_plugins:
             self.remove_analysis(key)
+
+    def print_tracked_modules(self) -> None:
+        """
+        Print the tracked modules.
+        """
+        get_logger().info("Tracking the following modules:")
+        repr_dim = 0
+        for k, v in self.logging_handler.modules_to_name.items():
+            get_logger().info(f"{v}: {k}")
+            repr_dim += k.weight.data.numel()
+        get_logger().info(f"Total number of parameter: {repr_dim}")
