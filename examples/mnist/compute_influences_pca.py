@@ -38,34 +38,24 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
 
     analog = AnaLog(project="test", config="./examples/mnist/config.yaml")
 
-    # Hessian logging
     analog.watch(model, type_filter=[torch.nn.Linear])
+    analog_kwargs = {"log": ["grad"], "hessian": True, "save": False}
     id_gen = DataIDGenerator()
-    for inputs, targets in train_loader:
-        data_id = id_gen(inputs)
-        with analog(data_id=data_id, log=["grad"]):
-            inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
-            model.zero_grad()
-            outs = model(inputs)
-            loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
-            loss.backward()
-    analog.finalize()
-    hessian_state = analog.get_hessian_state(copy=True)
-    analog.clear()
-
-    # Compressed gradient logging
-    analog.watch(
-        model, type_filter=[torch.nn.Linear], lora=True, hessian_state=hessian_state
-    )
-    for inputs, targets in train_loader:
-        data_id = id_gen(inputs)
-        with analog(data_id=data_id, log=["grad"], save=True):
-            inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
-            model.zero_grad()
-            outs = model(inputs)
-            loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
-            loss.backward()
-    analog.finalize(hessian_inverse=True, hessian_override=True)
+    # Epoch 0: Compute Hessian
+    # Epoch 1: Gradient logging w/ PCA+LoRA
+    for epoch in range(2):
+        for inputs, targets in train_loader:
+            data_id = id_gen(inputs)
+            with analog(data_id=data_id, **analog_kwargs):
+                inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
+                model.zero_grad()
+                outs = model(inputs)
+                loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
+                loss.backward()
+        analog.finalize()
+        if epoch == 0:
+            analog_kwargs.update({"save": True})
+            analog.add_lora(model)
 
     log_loader = analog.build_log_dataloader()
 

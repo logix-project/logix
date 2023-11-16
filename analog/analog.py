@@ -56,13 +56,15 @@ class AnaLog:
         self.save = False
         self.test = False
 
+        self.type_filter = None
+        self.name_filter = None
+
     def watch(
         self,
         model: nn.Module,
         type_filter: List[nn.Module] = None,
         name_filter: List[str] = None,
         lora: bool = False,
-        hessian_state=None,
     ) -> None:
         """
         Sets up modules in the model to be watched.
@@ -73,10 +75,8 @@ class AnaLog:
             name_filter (list, optional): List of keyword names for modules to be watched.
             lora (bool, optional): Whether to use LoRA to watch the model.
         """
-
-        if lora:
-            self.lora_handler.add_lora(model, type_filter, name_filter, hessian_state)
-            self.hessian_handler.clear()
+        self.type_filter = type_filter or self.type_filter
+        self.name_filter = name_filter or self.name_filter
 
         for name, module in model.named_modules():
             # only consider the leaf module
@@ -108,6 +108,20 @@ class AnaLog:
             tensor_dict (dict): Dictionary containing tensor names as keys and tensors as values.
         """
         self.logging_handler.register_all_tensor_hooks(tensor_dict)
+
+    def add_lora(self, model):
+        hessian_state = self.hessian_handler.get_hessian_state()
+        self.lora_handler.add_lora(
+            model, self.type_filter, self.name_filter, hessian_state
+        )
+
+        # Clear hessian, storage, and logging handlers
+        get_logger().info(
+            "We will clear the previous Hessian, Storage, and Logging handlers."
+        )
+        self.clear()
+
+        self.watch(model, lora=True)
 
     def add_analysis(self, analysis_dict: Dict[str, AnalysisBase]) -> None:
         """
@@ -246,7 +260,7 @@ class AnaLog:
     def finalize(
         self,
         clear: bool = False,
-        hessian_inverse: bool = False,
+        hessian_inverse: bool = True,
         hessian_override: bool = False,
     ) -> None:
         """
