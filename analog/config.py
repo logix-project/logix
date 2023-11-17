@@ -30,7 +30,9 @@ class Config:
             with open(config_file, "r") as file:
                 self.data: Dict[str, Any] = yaml.safe_load(file)
         except FileNotFoundError:
-            get_logger().warning("Configuration file not found. Using default values.")
+            get_logger().warning(
+                "Configuration file not found. Using default values.\n"
+            )
             self.data = {}
 
     def get_global_config(self) -> Dict[str, Any]:
