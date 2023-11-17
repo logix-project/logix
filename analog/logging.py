@@ -73,7 +73,10 @@ class LoggingHandler:
             self.hessian_handler.update_hessian(module, module_name, FORWARD, inputs[0])
 
         if FORWARD in self.log:
-            self.current_log[module_name][FORWARD] = inputs[0]
+            if FORWARD not in self.current_log[module_name]:
+                self.current_log[module_name][FORWARD] = inputs[0]
+            else:
+                self.current_log[module_name][FORWARD] += inputs[0]
             if self.save:
                 self.storage_handler.add(module_name, FORWARD, inputs[0])
 
@@ -101,7 +104,10 @@ class LoggingHandler:
             )
 
         if BACKWARD in self.log:
-            self.current_log[module_name][BACKWARD] = grad_outputs[0]
+            if BACKWARD not in self.current_log[module_name]:
+                self.current_log[module_name][BACKWARD] = grad_outputs[0]
+            else:
+                self.current_log[module_name][BACKWARD] += grad_outputs[0]
             if self.save:
                 self.storage_handler.add(module_name, BACKWARD, grad_outputs[0])
 
@@ -128,7 +134,10 @@ class LoggingHandler:
                 per_sample_gradient = compute_per_sample_gradient(
                     inputs[0], grad, module
                 )
-                self.current_log[module_name] = per_sample_gradient
+                if module_name not in self.current_log:
+                    self.current_log[module_name] = per_sample_gradient
+                else:
+                    self.current_log[module_name] += per_sample_gradient
                 if self.save:
                     self.storage_handler.add(module_name, GRAD, per_sample_gradient)
 
