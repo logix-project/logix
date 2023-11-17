@@ -18,8 +18,13 @@ class KFACHessianHandler(HessianHandlerBase):
     Compute the Hessian via the K-FAC method.
     """
 
-    def parse_config(self):
+    def parse_config(self) -> None:
         self.damping = self.config.get("damping", 1e-2)
+        self.type = self.config.get("type", "expand")
+
+    def on_exit(self) -> None:
+        if self.type == "reduce":
+            raise NotImplementedError
 
     @torch.no_grad()
     def update_hessian(
@@ -29,7 +34,7 @@ class KFACHessianHandler(HessianHandlerBase):
         mode: str,
         data: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
-    ):
+    ) -> None:
         # extract activations
         activation = self.extract_activations(module, mode, data, mask)
 
@@ -40,16 +45,17 @@ class KFACHessianHandler(HessianHandlerBase):
         if deep_get(self.hessian_state, [module_name, mode]) is None:
             self.hessian_state[module_name][mode] = torch.zeros_like(covariance)
             self.sample_counter[module_name][mode] = 0
-        self.hessian_state[module_name][mode] += covariance
+        self.hessian_state[module_name][mode].add_(covariance)
         self.sample_counter[module_name][mode] += self.get_sample_size(data, mask)
 
-    def finalize(self):
+    def finalize(self) -> None:
         for module_name, module_state in self.hessian_state.items():
             for mode, covariance in module_state.items():
                 covariance.div_(self.sample_counter[module_name][mode])
         self.synchronize()
 
-    def hessian_inverse(self, override=False):
+    @torch.no_grad()
+    def hessian_inverse(self, override: bool = False):
         """
         Compute the inverse of the covariance.
         """
@@ -78,7 +84,7 @@ class KFACHessianHandler(HessianHandlerBase):
                         * torch.eye(covariance.size(0))
                     )
 
-    def synchronize(self):
+    def synchronize(self) -> None:
         """
         Synchronize the covariance across all processes.
         """
@@ -89,7 +95,13 @@ class KFACHessianHandler(HessianHandlerBase):
                     covariance.div_(world_size)
                     dist.all_reduce(covariance, op=dist.ReduceOp.SUM)
 
-    def extract_activations(self, module, mode, data, mask):
+    def extract_activations(
+        self,
+        module: nn.Module,
+        mode: str,
+        data: torch.Tensor,
+        mask: Optional[torch.Tensor],
+    ) -> torch.Tensor:
         if mode == FORWARD:
             return extract_forward_activations(data, module, mask)
         assert mode == BACKWARD

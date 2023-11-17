@@ -6,8 +6,8 @@ import torch.nn as nn
 from analog.config import Config
 from analog.constants import FORWARD, BACKWARD, GRAD, LOG_TYPES
 from analog.logging import LoggingHandler
-from analog.storage import init_storage_handler_from_config
-from analog.hessian import init_hessian_handler_from_config
+from analog.storage import DefaultStorageHandler, MongoDBStorageHandler
+from analog.hessian import RawHessianHandler, KFACHessianHandler
 from analog.analysis import AnalysisBase
 from analog.lora import LoRAHandler
 from analog.utils import get_logger
@@ -36,16 +36,10 @@ class AnaLog:
 
         # Initialize storage, hessian, and logging handlers from config as well as
         # inject dependencies between handlers.
-        self.storage_handler = init_storage_handler_from_config(
-            config.get_storage_config()
-        )
-        self.hessian_handler = init_hessian_handler_from_config(
-            config.get_hessian_config()
-        )
-        self.logging_handler = LoggingHandler(
-            config.get_logging_config(), self.storage_handler, self.hessian_handler
-        )
-        self.lora_handler = LoRAHandler(config.get_lora_config())
+        self.storage_handler = self.build_storage_handler()
+        self.hessian_handler = self.build_hessian_handler()
+        self.logging_handler = self.build_logging_handler()
+        self.lora_handler = self.build_lora_handler()
 
         # Analysis plugins
         self.analysis_plugins = {}
@@ -109,19 +103,22 @@ class AnaLog:
         """
         self.logging_handler.register_all_tensor_hooks(tensor_dict)
 
-    def add_lora(self, model):
+    def add_lora(
+        self, model: nn.Module, watch: bool = True, clear: bool = True
+    ) -> None:
         hessian_state = self.hessian_handler.get_hessian_state()
         self.lora_handler.add_lora(
             model, self.type_filter, self.name_filter, hessian_state
         )
 
         # Clear hessian, storage, and logging handlers
-        get_logger().info(
-            "We will clear the previous Hessian, Storage, and Logging handlers."
-        )
-        self.clear()
-
-        self.watch(model, lora=True)
+        if clear:
+            msg = "AnaLog will clear the previous Hessian, Storage, and Logging "
+            msg += "handlers after adding LoRA for gradient compression.\n"
+            get_logger().info(msg)
+            self.clear()
+        if watch:
+            self.watch(model, lora=True)
 
     def add_analysis(self, analysis_dict: Dict[str, AnalysisBase]) -> None:
         """
@@ -212,6 +209,60 @@ class AnaLog:
         self.logging_handler.clear()
 
         self.reset()
+
+    def build_storage_handler(self) -> None:
+        """
+        Initialize a storage handler from the configuration.
+
+        Returns:
+            The initialized storage handler.
+        """
+        storage_config = self.config.get_storage_config()
+        storage_type = storage_config.get("type", "default")
+        if storage_type == "default":
+            return DefaultStorageHandler(storage_config)
+        elif storage_type == "mongodb":
+            return MongoDBStorageHandler(storage_config)
+        else:
+            raise ValueError(f"Unknown storage type: {storage_type}")
+
+    def build_hessian_handler(self):
+        """
+        Initialize a Hessian handler from the configuration.
+
+        Returns:
+            The initialized Hessian handler.
+        """
+        hessian_config = self.config.get_hessian_config()
+        hessian_type = hessian_config.get("type", "kfac")
+        if hessian_type == "kfac":
+            return KFACHessianHandler(hessian_config)
+        elif hessian_type == "raw":
+            return RawHessianHandler(hessian_config)
+        else:
+            raise ValueError(f"Unknown Hessian type: {hessian_type}")
+
+    def build_logging_handler(self):
+        """
+        Initialize a Logging handler from the configuration.
+
+        Returns:
+            The initialized Hessian handler.
+        """
+        logging_config = self.config.get_logging_config()
+        return LoggingHandler(
+            logging_config, self.storage_handler, self.hessian_handler
+        )
+
+    def build_lora_handler(self):
+        """
+        Initialize a Logging handler from the configuration.
+
+        Returns:
+            The initialized Hessian handler.
+        """
+        lora_config = self.config.get_lora_config()
+        return LoRAHandler(lora_config)
 
     def build_log_dataset(self):
         """
@@ -321,4 +372,4 @@ class AnaLog:
         for k, v in self.logging_handler.modules_to_name.items():
             get_logger().info(f"{v}: {k}")
             repr_dim += k.weight.data.numel()
-        get_logger().info(f"Total number of parameter: {repr_dim}")
+        get_logger().info(f"Total number of parameters: {repr_dim}\n")

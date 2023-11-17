@@ -38,7 +38,7 @@ class DefaultStorageHandler(StorageHandlerBase):
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
         else:
-            get_logger().warning(f"Log directory {self.log_dir} already exists. ")
+            get_logger().warning(f"Log directory {self.log_dir} already exists.\n")
 
     def format_log(self, module_name: str, log_type: str, data):
         """
