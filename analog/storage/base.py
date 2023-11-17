@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 
 class StorageHandlerBase(ABC):
-    def __init__(self, config=None):
+    def __init__(self, config=None) -> None:
         """
         Initializes the StorageHandlerBase.
 
@@ -17,14 +17,14 @@ class StorageHandlerBase(ABC):
         self.initialize()
 
     @abstractmethod
-    def parse_config(self):
+    def parse_config(self) -> None:
         """
         Abstract method to parse the configuration.
         """
         pass
 
     @abstractmethod
-    def initialize(self):
+    def initialize(self) -> None:
         """
         Abstract method to handle initial setup or connections.
         """
