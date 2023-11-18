@@ -23,13 +23,20 @@ class RawHessianHandler(HessianHandlerBase):
         self.damping = self.config.get("damping", 1e-2)
         self.type = self.config.get("type", "reduce")
 
-    def on_exit(self) -> None:
+    @torch.no_grad()
+    def on_exit(self, current_log=None) -> None:
         if self.type == "reduce":
-            cur_log = None
-            for module_name, module_grad in cur_log.items():
-                flat_grad = rearrange(data, "b ... -> b (...)").cpu().detach()
+            for module_name, module_grad in current_log.items():
+                flat_grad = rearrange(module_grad, "b ... -> b (...)").cpu().detach()
                 grad_dim = flat_grad.shape[-1]
-            
+                if module_name not in self.hessian_state:
+                    self.hessian_state[module_name] = torch.zeros(
+                        (grad_dim, grad_dim), device="cpu"
+                    )
+                    self.sample_counter[module_name] = 0
+                self.hessian_state[module_name].addmm_(flat_grad.t(), flat_grad)
+                self.sample_counter[module_name] += flat_grad.shape[0]
+
     @torch.no_grad()
     def update_hessian(
         self,
@@ -45,7 +52,9 @@ class RawHessianHandler(HessianHandlerBase):
 
             # update covariance
             if module_name not in self.hessian_state:
-                self.hessian_state[module_name] = torch.zeros_like(covariance)
+                self.hessian_state[module_name] = torch.zeros(
+                    (grad_dim, grad_dim), device="cpu"
+                )
                 self.sample_counter[module_name] = 0
             self.hessian_state[module_name].addmm_(flat_grad.t(), flat_grad)
             self.sample_counter[module_name] += data.shape[0]

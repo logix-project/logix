@@ -22,7 +22,8 @@ class KFACHessianHandler(HessianHandlerBase):
         self.damping = self.config.get("damping", 1e-2)
         self.type = self.config.get("type", "expand")
 
-    def on_exit(self) -> None:
+    @torch.no_grad()
+    def on_exit(self, current_log=None) -> None:
         if self.type == "reduce":
             raise NotImplementedError
 
@@ -35,18 +36,19 @@ class KFACHessianHandler(HessianHandlerBase):
         data: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
     ) -> None:
-        # extract activations
-        activation = self.extract_activations(module, mode, data, mask)
+        if self.type == "expand":
+            # extract activations
+            activation = self.extract_activations(module, mode, data, mask)
 
-        # compute covariance
-        covariance = torch.matmul(torch.t(activation), activation).cpu().detach()
+            # compute covariance
+            covariance = torch.matmul(torch.t(activation), activation).cpu().detach()
 
-        # update covariance
-        if deep_get(self.hessian_state, [module_name, mode]) is None:
-            self.hessian_state[module_name][mode] = torch.zeros_like(covariance)
-            self.sample_counter[module_name][mode] = 0
-        self.hessian_state[module_name][mode].add_(covariance)
-        self.sample_counter[module_name][mode] += self.get_sample_size(data, mask)
+            # update covariance
+            if deep_get(self.hessian_state, [module_name, mode]) is None:
+                self.hessian_state[module_name][mode] = torch.zeros_like(covariance)
+                self.sample_counter[module_name][mode] = 0
+            self.hessian_state[module_name][mode].add_(covariance)
+            self.sample_counter[module_name][mode] += self.get_sample_size(data, mask)
 
     def finalize(self) -> None:
         for module_name, module_state in self.hessian_state.items():

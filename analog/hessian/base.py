@@ -46,7 +46,7 @@ class HessianHandlerBase(ABC):
         pass
 
     @abstractmethod
-    def on_exit(self) -> None:
+    def on_exit(self, current_log=None) -> None:
         pass
 
     def get_hessian_state(self, name: str = None):
