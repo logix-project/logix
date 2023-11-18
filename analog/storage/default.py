@@ -4,15 +4,13 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 from collections import OrderedDict
 
-import json
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader, default_collate
 
 from analog.utils import nested_dict, to_numpy, get_logger
 from analog.storage import StorageHandlerBase
-from analog.storage.utils import save_mmap
-from analog.utils import stack_tensor
+from analog.storage.utils import MemoryMapHandler
 from analog.constants import GRAD
 
 
@@ -33,6 +31,13 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         self.buffer = nested_dict()
         self.push_count = 0
+        self.mmap_handler = None
+        self.file_prefix = "log_chunk_"
+
+        # TODO: configure for memory map options. We can make it as the only option if necessary.
+        if True:
+            self.mmap_handler = MemoryMapHandler(self.log_dir)
+
         if self.allow_async:
             self.lock = Lock()
         if not os.path.exists(self.log_dir):
@@ -108,7 +113,8 @@ class DefaultStorageHandler(StorageHandlerBase):
         if len(self.buffer) == 0:
             return self.log_dir
         buffer_list = [(k, v) for k, v in self.buffer.items()]
-        save_mmap(buffer_list, self.push_count, self.log_dir)
+        self.mmap_handler.write(buffer_list, self.file_prefix + f"{self.push_count}.mmap")
+
         self.push_count += 1
         del buffer_list
         self.buffer.clear()
@@ -174,13 +180,12 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         self._flush_serialized()
 
-    def build_log_dataset(self, log_dir=None):
+    def build_log_dataset(self):
         """
         Constructs the log dataset from the storage handler.
         """
-        if log_dir is None:
-            log_dir = self.log_dir
-        return DefaultLogDataset(log_dir)
+
+        return DefaultLogDataset(self.mmap_handler)
 
     def build_log_dataloader(self, batch_size=16, num_workers=0):
         log_dataset = self.build_log_dataset()
@@ -195,22 +200,19 @@ class DefaultStorageHandler(StorageHandlerBase):
 
 
 class DefaultLogDataset(Dataset):
-    def __init__(self, log_dir):
-        self.log_dir = log_dir
+    def __init__(self, mmap_handler):
         self.schemas = []
         self.memmaps = []
         self.data_id_to_chunk = OrderedDict()
+        self.mmap_handler = mmap_handler
 
         # Find all chunk indices
-        self.chunk_indices = self._find_chunk_indices(log_dir)
+        self.chunk_indices = self._find_chunk_indices(self.mmap_handler.get_path())
 
         # Add schemas and mmap files for all indices
         for chunk_index in self.chunk_indices:
-            mmap_filename = os.path.join(log_dir, f"log_chunk_{chunk_index}.mmap")
-            schema_filename = os.path.join(
-                log_dir, f"metadata_chunk_{chunk_index}.json"
-            )
-            self._add_schema_and_mmap(schema_filename, mmap_filename, chunk_index)
+            mmap_filename = f"log_chunk_{chunk_index}.mmap"
+            self._add_schema_and_mmap(mmap_filename, chunk_index)
 
     def _find_chunk_indices(self, directory):
         chunk_indices = []
@@ -223,16 +225,12 @@ class DefaultLogDataset(Dataset):
         return sorted(chunk_indices)
 
     def _add_schema_and_mmap(
-        self, schema_filename, mmap_filename, chunk_index, dtype="uint8"
+        self, mmap_filename, chunk_index
     ):
-        # Load the schema
-        with open(schema_filename, "r") as f:
-            schema = json.load(f)
-            self.schemas.append(schema)
-
         # Load the memmap file
-        mmap = np.memmap(mmap_filename, dtype=dtype, mode="r")
+        mmap, schema = self.mmap_handler.read(mmap_filename)
         self.memmaps.append(mmap)
+        self.schemas.append(schema)
 
         # Update the mapping from data_id to chunk
         for entry in schema:
