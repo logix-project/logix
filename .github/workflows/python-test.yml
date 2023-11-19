@@ -24,7 +24,7 @@ jobs:
     - name: Install Dependencies
       run: |
         pip install --upgrade pip
-        pip install -r requirements.txt  # Assuming you have a requirements.txt file
+        python setup.py install
 
     - name: Run All Tests
       run: |
