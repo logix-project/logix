@@ -1,0 +1,50 @@
+name: Black Auto-Reformat
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**.py'
+
+jobs:
+  black-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.8
+
+      - name: Install Black
+        run: |
+          pip install --upgrade pip
+          pip install black
+
+      - name: Format with Black
+        run: |
+          CHANGED_FILES=$(git diff --name-only HEAD^..HEAD | grep -E '\.(py)$' || true)
+          echo "Changed files: ${CHANGED_FILES}"
+          if [ ! -z "$CHANGED_FILES" ]; then
+            black $CHANGED_FILES
+          fi
+
+      - name: Commit and Push Changes
+        if: success() && github.ref != 'refs/heads/main'
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          git add .
+          # Check if there are any changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Apply Black Formatting"
+            BRANCH_NAME=${GITHUB_HEAD_REF:-$(git rev-parse --abbrev-ref HEAD)}
+            git push origin HEAD:$BRANCH_NAME
+          fi
