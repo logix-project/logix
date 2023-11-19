@@ -21,11 +21,11 @@ class RawHessianHandler(HessianHandlerBase):
 
     def parse_config(self) -> None:
         self.damping = self.config.get("damping", 1e-2)
-        self.type = self.config.get("type", "reduce")
+        self.reduce = self.config.get("reduce", True)
 
     @torch.no_grad()
     def on_exit(self, current_log=None) -> None:
-        if self.type == "reduce":
+        if self.reduce:
             for module_name, module_grad in current_log.items():
                 flat_grad = rearrange(module_grad, "b ... -> b (...)").cpu().detach()
                 grad_dim = flat_grad.shape[-1]
@@ -46,7 +46,7 @@ class RawHessianHandler(HessianHandlerBase):
         data: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
     ) -> None:
-        if self.type == "expand":
+        if not self.reduce:
             flat_grad = rearrange(data, "b ... -> b (...)").cpu().detach()
             grad_dim = flat_grad.shape[-1]
 

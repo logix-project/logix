@@ -20,11 +20,11 @@ class KFACHessianHandler(HessianHandlerBase):
 
     def parse_config(self) -> None:
         self.damping = self.config.get("damping", 1e-2)
-        self.type = self.config.get("type", "expand")
+        self.reduce = self.config.get("reduce", False)
 
     @torch.no_grad()
     def on_exit(self, current_log=None) -> None:
-        if self.type == "reduce":
+        if self.reduce:
             raise NotImplementedError
 
     @torch.no_grad()
@@ -36,7 +36,7 @@ class KFACHessianHandler(HessianHandlerBase):
         data: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
     ) -> None:
-        if self.type == "expand":
+        if not self.reduce:
             # extract activations
             activation = self.extract_activations(module, mode, data, mask)
 
