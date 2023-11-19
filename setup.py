@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 with open("requirements.txt", "r") as f:
     requirements = f.read().splitlines()
 
-python_requires = ">=3.9.0,<3.11.0"
+python_requires = ">=3.8.0,<3.11.0"
 
 if __name__ == "__main__":
     setup(
