@@ -1,0 +1,32 @@
+name: Python Unit Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+
+    - name: Install Dependencies
+      run: |
+        pip install --upgrade pip
+        pip install msgpack # TODO: Update this as we update requirements.txt
+        python setup.py install
+
+    - name: Run All Tests
+      run: |
+        python -m unittest discover -s tests -p '*_test.py'
