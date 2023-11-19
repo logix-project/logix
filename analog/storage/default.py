@@ -113,7 +113,9 @@ class DefaultStorageHandler(StorageHandlerBase):
         if len(self.buffer) == 0:
             return self.log_dir
         buffer_list = [(k, v) for k, v in self.buffer.items()]
-        self.mmap_handler.write(buffer_list, self.file_prefix + f"{self.push_count}.mmap")
+        self.mmap_handler.write(
+            buffer_list, self.file_prefix + f"{self.push_count}.mmap"
+        )
 
         self.push_count += 1
         del buffer_list
@@ -223,9 +225,7 @@ class DefaultLogDataset(Dataset):
                 chunk_indices.append(int(chunk_index))
         return sorted(chunk_indices)
 
-    def _add_metadata_and_mmap(
-        self, mmap_filename, chunk_index
-    ):
+    def _add_metadata_and_mmap(self, mmap_filename, chunk_index):
         # Load the memmap file
         mmap, metadata = self.mmap_handler.read(mmap_filename)
         self.memmaps.append(mmap)
@@ -239,6 +239,7 @@ class DefaultLogDataset(Dataset):
                 self.data_id_to_chunk[data_id][1].append(entry)
                 continue
             self.data_id_to_chunk[data_id] = (chunk_index, [entry])
+
     def __getitem__(self, index):
         data_id = list(self.data_id_to_chunk.keys())[index]
         chunk_idx, entries = self.data_id_to_chunk[data_id]
