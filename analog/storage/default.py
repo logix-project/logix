@@ -243,6 +243,7 @@ class DefaultLogDataset(Dataset):
         nested_dict = {}
 
         mmap = self.memmaps[chunk_idx]
+
         schema = self.schemas[chunk_idx]
         for entry in schema:
             if entry["data_id"] == data_id:
@@ -251,7 +252,6 @@ class DefaultLogDataset(Dataset):
                 offset = entry["offset"]
                 shape = tuple(entry["shape"])
                 dtype = np.dtype(entry["dtype"])
-
                 array = np.ndarray(shape, dtype, buffer=mmap, offset=offset, order="C")
                 tensor = torch.Tensor(array)
 

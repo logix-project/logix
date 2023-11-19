@@ -1,0 +1,38 @@
+name: Black Format Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  black-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - name: Setup Python 🐍
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.8
+
+      - name: Install Black
+        run: |
+          pip install --upgrade pip
+          pip install black
+
+      - name: Check formatting with Black
+        run: |
+          CHANGED_FILES=$(git diff --name-only HEAD^..HEAD | grep -E '\.(py)$' || true)
+          echo "Changed files: ${CHANGED_FILES}"
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No Python files changed"
+          elif black --check $CHANGED_FILES; then
+            echo "Black formatting check passed"
+          else
+            echo "::error::Please fix Python formatting before publishing a PR. Run 'black .' on your dev environment to automatically format the code."
+            exit 1
+          fi
