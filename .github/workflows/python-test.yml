@@ -24,7 +24,7 @@ jobs:
     - name: Install Dependencies
       run: |
         pip install --upgrade pip
-        pip install msgpack
+        pip install msgpack # TODO: Update this as we update requirements.txt
         python setup.py install
 
     - name: Run All Tests
