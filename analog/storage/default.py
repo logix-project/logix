@@ -208,10 +208,10 @@ class DefaultLogDataset(Dataset):
         # Find all chunk indices
         self.chunk_indices = self._find_chunk_indices(self.mmap_handler.get_path())
 
-        # Add schemas and mmap files for all indices
+        # Add metadata and mmap files for all indices
         for chunk_index in self.chunk_indices:
             mmap_filename = f"log_chunk_{chunk_index}.mmap"
-            self._add_schema_and_mmap(mmap_filename, chunk_index)
+            self._add_metadata_and_mmap(mmap_filename, chunk_index)
 
     def _find_chunk_indices(self, directory):
         chunk_indices = []
@@ -223,15 +223,15 @@ class DefaultLogDataset(Dataset):
                 chunk_indices.append(int(chunk_index))
         return sorted(chunk_indices)
 
-    def _add_schema_and_mmap(
+    def _add_metadata_and_mmap(
         self, mmap_filename, chunk_index
     ):
         # Load the memmap file
-        mmap, schema = self.mmap_handler.read(mmap_filename)
+        mmap, metadata = self.mmap_handler.read(mmap_filename)
         self.memmaps.append(mmap)
 
         # Update the mapping from data_id to chunk
-        for entry in schema:
+        for entry in metadata:
             data_id = entry["data_id"]
 
             if data_id in self.data_id_to_chunk:

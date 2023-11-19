@@ -30,7 +30,7 @@ class MemoryMapHandler:
     def __init__(self, log_dir, mmap_dtype='uint8'):
         """
         Args:
-            save_path (str): The directory of the path to write and read the binaries and the schema.
+            save_path (str): The directory of the path to write and read the binaries and the metadata.
             mmap_dtype: The data type that will be used to save the binary into the memory map.
         """
         self.save_path = log_dir
@@ -77,7 +77,7 @@ class MemoryMapHandler:
 
     def read(self, filename):
         """
-        read reads the file by chunk index, it will return the data_buffer with schema.
+        read reads the file by chunk index, it will return the data_buffer with metadata.
         Arg:
             filename (str): filename for the path to mmap.
         Returns:
