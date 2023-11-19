@@ -201,7 +201,6 @@ class DefaultStorageHandler(StorageHandlerBase):
 
 class DefaultLogDataset(Dataset):
     def __init__(self, mmap_handler):
-        self.schemas = []
         self.memmaps = []
         self.data_id_to_chunk = OrderedDict()
         self.mmap_handler = mmap_handler
@@ -230,39 +229,40 @@ class DefaultLogDataset(Dataset):
         # Load the memmap file
         mmap, schema = self.mmap_handler.read(mmap_filename)
         self.memmaps.append(mmap)
-        self.schemas.append(schema)
 
         # Update the mapping from data_id to chunk
         for entry in schema:
-            self.data_id_to_chunk[entry["data_id"]] = chunk_index
+            data_id = entry["data_id"]
 
+            if data_id in self.data_id_to_chunk:
+                # Append to the existing list for this data_id
+                self.data_id_to_chunk[data_id][1].append(entry)
+                continue
+            self.data_id_to_chunk[data_id] = (chunk_index, [entry])
     def __getitem__(self, index):
         data_id = list(self.data_id_to_chunk.keys())[index]
-        chunk_idx = self.data_id_to_chunk[data_id]
+        chunk_idx, entries = self.data_id_to_chunk[data_id]
 
         nested_dict = {}
-
         mmap = self.memmaps[chunk_idx]
-        schema = self.schemas[chunk_idx]
-        for entry in schema:
-            if entry["data_id"] == data_id:
-                # Read the data and put it into the nested dictionary
-                path = entry["path"]
-                offset = entry["offset"]
-                shape = tuple(entry["shape"])
-                dtype = np.dtype(entry["dtype"])
 
-                array = np.ndarray(shape, dtype, buffer=mmap, offset=offset, order="C")
-                tensor = torch.Tensor(array)
+        for entry in entries:
+            # Read the data and put it into the nested dictionary
+            path = entry["path"]
+            offset = entry["offset"]
+            shape = tuple(entry["shape"])
+            dtype = np.dtype(entry["dtype"])
 
-                # Place the tensor in the correct location within the nested dictionary
-                current_level = nested_dict
-                for key in path[:-1]:
-                    if key not in current_level:
-                        current_level[key] = {}
-                    current_level = current_level[key]
-                current_level[path[-1]] = tensor
+            array = np.ndarray(shape, dtype, buffer=mmap, offset=offset, order="C")
+            tensor = torch.Tensor(array)
 
+            # Place the tensor in the correct location within the nested dictionary
+            current_level = nested_dict
+            for key in path[:-1]:
+                if key not in current_level:
+                    current_level[key] = {}
+                current_level = current_level[key]
+            current_level[path[-1]] = tensor
         return data_id, nested_dict
 
     def __len__(self):
