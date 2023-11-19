@@ -27,10 +27,10 @@ def extract_arrays(obj, base_path=()):
 
 
 class MemoryMapHandler:
-    def __init__(self, log_dir, mmap_dtype='uint8'):
+    def __init__(self, log_dir, mmap_dtype="uint8"):
         """
         Args:
-            save_path (str): The directory of the path to write and read the binaries and the schema.
+            save_path (str): The directory of the path to write and read the binaries and the metadata.
             mmap_dtype: The data type that will be used to save the binary into the memory map.
         """
         self.save_path = log_dir
@@ -47,8 +47,12 @@ class MemoryMapHandler:
         mmap_filename = os.path.join(self.save_path, filename)
         metadata_filename = os.path.join(self.save_path, file_root + "_metadata.json")
 
-        total_size = sum(arr.nbytes for _, d in data_buffer for _, arr in extract_arrays(d))
-        mmap = np.memmap(mmap_filename, dtype=self.mmap_dtype, mode="w+", shape=(total_size,))
+        total_size = sum(
+            arr.nbytes for _, d in data_buffer for _, arr in extract_arrays(d)
+        )
+        mmap = np.memmap(
+            mmap_filename, dtype=self.mmap_dtype, mode="w+", shape=(total_size,)
+        )
 
         metadata = []
         offset = 0
@@ -56,7 +60,7 @@ class MemoryMapHandler:
         for data_id, nested_dict in data_buffer:
             for path, arr in extract_arrays(nested_dict):
                 bytes = arr.nbytes
-                mmap[offset: offset + bytes] = arr.ravel().view(self.mmap_dtype)
+                mmap[offset : offset + bytes] = arr.ravel().view(self.mmap_dtype)
                 metadata.append(
                     {
                         "data_id": data_id,
@@ -77,7 +81,7 @@ class MemoryMapHandler:
 
     def read(self, filename):
         """
-        read reads the file by chunk index, it will return the data_buffer with schema.
+        read reads the file by chunk index, it will return the data_buffer with metadata.
         Arg:
             filename (str): filename for the path to mmap.
         Returns:
@@ -88,7 +92,9 @@ class MemoryMapHandler:
         if file_ext == "":
             filename += ".mmap"
 
-        mmap = np.memmap(os.path.join(self.save_path, filename), dtype=self.mmap_dtype, mode="r")
+        mmap = np.memmap(
+            os.path.join(self.save_path, filename), dtype=self.mmap_dtype, mode="r"
+        )
         metadata = self.read_metafile(file_root + "_metadata.json")
         return mmap, metadata
 
