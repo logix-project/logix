@@ -16,13 +16,11 @@ from torch.optim import SGD
 import os
 import torch
 
-import environment
 from utils import (
     get_mnist_dataloader,
     construct_mlp,
     get_fmnist_dataloader,
     set_seed,
-    get_arg_env,
 )
 
 
@@ -67,7 +65,7 @@ def train(
     return model
 
 
-def main(dataset="mnist", env=environment.TEST):
+def main(dataset="mnist"):
     os.makedirs("checkpoints", exist_ok=True)
 
     if dataset == "mnist":
@@ -87,7 +85,7 @@ def main(dataset="mnist", env=environment.TEST):
 
     for i in range(10):
         print(f"Model {i}")
-        model = construct_mlp(seed=i, env=env).to(DEVICE)
+        model = construct_mlp(seed=i).to(DEVICE)
 
         # I performed a grid search with the following search space:
         # LR: [0.3, 0.1, 0.03, 0.01, 0.003, 0.001]
@@ -125,6 +123,5 @@ def main(dataset="mnist", env=environment.TEST):
 
 
 if __name__ == "__main__":
-    env_arg = get_arg_env()
-    main(dataset="mnist", env=env_arg)
-    main(dataset="fmnist", env=env_arg)
+    main(dataset="mnist")
+    main(dataset="fmnist")

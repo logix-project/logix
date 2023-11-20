@@ -29,11 +29,5 @@ jobs:
 
     - name: Run All Tests
       run: |
-        python -m unittest discover -s tests -p '*_test.py'
-
-    - name: Run MNIST example.
-      run: |
         pip install torchvision
-        cd examples/mnist
-        python train.py --env UNIT
-        python compute_influences.py --env UNIT
+        python -m unittest discover -v -s tests

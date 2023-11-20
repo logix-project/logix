@@ -5,8 +5,6 @@ import torch
 import torchvision
 import torch.nn as nn
 
-import environment
-
 
 def set_seed(seed):
     seed = int(seed)
@@ -16,17 +14,9 @@ def set_seed(seed):
     torch.cuda.manual_seed(seed)
 
 
-def construct_mlp(num_inputs=784, num_classes=10, seed=0, env=environment.TEST):
+def construct_mlp(num_inputs=784, num_classes=10, seed=0):
     # Configurations used in the "influence memorization" paper:
     # https://github.com/google-research/heldout-influence-estimation/blob/master/mnist-example/mnist_infl_mem.py.
-    if env == environment.UNIT:
-        # Minimal network with a single activation layer.
-        return torch.nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(num_inputs, 1, bias=False),
-            nn.ReLU(),
-            nn.Linear(1, num_classes, bias=False),
-        )
     set_seed(seed)
     model = torch.nn.Sequential(
         nn.Flatten(),
@@ -109,26 +99,6 @@ def get_fmnist_dataloader(
         num_workers=0,
         drop_last=drop_last,
     )
-
-
-def get_arg_env() -> str:
-    parser = argparse.ArgumentParser(
-        description="Run the model training with different environments."
-    )
-    parser.add_argument(
-        "--env",
-        type=str,
-        default="TEST",
-        choices=["TEST", "UNIT"],
-        help="The environment should be one of (TEST, UNIT).",
-    )
-
-    args = parser.parse_args()
-    if args.env == "UNIT":
-        env_arg = environment.UNIT
-    else:
-        env_arg = environment.TEST
-    return env_arg
 
 
 if __name__ == "__main__":

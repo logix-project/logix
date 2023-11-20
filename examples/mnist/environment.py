@@ -1,2 +1,0 @@
-UNIT = "unit"
-TEST = "test"
