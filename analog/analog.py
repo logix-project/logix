@@ -313,16 +313,25 @@ class AnaLog:
             return hessian_state.copy()
         return hessian_state
 
-    def hessian_inverse(self, override: bool = False) -> None:
+    def hessian_inverse(self, override: bool = False):
         """
         Compute the inverse of the Hessian.
         """
-        self.hessian_handler.hessian_inverse(override)
+        hessian_inverse_state = self.hessian_handler.hessian_inverse(override)
+        return hessian_inverse_state
+
+    def hessian_svd(self, override: bool = False):
+        """
+        Compute the SVD of the Hessian.
+        """
+        hessian_svd_state = self.hessian_handler.hessian_svd(override)
+        return hessian_svd_state
 
     def finalize(
         self,
         clear: bool = False,
-        hessian_inverse: bool = True,
+        hessian_svd: bool = True,
+        hessian_inverse: bool = False,
         hessian_override: bool = False,
     ) -> None:
         """
@@ -338,6 +347,8 @@ class AnaLog:
             self.hessian_handler.clear()
             self.storage_handler.clear()
 
+        if hessian_svd:
+            self.hessian_svd(hessian_override)
         if hessian_inverse:
             self.hessian_inverse(hessian_override)
 

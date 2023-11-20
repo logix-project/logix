@@ -38,7 +38,7 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
     analog = AnaLog(project="test", config="config.yaml")
 
     # Gradient & Hessian logging
-    analog.watch(model, name_filter=["1", "3"])
+    analog.watch(model, name_filter=["1", "3", "5"])
     id_gen = DataIDGenerator()
     for inputs, targets in train_loader:
         data_id = id_gen(inputs)
@@ -48,7 +48,8 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
             outs = model(inputs)
             loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
             loss.backward()
-    analog.finalize(hessian_inverse=True, hessian_override=True)
+    analog.finalize()
+    print(analog.get_hessian_state())
 
     # Influence Analysis
     log_loader = analog.build_log_dataloader()

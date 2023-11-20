@@ -77,6 +77,7 @@ class KFACHessianHandler(HessianHandlerBase):
                         + torch.trace(covariance)
                         * self.damping
                         * torch.eye(covariance.size(0))
+                        / covariance.size(0)
                     )
                 else:
                     self.hessian_inverse_state[module_name][mode] = torch.inverse(
@@ -84,7 +85,34 @@ class KFACHessianHandler(HessianHandlerBase):
                         + torch.trace(covariance)
                         * self.damping
                         * torch.eye(covariance.size(0))
+                        / covariance.size(0)
                     )
+
+        return self.hessian_state if override else self.hessian_inverse_state
+
+    @torch.no_grad()
+    def hessian_svd(self, override: bool = False):
+        """
+        Compute the SVD of the covariance.
+        """
+        if self.hessian_svd_with_override:
+            get_logger().warning("Hessian SVD already computed with override.")
+            return
+
+        if override:
+            self.hessian_svd_with_override = True
+        else:
+            self.hessian_svd_state = nested_dict()
+        for module_name, module_state in self.hessian_state.items():
+            for mode, covariance in module_state.items():
+                eigvals, eigvecs = torch.linalg.eigh(covariance)
+                print(eigvals)
+                if override:
+                    module_state[mode] = (eigvals, eigvecs)
+                else:
+                    self.hessian_svd_state[module_name][mode] = (eigvals, eigvecs)
+
+        return self.hessian_state if override else self.hessian_svd_state
 
     def synchronize(self) -> None:
         """

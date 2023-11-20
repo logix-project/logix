@@ -14,6 +14,7 @@ class HessianHandlerBase(ABC):
         self.sample_counter = nested_dict()
 
         self.hessian_inverse_with_override = False
+        self.hessian_svd_with_override = False
 
         self.parse_config()
 
@@ -72,6 +73,22 @@ class HessianHandlerBase(ABC):
             self.hessian_state[name]
             if self.hessian_inverse_with_override
             else self.hessian_inverse_state[name]
+        )
+
+    def get_hessian_svd_state(self, name: str = None):
+        """
+        Get the Hessian SVD state.
+        """
+        if name is None:
+            return (
+                self.hessian_state
+                if self.hessian_svd_with_override
+                else self.hessian_svd_state
+            )
+        return (
+            self.hessian_state[name]
+            if self.hessian_svd_with_override
+            else self.hessian_svd_state[name]
         )
 
     def get_sample_size(

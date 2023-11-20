@@ -10,17 +10,36 @@ class InfluenceFunction(AnalysisBase):
         return
 
     @torch.no_grad()
-    def precondition(self, src):
+    def precondition(self, src, mode="svd"):
         preconditioned = {}
         for module_name in src.keys():
-            hessian_inv = self.hessian_handler.get_hessian_inverse_state(module_name)
             src_log = src[module_name].to("cpu")
-            preconditioned[module_name] = einsum(
-                hessian_inv["backward"],
-                src_log,
-                hessian_inv["forward"],
-                "a b, batch b c, c d -> batch a d",
-            )
+            if mode == "svd":
+                hessian_svd = self.hessian_handler.get_hessian_svd_state(module_name)
+                rotated_grad = einsum(
+                    hessian_svd["backward"][1].t(),
+                    src_log,
+                    hessian_svd["forward"][1],
+                    "a b, batch b c, c d -> batch a d",
+                )
+                scale = torch.outer(hessian_svd["backward"][0], hessian_svd["forward"][0])
+                prec_rotated_grad = rotated_grad / (scale + 0.1)
+                preconditioned[module_name] = einsum(
+                    hessian_svd["backward"][1],
+                    prec_rotated_grad,
+                    hessian_svd["forward"][1].t(),
+                    "a b, batch b c, c d -> batch a d",
+                )
+            else:
+                hessian_inv = self.hessian_handler.get_hessian_inverse_state(
+                    module_name
+                )
+                preconditioned[module_name] = einsum(
+                    hessian_inv["backward"],
+                    src_log,
+                    hessian_inv["forward"],
+                    "a b, batch b c, c d -> batch a d",
+                )
         return preconditioned
 
     @torch.no_grad()

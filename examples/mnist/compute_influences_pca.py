@@ -38,7 +38,7 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
 
     analog = AnaLog(project="test", config="./examples/mnist/config.yaml")
 
-    analog.watch(model, name_filter=["1", "3"])
+    analog.watch(model, name_filter=["1", "3", "5"])
     analog_kwargs = {"log": ["grad"], "hessian": True, "save": False}
     id_gen = DataIDGenerator()
     # Epoch 0: Compute Hessian
@@ -55,7 +55,8 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
         analog.finalize()
         if epoch == 0:
             analog_kwargs.update({"save": True})
-            analog.add_lora(model)
+            analog.add_lora(model, parameter_sharing=False)
+    print(analog.get_hessian_state())
 
     log_loader = analog.build_log_dataloader()
 

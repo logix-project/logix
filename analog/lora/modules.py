@@ -56,7 +56,5 @@ class LoraLinear(nn.Linear):
                 top_r_singular_vector_backward,
                 top_r_singular_value_backward,
             ) = compute_top_k_singular_vectors(hessian[BACKWARD], self.rank)
-            # top_r_singular_vector_forward /= top_r_singular_value_forward.unsqueeze(0)
-            # top_r_singular_vector_backward /= top_r_singular_value_backward.unsqueeze(0)
             self.analog_lora_A.weight.data.copy_(top_r_singular_vector_forward.T)
             self.analog_lora_C.weight.data.copy_(top_r_singular_vector_backward)
