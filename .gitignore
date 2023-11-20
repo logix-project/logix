@@ -169,3 +169,4 @@ cython_debug/
 *.mmap
 !tests/storage/test_mmap_data/*.json
 !tests/storage/test_mmap_data/*.mmap
+!tests/examples/checkpoints/*.pt

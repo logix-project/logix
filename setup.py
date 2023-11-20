@@ -14,6 +14,8 @@ if __name__ == "__main__":
             exclude=[
                 "examples",
                 "tests",
+                "tests.*",
+                "*.tests.*",
             ]
         ),
         install_requires=requirements,
