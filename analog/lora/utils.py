@@ -7,4 +7,5 @@ def compute_top_k_singular_vectors(matrix, k):
     """
     U, S, Vh = torch.linalg.svd(matrix)
     top_k_singular_vectors = U[:, :k]
-    return top_k_singular_vectors
+    top_k_singular_values = S[:k]
+    return top_k_singular_vectors, top_k_singular_values
