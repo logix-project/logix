@@ -11,7 +11,6 @@ Note that:
     - FMNIST test accuracy: ~83.9%
 """
 
-import argparse
 from torch.nn import CrossEntropyLoss
 from torch.optim import SGD
 import os
@@ -22,8 +21,10 @@ from utils import (
     get_mnist_dataloader,
     construct_mlp,
     get_fmnist_dataloader,
-    set_seed, get_arg_env,
+    set_seed,
+    get_arg_env,
 )
+
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -125,5 +126,5 @@ def main(dataset="mnist", env=environment.TEST):
 
 if __name__ == "__main__":
     env_arg = get_arg_env()
-    main(dataset="mnist", env= env_arg)
+    main(dataset="mnist", env=env_arg)
     main(dataset="fmnist", env=env_arg)

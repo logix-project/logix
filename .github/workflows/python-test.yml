@@ -17,14 +17,14 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v2
       with:
-        python-version: 3.9
+        python-version: 3.8
 
     - name: Install Dependencies
       run: |
         pip install --upgrade pip
-        pip install msgpack # TODO: Update this as we update requirements.txt
+        pip install -r requirements.txt
         python setup.py install
 
     - name: Run All Tests
@@ -33,6 +33,7 @@ jobs:
 
     - name: Run MNIST example.
       run: |
+        pip install torchvision
         cd examples/mnist
-        python train.py --env UNIT > train_output.txt 2>&1 || (echo "Train.py failed with the following output:" && cat train_output.txt)
-        python compute_influences.py --env UNIT > compute_output.txt 2>&1 || (echo "Compute_influences.py failed with the following output:" && cat compute_output.txt)
+        python train.py --env UNIT
+        python compute_influences.py --env UNIT

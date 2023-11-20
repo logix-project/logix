@@ -28,7 +28,7 @@ jobs:
 
       - name: Format with Black
         run: |
-          CHANGED_FILES=$(git diff --name-only HEAD^..HEAD | grep -E '\.(py)$' || true)
+          CHANGED_FILES=$(git diff --name-only --diff-filter=dr HEAD^..HEAD | grep -E '\.(py)$' || true)
           echo "Changed files: ${CHANGED_FILES}"
           if [ ! -z "$CHANGED_FILES" ]; then
             black $CHANGED_FILES

@@ -40,12 +40,12 @@ def construct_mlp(num_inputs=784, num_classes=10, seed=0, env=environment.TEST):
 
 
 def get_mnist_dataloader(
-        batch_size=128,
-        split="train",
-        shuffle=False,
-        subsample=False,
-        indices=None,
-        drop_last=False,
+    batch_size=128,
+    split="train",
+    shuffle=False,
+    subsample=False,
+    indices=None,
+    drop_last=False,
 ):
     transforms = torchvision.transforms.Compose(
         [
@@ -76,12 +76,12 @@ def get_mnist_dataloader(
 
 
 def get_fmnist_dataloader(
-        batch_size=128,
-        split="train",
-        shuffle=False,
-        subsample=False,
-        indices=None,
-        drop_last=False,
+    batch_size=128,
+    split="train",
+    shuffle=False,
+    subsample=False,
+    indices=None,
+    drop_last=False,
 ):
     transforms = torchvision.transforms.Compose(
         [
@@ -112,12 +112,19 @@ def get_fmnist_dataloader(
 
 
 def get_arg_env() -> str:
-    parser = argparse.ArgumentParser(description='Run the model training with different environments.')
-    parser.add_argument('--env', type=str, default='TEST', choices=['TEST', 'UNIT'],
-                        help='The environment should be one of (TEST, UNIT).')
+    parser = argparse.ArgumentParser(
+        description="Run the model training with different environments."
+    )
+    parser.add_argument(
+        "--env",
+        type=str,
+        default="TEST",
+        choices=["TEST", "UNIT"],
+        help="The environment should be one of (TEST, UNIT).",
+    )
 
     args = parser.parse_args()
-    if args.env == 'UNIT':
+    if args.env == "UNIT":
         env_arg = environment.UNIT
     else:
         env_arg = environment.TEST
@@ -128,13 +135,11 @@ if __name__ == "__main__":
     # Verifying if datasets look reasonable.
     import matplotlib.pyplot as plt
 
-
     def imshow(img):
         img = img / 2 + 0.5
         npimg = img.numpy()
         plt.imshow(np.transpose(npimg, (1, 2, 0)))
         plt.show()
-
 
     loader = get_mnist_dataloader(batch_size=16, shuffle=True, subsample=True)
     data_iter = iter(loader)

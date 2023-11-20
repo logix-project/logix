@@ -15,7 +15,9 @@ DAMPING = 0.01
 LISSA_ITER = 100000
 
 
-def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,), env=environment.TEST):
+def single_checkpoint_influence(
+    data_name="mnist", eval_idxs=(0,), env=environment.TEST
+):
     model = construct_mlp(env=env).to(DEVICE)
 
     # Get a single checkpoint (first model_id and last epoch).
