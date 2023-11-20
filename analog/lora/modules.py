@@ -37,17 +37,17 @@ class LoraLinear(nn.Linear):
 
         return result
 
-    def init_weight(self, projection_type, hessian):
+    def init_weight(self, init_strategy: str = "random", hessian=None):
         """Initialize the weight of the LoraLinear layer.
 
         Args:
-            projection_type (str): The type of projection to use
+            init_strategy (str): The type of projection to use
             hessian (dict): The forward and backward hessian of the layer
         """
-        if projection_type == "random":
+        if init_strategy == "random":
             nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
             nn.init.kaiming_uniform_(self.analog_lora_C.weight, a=math.sqrt(5))
-        elif projection_type == "pca":
+        elif init_strategy == "pca":
             top_r_singular_vector_forward = compute_top_k_singular_vectors(
                 hessian[FORWARD], self.rank
             )

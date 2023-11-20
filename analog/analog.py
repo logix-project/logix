@@ -104,11 +104,21 @@ class AnaLog:
         self.logging_handler.register_all_tensor_hooks(tensor_dict)
 
     def add_lora(
-        self, model: nn.Module, watch: bool = True, clear: bool = True
+        self,
+        model: nn.Module,
+        parameter_sharing: bool = False,
+        parameter_sharing_groups: List[str] = None,
+        watch: bool = True,
+        clear: bool = True,
     ) -> None:
         hessian_state = self.hessian_handler.get_hessian_state()
         self.lora_handler.add_lora(
-            model, self.type_filter, self.name_filter, hessian_state
+            model=model,
+            type_filter=self.type_filter,
+            name_filter=self.name_filter,
+            hessian_state=hessian_state,
+            parameter_sharing=parameter_sharing,
+            parameter_sharing_groups=parameter_sharing_groups,
         )
 
         # Clear hessian, storage, and logging handlers

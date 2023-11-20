@@ -5,6 +5,19 @@ import torch.nn as nn
 from analog.lora.modules import LoraLinear
 
 
+def find_parameter_sharing_group(
+    module_name: str, parameter_sharing_groups: List[str] = None
+):
+    if parameter_sharing_groups is None:
+        return "analog_lora_none"
+
+    found_groups = [psg for psg in parameter_sharing_groups if psg in module_name]
+    assert (
+        len(found_groups) == 1
+    ), "Each module can belong to only one parameter sharing group."
+    return found_groups[0]
+
+
 class LoRAHandler:
     """
     Transforms a model into a Lora model.
@@ -17,7 +30,7 @@ class LoRAHandler:
         self.parse_config()
 
     def parse_config(self):
-        self.type = self.config.get("type", "random")
+        self.init_strategy = self.config.get("init", "random")
         self.rank = self.config.get("rank", 64)
 
     def add_lora(
@@ -26,13 +39,16 @@ class LoRAHandler:
         type_filter: List[nn.Module],
         name_filter: List[str],
         hessian_state=None,
+        parameter_sharing=False,
+        parameter_sharing_groups=None,
     ):
         """
         Add LoRA modules to a model.
         """
-        if self.type == "pca" and hessian_state is None:
+        if self.init_strategy == "pca" and hessian_state is None:
             raise ValueError("hessian_state must be provided for pca LoRA")
 
+        shared_modules = {}
         device = next(model.parameters()).device
         for name, module in model.named_modules():
             if len(list(module.children())) > 0:
@@ -60,8 +76,22 @@ class LoRAHandler:
             elif isinstance(module, nn.Conv2d):
                 raise NotImplementedError
 
-            lora_module = lora_cls(self.rank, module)
-            lora_module.init_weight(self.type, hessian_state[name])
+            psg = find_parameter_sharing_group(name, parameter_sharing_groups)
+            if parameter_sharing and psg not in shared_modules:
+                if isinstance(module, nn.Linear):
+                    shared_module = nn.Linear(self.rank, self.rank, bias=False)
+                elif isinstance(module, nn.Conv1d):
+                    shared_module = nn.Conv1d(
+                        self.rank, self.rank, kernel_size=1, bias=False
+                    )
+                elif isinstance(module, nn.Conv2d):
+                    shared_module = nn.Conv2d(
+                        self.rank, self.rank, kernel_size=1, bias=False
+                    )
+                shared_modules[psg] = shared_module
+
+            lora_module = lora_cls(self.rank, module, shared_modules.get(psg, None))
+            lora_module.init_weight(self.init_strategy, hessian_state[name])
             lora_module.to(device)
 
             setattr(model, name, lora_module)

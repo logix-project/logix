@@ -38,7 +38,7 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
 
     analog = AnaLog(project="test", config="./examples/mnist/config.yaml")
 
-    analog.watch(model, type_filter=[torch.nn.Linear])
+    analog.watch(model, name_filter=["1", "3"])
     analog_kwargs = {"log": ["grad"], "hessian": True, "save": False}
     id_gen = DataIDGenerator()
     # Epoch 0: Compute Hessian
