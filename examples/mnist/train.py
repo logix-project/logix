@@ -11,17 +11,18 @@ Note that:
     - FMNIST test accuracy: ~83.9%
 """
 
-
+import argparse
 from torch.nn import CrossEntropyLoss
 from torch.optim import SGD
 import os
 import torch
 
+import environment
 from utils import (
     get_mnist_dataloader,
     construct_mlp,
     get_fmnist_dataloader,
-    set_seed,
+    set_seed, get_arg_env,
 )
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -65,7 +66,7 @@ def train(
     return model
 
 
-def main(dataset="mnist"):
+def main(dataset="mnist", env=environment.TEST):
     os.makedirs("checkpoints", exist_ok=True)
 
     if dataset == "mnist":
@@ -85,7 +86,7 @@ def main(dataset="mnist"):
 
     for i in range(10):
         print(f"Model {i}")
-        model = construct_mlp(seed=i).to(DEVICE)
+        model = construct_mlp(seed=i, env=env).to(DEVICE)
 
         # I performed a grid search with the following search space:
         # LR: [0.3, 0.1, 0.03, 0.01, 0.003, 0.001]
@@ -123,5 +124,6 @@ def main(dataset="mnist"):
 
 
 if __name__ == "__main__":
-    main(dataset="mnist")
-    main(dataset="fmnist")
+    env_arg = get_arg_env()
+    main(dataset="mnist", env= env_arg)
+    main(dataset="fmnist", env=env_arg)

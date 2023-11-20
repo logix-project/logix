@@ -30,3 +30,9 @@ jobs:
     - name: Run All Tests
       run: |
         python -m unittest discover -s tests -p '*_test.py'
+
+    - name: Run MNIST example.
+      run: |
+        cd examples/mnist
+        python train.py --env UNIT > train_output.txt 2>&1 || (echo "Train.py failed with the following output:" && cat train_output.txt)
+        python compute_influences.py --env UNIT > compute_output.txt 2>&1 || (echo "Compute_influences.py failed with the following output:" && cat compute_output.txt)

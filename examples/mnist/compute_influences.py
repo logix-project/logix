@@ -1,6 +1,9 @@
 import time
 import torch
 
+import environment
+from utils import get_arg_env
+
 from train import (
     get_mnist_dataloader,
     get_fmnist_dataloader,
@@ -12,8 +15,8 @@ DAMPING = 0.01
 LISSA_ITER = 100000
 
 
-def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
-    model = construct_mlp().to(DEVICE)
+def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,), env=environment.TEST):
+    model = construct_mlp(env=env).to(DEVICE)
 
     # Get a single checkpoint (first model_id and last epoch).
     model.load_state_dict(
@@ -78,4 +81,4 @@ def single_checkpoint_influence(data_name="mnist", eval_idxs=(0,)):
 
 
 if __name__ == "__main__":
-    single_checkpoint_influence(data_name="mnist")
+    single_checkpoint_influence(data_name="mnist", env=get_arg_env())
