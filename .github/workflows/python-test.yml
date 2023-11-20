@@ -35,17 +35,5 @@ jobs:
       run: |
         pip install torchvision
         cd examples/mnist
-        python train.py --env UNIT > train_output.txt 2>&1
-        TRAIN_STATUS=$?
-        python compute_influences.py --env UNIT > compute_output.txt 2>&1
-        COMPUTE_STATUS=$?
-        if [ $TRAIN_STATUS -ne 0 ]; then
-          echo "Train.py failed with the following output:"
-          cat train_output.txt
-          exit $TRAIN_STATUS
-        fi
-        if [ $COMPUTE_STATUS -ne 0 ]; then
-          echo "Compute_influences.py failed with the following output:"
-          cat compute_output.txt
-          exit $COMPUTE_STATUS
-        fi
+        python train.py --env UNIT
+        python compute_influences.py --env UNIT
