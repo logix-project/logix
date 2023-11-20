@@ -11,6 +11,7 @@ Note that:
     - FMNIST test accuracy: ~83.9%
 """
 
+
 from torch.nn import CrossEntropyLoss
 from torch.optim import SGD
 import os
@@ -22,7 +23,6 @@ from utils import (
     get_fmnist_dataloader,
     set_seed,
 )
-
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
