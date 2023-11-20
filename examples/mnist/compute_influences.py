@@ -1,7 +1,6 @@
 import time
 import torch
 
-
 from train import (
     get_mnist_dataloader,
     get_fmnist_dataloader,
