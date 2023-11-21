@@ -10,42 +10,37 @@ class InfluenceFunction(AnalysisBase):
         return
 
     @torch.no_grad()
-    def precondition(self, src, mode="svd"):
+    def precondition(self, src, damping=0.0):
         preconditioned = {}
+        if not hasattr(self, "hessian_eigval"):
+            (
+                self.hessian_eigval,
+                self.hessian_eigvec,
+            ) = self.hessian_handler.hessian_svd()
         for module_name in src.keys():
             src_log = src[module_name].to("cpu")
-            if mode == "svd":
-                hessian_svd = self.hessian_handler.get_hessian_svd_state(module_name)
-                rotated_grad = einsum(
-                    hessian_svd["backward"][1].t(),
-                    src_log,
-                    hessian_svd["forward"][1],
-                    "a b, batch b c, c d -> batch a d",
-                )
-                scale = torch.outer(hessian_svd["backward"][0], hessian_svd["forward"][0])
-                prec_rotated_grad = rotated_grad / (scale + 0.1)
-                preconditioned[module_name] = einsum(
-                    hessian_svd["backward"][1],
-                    prec_rotated_grad,
-                    hessian_svd["forward"][1].t(),
-                    "a b, batch b c, c d -> batch a d",
-                )
-            else:
-                hessian_inv = self.hessian_handler.get_hessian_inverse_state(
-                    module_name
-                )
-                preconditioned[module_name] = einsum(
-                    hessian_inv["backward"],
-                    src_log,
-                    hessian_inv["forward"],
-                    "a b, batch b c, c d -> batch a d",
-                )
+            module_eigval = self.hessian_eigval[module_name]
+            module_eigvec = self.hessian_eigvec[module_name]
+            rotated_grad = einsum(
+                module_eigvec["backward"].t(),
+                src_log,
+                module_eigvec["forward"],
+                "a b, batch b c, c d -> batch a d",
+            )
+            scale = torch.outer(module_eigval["backward"], module_eigval["forward"])
+            prec_rotated_grad = rotated_grad / (scale + damping)
+            preconditioned[module_name] = einsum(
+                module_eigvec["backward"],
+                prec_rotated_grad,
+                module_eigvec["forward"].t(),
+                "a b, batch b c, c d -> batch a d",
+            )
         return preconditioned
 
     @torch.no_grad()
-    def compute_influence(self, src, tgt, preconditioned=False):
+    def compute_influence(self, src, tgt, preconditioned=False, damping=0.0):
         if not preconditioned:
-            src = self.precondition(src)
+            src = self.precondition(src, damping)
 
         total_influence = 0.0
         for module_name in src.keys():
@@ -59,8 +54,8 @@ class InfluenceFunction(AnalysisBase):
             total_influence += module_influence.squeeze()
         return total_influence
 
-    def compute_self_influence(self, src):
-        src_pc = self.precondition(src)
+    def compute_self_influence(self, src, damping=0.0):
+        src_pc = self.precondition(src, damping)
         total_influence = 0.0
         for module_name in src_pc.keys():
             src_pc_log, src_log = src_pc[module_name], src[module_name]
@@ -68,9 +63,9 @@ class InfluenceFunction(AnalysisBase):
             total_influence += module_influence.squeeze()
         return total_influence
 
-    def compute_influence_all(self, src, loader):
+    def compute_influence_all(self, src, loader, damping=0.0):
         if_scores = []
-        src = self.precondition(src)
+        src = self.precondition(src, damping)
         for tgt_ids, tgt in loader:
             if_scores.append(self.compute_influence(src, tgt, preconditioned=True))
         return torch.cat(if_scores, dim=-1)
