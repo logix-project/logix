@@ -313,26 +313,21 @@ class AnaLog:
             return hessian_state.copy()
         return hessian_state
 
-    def hessian_inverse(self, override: bool = False):
+    def hessian_inverse(self):
         """
         Compute the inverse of the Hessian.
         """
-        hessian_inverse_state = self.hessian_handler.hessian_inverse(override)
-        return hessian_inverse_state
+        return self.hessian_handler.hessian_inverse()
 
-    def hessian_svd(self, override: bool = False):
+    def hessian_svd(self):
         """
         Compute the SVD of the Hessian.
         """
-        hessian_svd_state = self.hessian_handler.hessian_svd(override)
-        return hessian_svd_state
+        return self.hessian_handler.hessian_svd()
 
     def finalize(
         self,
         clear: bool = False,
-        hessian_svd: bool = True,
-        hessian_inverse: bool = False,
-        hessian_override: bool = False,
     ) -> None:
         """
         Finalizes the logging session.
@@ -346,11 +341,6 @@ class AnaLog:
         if clear:
             self.hessian_handler.clear()
             self.storage_handler.clear()
-
-        if hessian_svd:
-            self.hessian_svd(hessian_override)
-        if hessian_inverse:
-            self.hessian_inverse(hessian_override)
 
     def sanity_check(
         self, data_id: Iterable[Any], log: Iterable[str], test: bool
