@@ -71,6 +71,7 @@ class KFACHessianHandler(HessianHandlerBase):
             self.ekfac_eigval_state = nested_dict()
             self.ekfac_counter = nested_dict()
 
+        data = data.cpu().detach()
         if module_name not in self.ekfac_eigval_state:
             self.ekfac_eigval_state[module_name] = torch.zeros(
                 data.shape[-2], data.shape[-1]
