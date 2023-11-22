@@ -91,7 +91,6 @@ class KFACHessianHandler(HessianHandlerBase):
         if self.ekfac:
             for module_name, ekfac_eigval in self.ekfac_eigval_state.items():
                 ekfac_eigval.div_(self.ekfac_counter[module_name])
-                print(f"after eigvals of {module_name}: {ekfac_eigval}")
         else:
             for module_name, module_state in self.hessian_state.items():
                 for mode, covariance in module_state.items():
@@ -147,7 +146,9 @@ class KFACHessianHandler(HessianHandlerBase):
     def get_hessian_svd_state(self):
         if not hasattr(self, "hessian_eigval_state"):
             self.hessian_svd(set_attr=True)
-        return self.hessian_eigval_state, self.hessian_eigvec_state
+        if self.ekfac and hasattr(self, "ekfac_eigval_state"):
+            return self.ekfac_eigval_state, self.hessian_eigvec_state, True
+        return self.hessian_eigval_state, self.hessian_eigvec_state, False
 
     def synchronize(self) -> None:
         """

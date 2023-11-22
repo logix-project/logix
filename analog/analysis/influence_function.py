@@ -12,22 +12,26 @@ class InfluenceFunction(AnalysisBase):
     @torch.no_grad()
     def precondition(self, src, damping=0.0):
         preconditioned = {}
-        if not hasattr(self, "hessian_eigval"):
-            (
-                self.hessian_eigval,
-                self.hessian_eigvec,
-            ) = self.hessian_handler.hessian_svd()
+        (
+            hessian_eigval,
+            hessian_eigvec,
+            is_ekfac,
+        ) = self.hessian_handler.get_hessian_svd_state()
         for module_name in src.keys():
             src_log = src[module_name].to("cpu")
-            module_eigval = self.hessian_eigval[module_name]
-            module_eigvec = self.hessian_eigvec[module_name]
+            module_eigval = hessian_eigval[module_name]
+            module_eigvec = hessian_eigvec[module_name]
             rotated_grad = einsum(
                 module_eigvec["backward"].t(),
                 src_log,
                 module_eigvec["forward"],
                 "a b, batch b c, c d -> batch a d",
             )
-            scale = torch.outer(module_eigval["backward"], module_eigval["forward"])
+            scale = (
+                module_eigval
+                if is_ekfac
+                else torch.outer(module_eigval["backward"], module_eigval["forward"])
+            )
             prec_rotated_grad = rotated_grad / (scale + damping)
             preconditioned[module_name] = einsum(
                 module_eigvec["backward"],

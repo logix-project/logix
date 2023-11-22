@@ -35,7 +35,7 @@ query_loader = dataloader_fn(
 )
 
 analog = AnaLog(project="test")
-analog_kwargs = {"log": ["grad"], "hessian": True, "save": False}
+analog_kwargs = {"log": ["grad"], "hessian": True, "save": True}
 
 # Gradient & Hessian logging
 analog.watch(model)
