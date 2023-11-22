@@ -32,7 +32,7 @@ class KFACHessianHandler(HessianHandlerBase):
             raise NotImplementedError
 
         if self.ekfac:
-            for module_name, module_grad in self.modules_to_hook.items():
+            for module_name, module_grad in current_log.items():
                 self.update_ekfac(module_name, module_grad)
 
     @torch.no_grad()
@@ -71,21 +71,27 @@ class KFACHessianHandler(HessianHandlerBase):
             self.ekfac_eigval_state = nested_dict()
             self.ekfac_counter = nested_dict()
 
-        if module_name not in selfk.ekfac_eigval_state:
-            self.ekfac_eigval_state[module_name] = torch.zeros(0, 0)
+        if module_name not in self.ekfac_eigval_state:
+            self.ekfac_eigval_state[module_name] = torch.zeros(
+                data.shape[-2], data.shape[-1]
+            )
+            self.ekfac_counter[module_name] = 0
 
         self.ekfac_counter[module_name] += len(data)
-        rotated_grads = torch.matmul(data, self.hessian_svd_state[module_name][FORWARD])
+        rotated_grads = torch.matmul(
+            data, self.hessian_eigvec_state[module_name][FORWARD]
+        )
         for rotated_grad in rotated_grads:
             weight = torch.matmul(
-                self.hessian_svd_state[module_name][BACKWARD], roated_grad
+                self.hessian_eigvec_state[module_name][BACKWARD].t(), rotated_grad
             )
-            self.ekfac_eigval_state[module_name].add_(torch.square(weight))
+            self.ekfac_eigval_state[module_name].add_(torch.square(weight), alpha=0.5)
 
     def finalize(self) -> None:
         if self.ekfac:
             for module_name, ekfac_eigval in self.ekfac_eigval_state.items():
                 ekfac_eigval.div_(self.ekfac_counter[module_name])
+                print(f"after eigvals of {module_name}: {ekfac_eigval}")
         else:
             for module_name, module_state in self.hessian_state.items():
                 for mode, covariance in module_state.items():
