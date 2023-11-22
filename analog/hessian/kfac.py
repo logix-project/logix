@@ -17,6 +17,7 @@ class KFACHessianHandler(HessianHandlerBase):
     """
     Compute the Hessian via the K-FAC method.
     """
+
     def __init__(self, config: dict) -> None:
         super().__init__(config)
         self.ekfac = False
@@ -44,7 +45,7 @@ class KFACHessianHandler(HessianHandlerBase):
         mask: Optional[torch.Tensor] = None,
     ) -> None:
         if self.reduce or self.ekfac:
-            return            
+            return
         # extract activations
         activation = self.extract_activations(module, mode, data, mask)
 

@@ -113,7 +113,7 @@ class AnaLog:
     ) -> None:
         """
         Adds LoRA for gradient compression.
-        
+
         Args:
             model: The neural network model.
             parameter_sharing (bool, optional): Whether to use parameter sharing or not.
