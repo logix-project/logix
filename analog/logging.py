@@ -70,16 +70,22 @@ class LoggingHandler:
         """
         assert len(inputs) == 1
 
+        activations = inputs[0]
+        if self.mask is not None:
+            activations = activations * self.mask
+
         if self.hessian and self.hessian_type == "kfac":
-            self.hessian_handler.update_hessian(module, module_name, FORWARD, inputs[0])
+            self.hessian_handler.update_hessian(
+                module, module_name, FORWARD, activations
+            )
 
         if FORWARD in self.log:
             if FORWARD not in self.current_log[module_name]:
-                self.current_log[module_name][FORWARD] = inputs[0]
+                self.current_log[module_name][FORWARD] = activations
             else:
-                self.current_log[module_name][FORWARD] += inputs[0]
+                self.current_log[module_name][FORWARD] += activations
             if self.save:
-                self.storage_handler.add(module_name, FORWARD, inputs[0])
+                self.storage_handler.add(module_name, FORWARD, activations)
 
     def _backward_hook_fn(
         self,
@@ -216,7 +222,14 @@ class LoggingHandler:
             )
             self.tensor_hooks.append(tensor_hook)
 
-    def set_states(self, log: List[str], hessian: bool, save: bool, test: bool):
+    def set_states(
+        self,
+        log: List[str],
+        hessian: bool,
+        save: bool,
+        test: bool,
+        mask: Optional[torch.Tensor] = None,
+    ):
         """
         Set the internal states of the logging handler.
 
@@ -230,6 +243,7 @@ class LoggingHandler:
         self.hessian = hessian
         self.save = save
         self.test = test
+        self.mask = mask
 
         self.current_log = nested_dict()
 

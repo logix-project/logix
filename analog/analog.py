@@ -49,6 +49,7 @@ class AnaLog:
         self.hessian = False
         self.save = False
         self.test = False
+        self.mask = None
 
         self.type_filter = None
         self.name_filter = None
@@ -183,6 +184,7 @@ class AnaLog:
         hessian: bool = True,
         save: bool = False,
         test: bool = False,
+        mask: Optional[torch.Tensor] = None,
         strategy: Optional[str] = None,
     ):
         """
@@ -202,6 +204,7 @@ class AnaLog:
             self.hessian = hessian if not test else False
             self.save = save if not test else False
             self.test = test
+            self.mask = mask
         else:
             self.parse_strategy(strategy)
 
@@ -219,7 +222,9 @@ class AnaLog:
 
         self.storage_handler.set_data_id(self.data_id)
 
-        self.logging_handler.set_states(self.log, self.hessian, self.save, self.test)
+        self.logging_handler.set_states(
+            self.log, self.hessian, self.save, self.test, self.mask
+        )
         self.logging_handler.register_all_module_hooks()
 
         return self
