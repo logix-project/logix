@@ -17,6 +17,9 @@ class KFACHessianHandler(HessianHandlerBase):
     """
     Compute the Hessian via the K-FAC method.
     """
+    def __init__(self, config: dict) -> None:
+        super().__init__(config)
+        self.ekfac = False
 
     def parse_config(self) -> None:
         self.damping = self.config.get("damping", 1e-2)
@@ -27,6 +30,10 @@ class KFACHessianHandler(HessianHandlerBase):
         if self.reduce:
             raise NotImplementedError
 
+        if self.ekfac:
+            for module_name, module_grad in self.modules_to_hook.items():
+                self.update_ekfac(module_name, module_grad)
+
     @torch.no_grad()
     def update_hessian(
         self,
@@ -36,28 +43,57 @@ class KFACHessianHandler(HessianHandlerBase):
         data: torch.Tensor,
         mask: Optional[torch.Tensor] = None,
     ) -> None:
-        if not self.reduce:
-            # extract activations
-            activation = self.extract_activations(module, mode, data, mask)
+        if self.reduce or self.ekfac:
+            return            
+        # extract activations
+        activation = self.extract_activations(module, mode, data, mask)
 
-            # compute covariance
-            covariance = torch.matmul(torch.t(activation), activation).cpu().detach()
+        # compute covariance
+        covariance = torch.matmul(torch.t(activation), activation).cpu().detach()
 
-            # update covariance
-            if deep_get(self.hessian_state, [module_name, mode]) is None:
-                self.hessian_state[module_name][mode] = torch.zeros_like(covariance)
-                self.sample_counter[module_name][mode] = 0
-            self.hessian_state[module_name][mode].add_(covariance)
-            self.sample_counter[module_name][mode] += self.get_sample_size(data, mask)
+        # update covariance
+        if deep_get(self.hessian_state, [module_name, mode]) is None:
+            self.hessian_state[module_name][mode] = torch.zeros_like(covariance)
+            self.sample_counter[module_name][mode] = 0
+        self.hessian_state[module_name][mode].add_(covariance)
+        self.sample_counter[module_name][mode] += self.get_sample_size(data, mask)
+
+    @torch.no_grad()
+    def update_ekfac(
+        self,
+        module_name: str,
+        data: torch.Tensor,
+    ) -> None:
+        if not hasattr(self, "hessian_eigval_state"):
+            self.hessian_svd(set_attr=True)
+        if not hasattr(self, "ekfac_eigval_state"):
+            self.ekfac_eigval_state = nested_dict()
+            self.ekfac_counter = nested_dict()
+
+        if module_name not in selfk.ekfac_eigval_state:
+            self.ekfac_eigval_state[module_name] = torch.zeros(0, 0)
+
+        self.ekfac_counter[module_name] += len(data)
+        rotated_grads = torch.matmul(data, self.hessian_svd_state[module_name][FORWARD])
+        for rotated_grad in rotated_grads:
+            weight = torch.matmul(
+                self.hessian_svd_state[module_name][BACKWARD], roated_grad
+            )
+            self.ekfac_eigval_state[module_name].add_(torch.square(weight))
 
     def finalize(self) -> None:
-        for module_name, module_state in self.hessian_state.items():
-            for mode, covariance in module_state.items():
-                covariance.div_(self.sample_counter[module_name][mode])
+        if self.ekfac:
+            for module_name, ekfac_eigval in self.ekfac_eigval_state.items():
+                ekfac_eigval.div_(self.ekfac_counter[module_name])
+        else:
+            for module_name, module_state in self.hessian_state.items():
+                for mode, covariance in module_state.items():
+                    covariance.div_(self.sample_counter[module_name][mode])
+
         self.synchronize()
 
     @torch.no_grad()
-    def hessian_inverse(self):
+    def hessian_inverse(self, set_attr: bool = False):
         """
         Compute the inverse of the covariance.
         """
@@ -71,10 +107,14 @@ class KFACHessianHandler(HessianHandlerBase):
                     * torch.eye(covariance.size(0))
                     / covariance.size(0)
                 )
+
+        if set_attr:
+            self.hessian_inverse_state = hessian_inverse_state
+
         return hessian_inverse_state
 
     @torch.no_grad()
-    def hessian_svd(self):
+    def hessian_svd(self, set_attr: bool = False):
         """
         Compute the SVD of the covariance.
         """
@@ -86,18 +126,50 @@ class KFACHessianHandler(HessianHandlerBase):
                 hessian_eigval_state[module_name][mode] = eigvals
                 hessian_eigvec_state[module_name][mode] = eigvecs
 
+        if set_attr:
+            self.hessian_eigval_state = hessian_eigval_state
+            self.hessian_eigvec_state = hessian_eigvec_state
+
         return hessian_eigval_state, hessian_eigvec_state
+
+    def get_hessian_inverse_state(self):
+        if not hasattr(self, "hessian_inverse_state"):
+            self.hessian_inverse(set_attr=True)
+        return self.hessian_inverse_state
+
+    def get_hessian_svd_state(self):
+        if not hasattr(self, "hessian_eigval_state"):
+            self.hessian_svd(set_attr=True)
+        return self.hessian_eigval_state, self.hessian_eigvec_state
 
     def synchronize(self) -> None:
         """
         Synchronize the covariance across all processes.
         """
-        world_size = get_world_size()
-        if world_size > 1:
+        if get_world_size() <= 1:
+            return
+
+        if self.ekfac:
+            for _, ekfac_eigval in self.ekfac_eigval_state.items():
+                ekfac_eigval.div_(world_size)
+                dist.all_reduce(ekfac_eigval, op=dist.ReduceOp.SUM)
+        else:
             for _, module_state in self.hessian_state.items():
                 for _, covariance in module_state.items():
                     covariance.div_(world_size)
                     dist.all_reduce(covariance, op=dist.ReduceOp.SUM)
+
+    def clear(self) -> None:
+        """
+        Clear the Hessian state.
+        """
+        super().clear()
+        if hasattr(self, "hessian_eigval_state"):
+            del self.hessian_eigval_state
+            del self.hessian_eigvec_state
+        if hasattr(self, "ekfac_eigval_state"):
+            del self.ekfac_eigval_state
+            del self.ekfac_counter
 
     def extract_activations(
         self,

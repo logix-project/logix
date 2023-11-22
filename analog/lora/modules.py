@@ -31,7 +31,7 @@ class LoraLinear(nn.Linear):
 
         self._linear = linear
 
-    def forward(self, input) -> torch.Tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         result = self._linear(input)
         result += self.analog_lora_C(self.analog_lora_B(self.analog_lora_A(input)))
 

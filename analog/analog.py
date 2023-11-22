@@ -111,6 +111,16 @@ class AnaLog:
         watch: bool = True,
         clear: bool = True,
     ) -> None:
+        """
+        Adds LoRA for gradient compression.
+        
+        Args:
+            model: The neural network model.
+            parameter_sharing (bool, optional): Whether to use parameter sharing or not.
+            parameter_sharing_groups (list, optional): List of parameter sharing groups.
+            watch (bool, optional): Whether to watch the model or not.
+            clear (bool, optional): Whether to clear the internal states or not.
+        """
         hessian_state = self.hessian_handler.get_hessian_state()
         self.lora_handler.add_lora(
             model=model,
@@ -159,7 +169,9 @@ class AnaLog:
             analysis_name (str): Name of the analysis to be removed.
         """
         if analysis_name not in self.analysis_plugins:
-            print(f"Analysis {analysis_name} does not exist. Nothing to remove.")
+            get_logger().warning(
+                f"Analysis {analysis_name} does not exist. Nothing to remove."
+            )
             return None
         del self.analysis_plugins[analysis_name]
         delattr(self, analysis_name)
@@ -171,6 +183,7 @@ class AnaLog:
         hessian: bool = True,
         save: bool = False,
         test: bool = False,
+        strategy: Optional[str] = None,
     ):
         """
         Args:
@@ -183,11 +196,14 @@ class AnaLog:
         Returns:
             self: Returns the instance of the AnaLog object.
         """
-        self.data_id = data_id
-        self.log = log
-        self.hessian = hessian if not test else False
-        self.save = save if not test else False
-        self.test = test
+        if strategy is None:
+            self.data_id = data_id
+            self.log = log
+            self.hessian = hessian if not test else False
+            self.save = save if not test else False
+            self.test = test
+        else:
+            self.parse_strategy(strategy)
 
         self.sanity_check(self.data_id, self.log, self.test)
 
@@ -342,6 +358,22 @@ class AnaLog:
             self.hessian_handler.clear()
             self.storage_handler.clear()
 
+    def parse_strategy(self, strategy: str) -> None:
+        """
+        Parses the strategy string to set the internal states.
+
+        Args:
+            strategy (str): The strategy string.
+        """
+        strategy = strategy.lower()
+        if strategy == "train":
+            self.log = [FORWARD, BACKWARD]
+            self.hessian = True
+            self.save = False
+            self.test = False
+        else:
+            raise ValueError(f"Unknown strategy: {strategy}")
+
     def sanity_check(
         self, data_id: Iterable[Any], log: Iterable[str], test: bool
     ) -> None:
@@ -354,6 +386,16 @@ class AnaLog:
             raise ValueError("Must provide data_id for logging.")
         if GRAD in log and len(log) > 1:
             raise ValueError("Cannot log 'grad' with other log types.")
+
+    def ekfac(self, on: bool = True) -> None:
+        """
+        Compute the EKFAC approximation of the Hessian.
+        """
+        assert self.hessian_handler.config.get("type", "kfac") == "kfac"
+        if on:
+            self.hessian_handler.ekfac = True
+        else:
+            self.hessian_handler.ekfac = False
 
     def reset(self) -> None:
         """

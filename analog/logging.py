@@ -40,6 +40,7 @@ class LoggingHandler:
 
         self.storage_handler = storage_handler
         self.hessian_handler = hessian_handler
+        self.hessian_type = hessian_handler.config.get("type", "kfac")
 
         # Internal states
         self.log = None
@@ -69,7 +70,7 @@ class LoggingHandler:
         """
         assert len(inputs) == 1
 
-        if self.hessian:
+        if self.hessian and self.hessian_type == "kfac":
             self.hessian_handler.update_hessian(module, module_name, FORWARD, inputs[0])
 
         if FORWARD in self.log:
@@ -98,7 +99,7 @@ class LoggingHandler:
         """
         assert len(grad_outputs) == 1
 
-        if self.hessian:
+        if self.hessian and self.hessian_type == "kfac":
             self.hessian_handler.update_hessian(
                 module, module_name, BACKWARD, grad_outputs[0]
             )
