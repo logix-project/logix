@@ -83,7 +83,7 @@ class AnaLogScheduler:
                 self.analog.ekfac()
             if self._epoch == self.execution_schedule["lora"]:
                 self.analog.add_lora()
-            return
+            return self._epoch
         raise StopIteration
 
     def __len__(self):
