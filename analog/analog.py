@@ -30,6 +30,8 @@ class AnaLog:
         """
         self.project = project
 
+        self.model = None
+
         # Config
         config = Config(config)
         self.config = config
@@ -51,6 +53,11 @@ class AnaLog:
         self.test = False
         self.mask = None
 
+        self.log_default = []
+        self.hessian_default = False
+        self.save_default = False
+        self.test_default = False
+
         self.type_filter = None
         self.name_filter = None
 
@@ -70,6 +77,7 @@ class AnaLog:
             name_filter (list, optional): List of keyword names for modules to be watched.
             lora (bool, optional): Whether to use LoRA to watch the model.
         """
+        self.model = model
         self.type_filter = type_filter or self.type_filter
         self.name_filter = name_filter or self.name_filter
 
@@ -106,7 +114,7 @@ class AnaLog:
 
     def add_lora(
         self,
-        model: nn.Module,
+        model: Optional[nn.Module] = None,
         parameter_sharing: bool = False,
         parameter_sharing_groups: List[str] = None,
         watch: bool = True,
@@ -122,6 +130,9 @@ class AnaLog:
             watch (bool, optional): Whether to watch the model or not.
             clear (bool, optional): Whether to clear the internal states or not.
         """
+        if model is None:
+            model = self.model
+
         hessian_state = self.hessian_handler.get_hessian_state()
         self.lora_handler.add_lora(
             model=model,
@@ -180,12 +191,11 @@ class AnaLog:
     def __call__(
         self,
         data_id: Optional[Iterable[Any]] = None,
-        log: Iterable[str] = [FORWARD, BACKWARD],
-        hessian: bool = True,
-        save: bool = False,
+        log: Optional[Iterable[str]] = None,
+        hessian: Optional[bool] = None,
+        save: Optional[bool] = None,
         test: bool = False,
         mask: Optional[torch.Tensor] = None,
-        strategy: Optional[str] = None,
     ):
         """
         Args:
@@ -198,17 +208,15 @@ class AnaLog:
         Returns:
             self: Returns the instance of the AnaLog object.
         """
-        if strategy is None:
-            self.data_id = data_id
-            self.log = log
-            self.hessian = hessian if not test else False
-            self.save = save if not test else False
-            self.test = test
-            self.mask = mask
-        else:
-            self.parse_strategy(strategy)
+        self.data_id = data_id
+        self.mask = mask
 
-        self.sanity_check(self.data_id, self.log, self.test)
+        self.log = log or self.log_default
+        self.hessian = hessian or self.hessian_default
+        self.save = save or self.save_default
+        self.test = test or self.test_default
+
+        self.sanity_check(self.data_id, self.log, self.hessian, self.save, self.test)
 
         return self
 
@@ -236,7 +244,7 @@ class AnaLog:
         This method is essential for ensuring that there are no lingering hooks that could
         interfere with further operations on the model or with future logging sessions.
         """
-        self.hessian_handler.on_exit(self.logging_handler.current_log)
+        self.hessian_handler.on_exit(self.logging_handler.current_log, self.hessian)
         self.storage_handler.flush()
         self.logging_handler.clear()
 
@@ -363,30 +371,21 @@ class AnaLog:
             self.hessian_handler.clear()
             self.storage_handler.clear()
 
-    def parse_strategy(self, strategy: str) -> None:
-        """
-        Parses the strategy string to set the internal states.
-
-        Args:
-            strategy (str): The strategy string.
-        """
-        strategy = strategy.lower()
-        if strategy == "train":
-            self.log = [FORWARD, BACKWARD]
-            self.hessian = True
-            self.save = False
-            self.test = False
-        else:
-            raise ValueError(f"Unknown strategy: {strategy}")
-
     def sanity_check(
-        self, data_id: Iterable[Any], log: Iterable[str], test: bool
+        self,
+        data_id: Iterable[Any],
+        log: Iterable[str],
+        hessian: bool,
+        save: bool,
+        test: bool,
     ) -> None:
         """
         Performs a sanity check on the provided parameters.
         """
         if len(log) > 0 and len(set(log) - LOG_TYPES) > 0:
             raise ValueError("Invalid value for 'log'.")
+        if test and (hessian or save):
+            raise ValueError("Cannot compute Hessian or save logs during testing.")
         if not test and data_id is None:
             raise ValueError("Must provide data_id for logging.")
         if GRAD in log and len(log) > 1:
@@ -402,11 +401,16 @@ class AnaLog:
         else:
             self.hessian_handler.ekfac = False
 
+    def set_default_state(self, log: List[str], hessian: bool, save: bool):
+        self.log_default = log
+        self.hessian_default = hessian
+        self.save_default = save
+
     def reset(self) -> None:
         """
         Reset the internal states.
         """
-        self.log = None
+        self.log = []
         self.hessian = False
         self.save = False
         self.test = False

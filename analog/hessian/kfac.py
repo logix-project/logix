@@ -27,13 +27,14 @@ class KFACHessianHandler(HessianHandlerBase):
         self.reduce = self.config.get("reduce", False)
 
     @torch.no_grad()
-    def on_exit(self, current_log=None) -> None:
-        if self.reduce:
-            raise NotImplementedError
+    def on_exit(self, current_log=None, update_hessian=True) -> None:
+        if update_hessian:
+            if self.reduce:
+                raise NotImplementedError
 
-        if self.ekfac:
-            for module_name, module_grad in current_log.items():
-                self.update_ekfac(module_name, module_grad)
+            if self.ekfac:
+                for module_name, module_grad in current_log.items():
+                    self.update_ekfac(module_name, module_grad)
 
     @torch.no_grad()
     def update_hessian(
