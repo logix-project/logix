@@ -95,7 +95,7 @@ class TestSingleCheckpointInfluence(unittest.TestCase):
         id_gen = DataIDGenerator()
         for inputs, targets in train_loader:
             data_id = id_gen(inputs)
-            with analog(data_id=data_id, log=["grad"], save=True):
+            with analog(data_id=data_id, log=["grad"], hessian=True, save=True):
                 inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
                 model.zero_grad()
                 outs = model(inputs)
