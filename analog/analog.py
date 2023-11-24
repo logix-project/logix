@@ -237,7 +237,8 @@ class AnaLog:
         interfere with further operations on the model or with future logging sessions.
         """
         self.hessian_handler.on_exit(self.logging_handler.current_log)
-        self.storage_handler.flush()
+        if self.save:
+            self.storage_handler.flush()
         self.logging_handler.clear()
 
         self.reset()
