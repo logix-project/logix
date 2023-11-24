@@ -31,7 +31,7 @@ def single_checkpoint_influence(
     train_loader, _, test_loader = get_loaders(data_name=data_name)
 
     # Set-up
-    analog = AnaLog(project="test", config="config.yaml")
+    analog = AnaLog(project="test", config="/data/tir/projects/tir6/general/hahn2/analog/examples/bert_influence/config.yaml")
 
     # Hessian logging
     analog.watch(model, type_filter=[torch.nn.Linear], lora=False)
@@ -101,7 +101,6 @@ def single_checkpoint_influence(
         test_log = al.get_log()
 
     start = time.time()
-    import ipdb; ipdb.set_trace(context=10)
     if_scores = analog.influence.compute_influence_all(test_log, log_loader)
     print("Computation time:", time.time() - start)
 

@@ -1,5 +1,5 @@
 storage:
   type: default
-  log_dir: "./log"
+  log_dir: "/data/tir/projects/tir6/general/hahn2/analog/examples/bert_influence/log"
   flush_threshold: 10000000
 
