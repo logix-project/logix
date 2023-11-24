@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -55,8 +55,14 @@ class SequenceClassificationModel(nn.Module):
         ).logits
 
 
-def construct_model(data_name: str) -> nn.Module:
-    return SequenceClassificationModel(data_name)
+def construct_model(
+    model_name: str, ckpt_path: Union[None, str] = None
+) -> nn.Module:
+    model = SequenceClassificationModel(model_name)
+    if ckpt_path is not None:
+        model.load_state_dict(torch.load(ckpt_path, map_location="cpu"))
+        print(f"Loaded model from {ckpt_path}.")
+    return model
 
 
 def get_loaders(

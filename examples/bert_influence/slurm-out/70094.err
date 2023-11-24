@@ -1,0 +1,7 @@
+Run 'mamba init' to be able to run mamba activate/deactivate
+and start a new shell session. Or use conda to activate/deactivate.
+
+Traceback (most recent call last):
+  File "/data/tir/projects/tir6/general/hahn2/analog/examples/bert_influence/compute_influences_pca.py", line 5, in <module>
+    from analog import AnaLog
+ModuleNotFoundError: No module named 'analog'

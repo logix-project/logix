@@ -1,0 +1,19 @@
+no change     /home/hahn2/mambaforge/condabin/conda
+no change     /home/hahn2/mambaforge/bin/conda
+no change     /home/hahn2/mambaforge/bin/conda-env
+no change     /home/hahn2/mambaforge/bin/activate
+no change     /home/hahn2/mambaforge/bin/deactivate
+no change     /home/hahn2/mambaforge/etc/profile.d/conda.sh
+no change     /home/hahn2/mambaforge/etc/fish/conf.d/conda.fish
+no change     /home/hahn2/mambaforge/shell/condabin/Conda.psm1
+no change     /home/hahn2/mambaforge/shell/condabin/conda-hook.ps1
+no change     /home/hahn2/mambaforge/lib/python3.10/site-packages/xontrib/conda.xsh
+no change     /home/hahn2/mambaforge/etc/profile.d/conda.csh
+modified      /home/hahn2/.bashrc
+
+==> For changes to take effect, close and re-open your current shell. <==
+
+Added mamba to /home/hahn2/.bashrc
+
+==> For changes to take effect, close and re-open your current shell. <==
+
