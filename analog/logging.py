@@ -199,18 +199,21 @@ class LoggingHandler:
         """
         for module in self.modules_to_hook:
             module_name = self.get_module_name(module)
-            forward_hook = module.register_forward_pre_hook(
-                partial(self._forward_hook_fn, module_name=module_name)
-            )
-            backward_hook = module.register_full_backward_hook(
-                partial(self._backward_hook_fn, module_name=module_name)
-            )
-            grad_hook = module.register_forward_hook(
-                partial(self._grad_hook_fn, module_name=module_name)
-            )
-            self.forward_hooks.append(forward_hook)
-            self.backward_hooks.append(backward_hook)
-            self.grad_hooks.append(grad_hook)
+            if FORWARD in self.log:
+                forward_hook = module.register_forward_pre_hook(
+                    partial(self._forward_hook_fn, module_name=module_name)
+                )
+                self.forward_hooks.append(forward_hook)
+            if BACKWARD in self.log:
+                backward_hook = module.register_full_backward_hook(
+                    partial(self._backward_hook_fn, module_name=module_name)
+                )
+                self.backward_hooks.append(backward_hook)
+            if GRAD in self.log:
+                grad_hook = module.register_forward_hook(
+                    partial(self._grad_hook_fn, module_name=module_name)
+                )
+                self.grad_hooks.append(grad_hook)
 
     def register_all_tensor_hooks(self, tensor_dict: Dict[str, torch.Tensor]) -> None:
         """
