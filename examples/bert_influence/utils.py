@@ -1,5 +1,11 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
+import gc
+import os
+import random
+import struct
+
+import numpy as np
 import torch
 import torch.nn as nn
 from datasets import load_dataset
@@ -22,6 +28,29 @@ GLUE_TASK_TO_KEYS = {
     "stsb": ("sentence1", "sentence2"),
     "wnli": ("sentence1", "sentence2"),
 }
+
+
+def set_seed(seed: int) -> None:
+    """Set random seed for reproducibility."""
+    seed = int(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+
+
+def reset_seed() -> None:
+    """Reset the seed to have randomized experiments."""
+    rng_seed = struct.unpack("I", os.urandom(4))[0]
+    set_seed(rng_seed)
+
+
+def clear_gpu_cache() -> None:
+    """Perform garbage collection and empty GPU cache reserved by Pytorch."""
+    if torch.cuda.is_available():
+        gc.collect()
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
 
 
 class SequenceClassificationModel(nn.Module):
@@ -55,8 +84,14 @@ class SequenceClassificationModel(nn.Module):
         ).logits
 
 
-def construct_model(data_name: str) -> nn.Module:
-    return SequenceClassificationModel(data_name)
+def construct_model(
+    data_name: str, ckpt_path: Union[None, str] = None
+) -> nn.Module:
+    model = SequenceClassificationModel(data_name)
+    if ckpt_path is not None:
+        model.load_state_dict(torch.load(ckpt_path, map_location="cpu"))
+        print(f"Loaded model from {ckpt_path}.")
+    return model
 
 
 def get_loaders(
