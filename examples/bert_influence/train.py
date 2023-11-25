@@ -26,6 +26,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 train_loader, _, valid_loader = get_loaders(data_name=args.data_name)
 model = construct_model(data_name=args.data_name).to(device)
 
+
 def train(
     model: nn.Module,
     loader: torch.utils.data.DataLoader,

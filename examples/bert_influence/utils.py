@@ -84,9 +84,7 @@ class SequenceClassificationModel(nn.Module):
         ).logits
 
 
-def construct_model(
-    data_name: str, ckpt_path: Union[None, str] = None
-) -> nn.Module:
+def construct_model(data_name: str, ckpt_path: Union[None, str] = None) -> nn.Module:
     model = SequenceClassificationModel(data_name)
     if ckpt_path is not None:
         model.load_state_dict(torch.load(ckpt_path, map_location="cpu"))

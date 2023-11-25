@@ -34,7 +34,10 @@ def single_checkpoint_influence(
     _, eval_train_loader, test_loader = get_loaders(data_name=data_name)
 
     # Set-up
-    analog = AnaLog(project="test", config="/data/tir/projects/tir6/general/hahn2/analog/examples/bert_influence/config.yaml")
+    analog = AnaLog(
+        project="test",
+        config="/data/tir/projects/tir6/general/hahn2/analog/examples/bert_influence/config.yaml",
+    )
 
     # Hessian logging
     analog.watch(model, type_filter=[torch.nn.Linear], lora=False)
@@ -52,9 +55,7 @@ def single_checkpoint_influence(
 
             logits = outputs.view(-1, outputs.shape[-1])
             labels = batch["labels"].view(-1).to(DEVICE)
-            loss = F.cross_entropy(
-                logits, labels, reduction="sum", ignore_index=-100
-            )
+            loss = F.cross_entropy(logits, labels, reduction="sum", ignore_index=-100)
             loss.backward()
     analog.finalize()
 
@@ -74,7 +75,10 @@ def single_checkpoint_influence(
             logits = outputs.view(-1, outputs.shape[-1])
             labels = batch["labels"].view(-1).to(DEVICE)
             loss = F.cross_entropy(
-                logits, labels, reduction="sum", ignore_index=-100,
+                logits,
+                labels,
+                reduction="sum",
+                ignore_index=-100,
             )
             loss.backward()
     analog.finalize()
@@ -97,7 +101,10 @@ def single_checkpoint_influence(
         test_logits = test_outputs.view(-1, outputs.shape[-1])
         test_labels = test_batch["labels"].view(-1).to(DEVICE)
         test_loss = F.cross_entropy(
-            test_logits, test_labels, reduction="sum", ignore_index=-100,
+            test_logits,
+            test_labels,
+            reduction="sum",
+            ignore_index=-100,
         )
         test_loss.backward()
 
