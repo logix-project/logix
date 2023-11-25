@@ -6,7 +6,7 @@ import torch.nn as nn
 from analog.config import Config
 from analog.constants import FORWARD, BACKWARD, GRAD, LOG_TYPES
 from analog.logging import LoggingHandler
-from analog.storage import DefaultStorageHandler, MongoDBStorageHandler
+from analog.storage import DefaultStorageHandler
 from analog.hessian import RawHessianHandler, KFACHessianHandler
 from analog.analysis import AnalysisBase
 from analog.lora import LoRAHandler
