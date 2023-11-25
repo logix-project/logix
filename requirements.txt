@@ -4,7 +4,3 @@ einops
 
 pyyaml
 
-pymongo
-msgpack
-msgpack-numpy
-lz4
