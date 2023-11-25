@@ -56,7 +56,6 @@ def extract_patches(
 def extract_forward_activations(
     activations: torch.Tensor,
     module: nn.Module,
-    activations_mask: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """Extract and reshape activations into valid shapes for covariance computations.
 
@@ -65,43 +64,17 @@ def extract_forward_activations(
             Raw pre-activations supplied to the module.
         module (nn.Module):
             The module where the activations are applied.
-        activations_mask (torch.Tensor, optional):
-             If padding with dummy inputs is applied to the batch, provide the same mask.
     """
     if isinstance(module, nn.Linear):
-        if (
-            activations_mask is not None
-            and activations_mask.shape[:-1] == activations.shape[:-1]
-        ):
-            activations *= activations_mask
         reshaped_activations = activations.reshape(-1, activations.shape[-1])
 
-        # ! Ignore bias for now
-        # if module.bias is not None:
-        #     shape = list(reshaped_activations.shape[:-1]) + [1]
-        #     append_term = reshaped_activations.new_ones(shape)
-        #     if (
-        #         activations_mask is not None
-        #         and activations_mask.shape[:-1] == activations.shape[:-1]
-        #     ):
-        #         append_term *= activations_mask.view(-1, 1)
-        #     reshaped_activations = torch.cat(
-        #         [reshaped_activations, append_term], dim=-1
-        #     )
     elif isinstance(module, nn.Conv2d):
-        del activations_mask
         reshaped_activations = extract_patches(
             activations, module.kernel_size, module.stride, module.padding
         )
         reshaped_activations = reshaped_activations.view(
             -1, reshaped_activations.size(-1)
         )
-        # ! Ignore bias for now
-        # if module.bias is not None:
-        #     shape = list(reshaped_activations.shape[:-1]) + [1]
-        #     reshaped_activations = torch.cat(
-        #         [reshaped_activations, reshaped_activations.new_ones(shape)], dim=-1
-        #     )
     else:
         raise InvalidModuleError()
     return reshaped_activations
@@ -110,7 +83,6 @@ def extract_forward_activations(
 def extract_backward_activations(
     gradients: torch.Tensor,
     module: nn.Module,
-    mask: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """Extract and reshape gradients into valid shapes for covariance computations.
 

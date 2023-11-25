@@ -80,7 +80,7 @@ class LoggingHandler:
 
         if self.hessian and self.hessian_type == "kfac":
             self.hessian_handler.update_hessian(
-                module, module_name, FORWARD, activations
+                module, module_name, FORWARD, activations, self.mask
             )
 
         if FORWARD in self.log:
@@ -111,7 +111,7 @@ class LoggingHandler:
 
         if self.hessian and self.hessian_type == "kfac":
             self.hessian_handler.update_hessian(
-                module, module_name, BACKWARD, grad_outputs[0]
+                module, module_name, BACKWARD, grad_outputs[0], self.mask
             )
 
         if BACKWARD in self.log:

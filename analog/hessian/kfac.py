@@ -48,7 +48,7 @@ class KFACHessianHandler(HessianHandlerBase):
         if self.reduce or self.ekfac:
             return
         # extract activations
-        activation = self.extract_activations(module, mode, data, mask)
+        activation = self.extract_activations(module, mode, data)
 
         # compute covariance
         covariance = torch.matmul(torch.t(activation), activation).cpu().detach()
@@ -186,9 +186,8 @@ class KFACHessianHandler(HessianHandlerBase):
         module: nn.Module,
         mode: str,
         data: torch.Tensor,
-        mask: Optional[torch.Tensor],
     ) -> torch.Tensor:
         if mode == FORWARD:
-            return extract_forward_activations(data, module, mask)
+            return extract_forward_activations(data, module)
         assert mode == BACKWARD
-        return extract_backward_activations(data, module, mask)
+        return extract_backward_activations(data, module)
