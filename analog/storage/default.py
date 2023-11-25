@@ -87,8 +87,10 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         _flush_unsafe is thread unsafe flush of current buffer. No shared variable must be allowed.
         """
-        save_path = str(os.path.join(self.log_dir, f"data_{push_count}.pt"))
+        save_path = self.file_prefix + f"{push_count}.mmap"
         torch.save(buffer, save_path)
+        buffer_list = [(k, v) for k, v in buffer]
+        self.mmap_handler.write(buffer_list, save_path)
         return save_path
 
     def _flush_safe(self) -> str:
@@ -227,8 +229,8 @@ class DefaultLogDataset(Dataset):
 
     def _add_metadata_and_mmap(self, mmap_filename, chunk_index):
         # Load the memmap file
-        mmap, metadata = self.mmap_handler.read(mmap_filename)
-        self.memmaps.append(mmap)
+        with self.mmap_handler.read(mmap_filename) as (mmap, metadata):
+            self.memmaps.append(mmap)
 
         # Update the mapping from data_id to chunk
         for entry in metadata:
