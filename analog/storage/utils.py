@@ -7,6 +7,8 @@ import msgpack
 import msgpack_numpy as mn
 import lz4.frame
 
+from contextlib import contextmanager
+
 from einops import rearrange
 
 
@@ -79,6 +81,7 @@ class MemoryMapHandler:
         with open(metadata_filename, "w") as f:
             json.dump(metadata, f, indent=2)
 
+    @contextmanager
     def read(self, filename):
         """
         read reads the file by chunk index, it will return the data_buffer with metadata.
@@ -96,7 +99,11 @@ class MemoryMapHandler:
             os.path.join(self.save_path, filename), dtype=self.mmap_dtype, mode="r"
         )
         metadata = self.read_metafile(file_root + "_metadata.json")
-        return mmap, metadata
+
+        try:
+            yield mmap, metadata
+        finally:
+            del mmap
 
     def read_metafile(self, meta_filename):
         file_root, file_ext = os.path.splitext(meta_filename)

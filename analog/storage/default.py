@@ -227,8 +227,8 @@ class DefaultLogDataset(Dataset):
 
     def _add_metadata_and_mmap(self, mmap_filename, chunk_index):
         # Load the memmap file
-        mmap, metadata = self.mmap_handler.read(mmap_filename)
-        self.memmaps.append(mmap)
+        with self.mmap_handler.read(mmap_filename) as (mmap, metadata):
+            self.memmaps.append(mmap)
 
         # Update the mapping from data_id to chunk
         for entry in metadata:
