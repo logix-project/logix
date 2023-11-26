@@ -13,7 +13,7 @@ from examples.mnist_influence.utils import (
     get_fmnist_dataloader,
     construct_mlp,
 )
-from examples.ood.ood_utils import (
+from examples.mnist_uncertainty.ood_utils import (
     get_ood_input_processor,
 )
 
