@@ -13,14 +13,14 @@ from train import (
 )
 
 parser = argparse.ArgumentParser("MNIST Influence Analysis")
-parser.add_argument("--data_name", type=str, default="mnist", help="mnist or fmnist")
+parser.add_argument("--data", type=str, default="mnist", help="mnist or fmnist")
 parser.add_argument("--eval-idxs", type=int, nargs="+", default=[0])
 parser.add_argument("--damping", type=float, default=1e-5)
 args = parser.parse_args()
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-model = construct_mlp(data_name=args.data_name).to(DEVICE)
+model = construct_mlp().to(DEVICE)
 model.load_state_dict(
     torch.load(f"checkpoints/{args.data}_0_epoch_9.pt", map_location="cpu")
 )
