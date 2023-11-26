@@ -18,8 +18,12 @@ from examples.mnist_uncertainty.ood_utils import (
 )
 
 parser = argparse.ArgumentParser("OOD Self-influce Score Analysis")
-parser.add_argument("--id-data", type=str,default="mnist",
-                    help="mnist or fmnist; OOD is set to the other one")
+parser.add_argument(
+    "--id-data",
+    type=str,
+    default="mnist",
+    help="mnist or fmnist; OOD is set to the other one",
+)
 parser.add_argument("--damping", type=float, default=1e-5)
 args = parser.parse_args()
 
