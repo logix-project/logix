@@ -90,6 +90,7 @@ class DataIDGenerator:
 
     def generate_index_id(self, data: Any) -> List[int]:
         data_id = np.arange(self.count, self.count + len(data))
+        data_id = [str(d) for d in data_id]
         self.count += len(data)
         return data_id
 
