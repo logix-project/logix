@@ -33,7 +33,7 @@ model.eval()
 _, eval_train_loader, test_loader = get_loaders(data_name=args.data_name)
 
 # Set-up
-analog = AnaLog(project="test")
+analog = AnaLog(project="test", config="config.yaml")
 
 # Hessian logging
 analog.watch(model)

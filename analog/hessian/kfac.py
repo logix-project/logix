@@ -28,7 +28,8 @@ class KFACHessianHandler(HessianHandlerBase):
 
     @torch.no_grad()
     def on_exit(self, current_log=None, update_hessian=True) -> None:
-        torch.cuda.current_stream().synchronize()
+        if torch.cuda.is_available():
+            torch.cuda.current_stream().synchronize()
         if update_hessian:
             if self.reduce:
                 raise NotImplementedError

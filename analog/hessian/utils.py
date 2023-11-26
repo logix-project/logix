@@ -67,7 +67,6 @@ def extract_forward_activations(
     """
     if isinstance(module, nn.Linear):
         reshaped_activations = activations.reshape(-1, activations.shape[-1])
-
     elif isinstance(module, nn.Conv2d):
         reshaped_activations = extract_patches(
             activations, module.kernel_size, module.stride, module.padding
