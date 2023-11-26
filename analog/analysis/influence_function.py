@@ -10,7 +10,7 @@ class InfluenceFunction(AnalysisBase):
         return
 
     @torch.no_grad()
-    def precondition(self, src, damping=0.0):
+    def precondition(self, src, damping=None):
         preconditioned = {}
         (
             hessian_eigval,
@@ -32,6 +32,8 @@ class InfluenceFunction(AnalysisBase):
                 if is_ekfac
                 else torch.outer(module_eigval["backward"], module_eigval["forward"])
             )
+            if damping is None:
+                damping = 0.1 * torch.mean(scale)
             prec_rotated_grad = rotated_grad / (scale + damping)
             preconditioned[module_name] = einsum(
                 module_eigvec["backward"],
@@ -42,7 +44,7 @@ class InfluenceFunction(AnalysisBase):
         return preconditioned
 
     @torch.no_grad()
-    def compute_influence(self, src, tgt, preconditioned=False, damping=0.0):
+    def compute_influence(self, src, tgt, preconditioned=False, damping=None):
         if not preconditioned:
             src = self.precondition(src, damping)
 
@@ -58,7 +60,7 @@ class InfluenceFunction(AnalysisBase):
             total_influence += module_influence.squeeze()
         return total_influence
 
-    def compute_self_influence(self, src, damping=0.0):
+    def compute_self_influence(self, src, damping=None):
         src_pc = self.precondition(src, damping)
         total_influence = 0.0
         for module_name in src_pc.keys():
@@ -67,7 +69,7 @@ class InfluenceFunction(AnalysisBase):
             total_influence += module_influence.squeeze()
         return total_influence
 
-    def compute_influence_all(self, src, loader, damping=0.0):
+    def compute_influence_all(self, src, loader, damping=None):
         if_scores = []
         src = self.precondition(src, damping)
         for tgt_ids, tgt in loader:

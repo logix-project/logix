@@ -38,7 +38,7 @@ analog = AnaLog(project="test", config="config.yaml")
 # Hessian logging
 analog.watch(model)
 analog_kwargs = {"log": [], "hessian": True, "save": False}
-id_gen = DataIDGenerator()
+id_gen = DataIDGenerator(mode="index")
 for epoch in range(2):
     for batch in tqdm(eval_train_loader, desc="Hessian logging"):
         data_id = id_gen(batch["input_ids"])
