@@ -28,6 +28,7 @@ class KFACHessianHandler(HessianHandlerBase):
 
     @torch.no_grad()
     def on_exit(self, current_log=None, update_hessian=True) -> None:
+        torch.cuda.current_stream().synchronize()
         if update_hessian:
             if self.reduce:
                 raise NotImplementedError
@@ -48,16 +49,26 @@ class KFACHessianHandler(HessianHandlerBase):
         if self.reduce or self.ekfac:
             return
         # extract activations
-        activation = self.extract_activations(module, mode, data)
-
-        # compute covariance
-        covariance = torch.matmul(torch.t(activation), activation).cpu().detach()
+        activation = self.extract_activations(module, mode, data).detach()
 
         # update covariance
         if deep_get(self.hessian_state, [module_name, mode]) is None:
-            self.hessian_state[module_name][mode] = torch.zeros_like(covariance)
+            self.hessian_state[module_name][mode] = torch.zeros(
+                (activation.shape[-1], activation.shape[-1])
+            ).pin_memory()
             self.sample_counter[module_name][mode] = 0
-        self.hessian_state[module_name][mode].add_(covariance)
+
+        # move to gpu
+        if activation.is_cuda:
+            hessian_state_gpu = self.hessian_state[module_name][mode].to(
+                device=activation.device
+            )
+            hessian_state_gpu.addmm_(activation.t(), activation)
+            self.hessian_state[module_name][mode] = hessian_state_gpu.to(
+                device="cpu", non_blocking=True
+            )
+        else:
+            self.hessian_state[module_name][mode].addmm_(activation.t(), activation)
         self.sample_counter[module_name][mode] += self.get_sample_size(data, mask)
 
     @torch.no_grad()

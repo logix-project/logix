@@ -435,4 +435,4 @@ class AnaLog:
         for k, v in self.logging_handler.modules_to_name.items():
             get_logger().info(f"{v}: {k}")
             repr_dim += k.weight.data.numel()
-        get_logger().info(f"Total number of parameters: {repr_dim}\n")
+        get_logger().info(f"Total number of parameters: {repr_dim:,}\n")

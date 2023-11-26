@@ -74,9 +74,11 @@ class LoggingHandler:
         if self.mask is not None:
             if len(self.mask.shape) != len(activations.shape):
                 assert len(self.mask.shape) == len(activations.shape) - 1
-                assert self.mask.shape == activations.shape[:-1]
-                self.mask = self.mask.unsqueeze(-1)
-            activations = activations * self.mask
+                if self.mask.shape[-1] == activations.shape[-2]:
+                    activations = activations * self.mask.unsqueeze(-1)
+            else:
+                if self.mask.shape[-1] == activations.shape[-1]:
+                    activations = activations * self.mask
 
         if self.hessian and self.hessian_type == "kfac":
             self.hessian_handler.update_hessian(

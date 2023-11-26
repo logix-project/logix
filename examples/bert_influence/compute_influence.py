@@ -1,6 +1,8 @@
 import time
 import argparse
 
+from tqdm import tqdm
+
 import torch
 import torch.nn.functional as F
 from analog import AnaLog
@@ -8,8 +10,7 @@ from analog.analysis import InfluenceFunction
 from analog.utils import DataIDGenerator
 from tqdm import tqdm
 
-from pipeline import construct_model, get_loaders
-from utils import set_seed
+from utils import construct_model, get_loaders, set_seed
 
 parser = argparse.ArgumentParser("GLUE Influence Analysis")
 parser.add_argument("--data_name", type=str, default="sst2")
@@ -20,9 +21,8 @@ args = parser.parse_args()
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 set_seed(0)
 
-
 # model
-model = construct_model(args.data_name, ckpt_path)
+model = construct_model(args.data_name)
 model.load_state_dict(
     torch.load(f"files/checkpoints/0/{args.data_name}_epoch_3.pt", map_location="cpu")
 )
@@ -30,7 +30,7 @@ model.to(DEVICE)
 model.eval()
 
 # data
-_, eval_train_loader, test_loader = get_loaders(data_name=data_name)
+_, eval_train_loader, test_loader = get_loaders(data_name=args.data_name)
 
 # Set-up
 analog = AnaLog(project="test")
