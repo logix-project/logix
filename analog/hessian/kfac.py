@@ -56,7 +56,7 @@ class KFACHessianHandler(HessianHandlerBase):
         if deep_get(self.hessian_state, [module_name, mode]) is None:
             self.hessian_state[module_name][mode] = torch.zeros(
                 (activation.shape[-1], activation.shape[-1])
-            ).pin_memory()
+            )
             self.sample_counter[module_name][mode] = 0
 
         # move to gpu
