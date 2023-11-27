@@ -40,9 +40,7 @@ def train(
             model.state_dict(),
             f"files/checkpoints/{model_id}/{save_name}_epoch_0.pt",
         )
-    optimizer = torch.optim.AdamW(
-        model.parameters(), lr=lr, weight_decay=weight_decay
-    )
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
     loss_fn = CrossEntropyLoss()
     epochs = 3
 
@@ -56,9 +54,7 @@ def train(
 
     model.train()
     for epoch in trange(1, epochs + 1):
-        for _, batch in tqdm(
-            enumerate(loader), total=num_update_steps_per_epoch
-        ):
+        for _, batch in tqdm(enumerate(loader), total=num_update_steps_per_epoch):
             optimizer.zero_grad()
             lm_logits = model(batch["input_ids"], batch["attention_mask"])
             shift_logits = lm_logits[..., :-1, :].contiguous()
@@ -78,9 +74,7 @@ def train(
     return model
 
 
-def model_evaluate(
-    model: nn.Module, loader: torch.utils.data.DataLoader
-) -> float:
+def model_evaluate(model: nn.Module, loader: torch.utils.data.DataLoader) -> float:
     model.eval()
     accelerator = Accelerator()
     loss_fn = CrossEntropyLoss(reduction="sum")
@@ -91,13 +85,9 @@ def model_evaluate(
             lm_logits = model(batch["input_ids"], batch["attention_mask"])
             shift_logits = lm_logits[..., :-1, :].contiguous()
             shift_labels = batch["labels"][..., 1:].contiguous()
-            reshaped_shift_logits = shift_logits.view(
-                -1, shift_logits.size(-1)
-            )
+            reshaped_shift_logits = shift_logits.view(-1, shift_logits.size(-1))
             loss = (
-                loss_fn(reshaped_shift_logits, shift_labels.view(-1))
-                .detach()
-                .float()
+                loss_fn(reshaped_shift_logits, shift_labels.view(-1)).detach().float()
             )
             total_loss += loss
         total_num += reshaped_shift_logits.shape[0]

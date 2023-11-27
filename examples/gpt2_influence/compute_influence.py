@@ -22,16 +22,16 @@ set_seed(0)
 # model
 model = construct_model()
 model.load_state_dict(
-    torch.load(
-        f"files/checkpoints/0/{args.data_name}_epoch_3.pt", map_location="cpu"
-    )
+    torch.load(f"files/checkpoints/0/{args.data_name}_epoch_3.pt", map_location="cpu")
 )
 model.to(DEVICE)
 model.eval()
 
 # data
 _, eval_train_loader, test_loader = get_loaders()
-import ipdb; ipdb.set_trace(context=10)
+import ipdb
+
+ipdb.set_trace(context=10)
 
 # Set-up
 analog = AnaLog(project="test", config="config.yaml")

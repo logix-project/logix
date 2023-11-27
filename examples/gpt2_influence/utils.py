@@ -9,8 +9,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 from datasets import load_dataset
-from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
-                          default_data_collator)
+from transformers import (
+    AutoConfig,
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    default_data_collator,
+)
 from transformers.pytorch_utils import Conv1D
 
 
@@ -97,7 +101,6 @@ def get_wiki_dataloader(
     split: str = "train",
     indices: List[int] = None,
 ) -> torch.utils.data.DataLoader:
-    import ipdb; ipdb.set_trace(context=10)
     raw_datasets = load_dataset("wikitext", "wikitext-2-raw-v1")
 
     tokenizer = AutoTokenizer.from_pretrained(
@@ -121,16 +124,11 @@ def get_wiki_dataloader(
     block_size = 512
 
     def group_texts(examples):
-        concatenated_examples = {
-            k: list(chain(*examples[k])) for k in examples.keys()
-        }
+        concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
         total_length = len(concatenated_examples[list(examples.keys())[0]])
         total_length = (total_length // block_size) * block_size
         result = {
-            k: [
-                t[i : i + block_size]
-                for i in range(0, total_length, block_size)
-            ]
+            k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
             for k, t in concatenated_examples.items()
         }
         result["labels"] = result["input_ids"].copy()
