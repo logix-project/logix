@@ -29,9 +29,6 @@ model.eval()
 
 # data
 _, eval_train_loader, test_loader = get_loaders()
-import ipdb
-
-ipdb.set_trace(context=10)
 
 # Set-up
 analog = AnaLog(project="test", config="config.yaml")
