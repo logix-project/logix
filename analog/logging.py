@@ -17,7 +17,14 @@ def compute_per_sample_gradient(fwd, bwd, module):
         return reduce(outer_product, "n ... i j -> n i j", "sum")
     elif isinstance(module, nn.Conv2d):
         bsz = fwd.shape[0]
-        fwd_unfold = torch.nn.functional.unfold(fwd, module.kernel_size)
+        fwd_unfold = torch.nn.functional.unfold(
+            fwd,
+            module.kernel_size,
+            dilation=module.dilation,
+            padding=module.padding,
+            stride=module.stride,
+        )
+        fwd_unfold = fwd_unfold.reshape(bsz, fwd_unfold.shape[1], -1)
         bwd = bwd.reshape(bsz, -1, fwd_unfold.shape[-1])
         grad = torch.einsum("ijk,ilk->ijl", bwd, fwd_unfold)
         shape = [bsz] + list(module.weight.shape)
