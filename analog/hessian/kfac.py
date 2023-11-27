@@ -70,7 +70,7 @@ class KFACHessianHandler(HessianHandlerBase):
             )
         else:
             self.hessian_state[module_name][mode].addmm_(activation.t(), activation)
-        self.sample_counter[module_name][mode] += self.get_sample_size(data, mask)
+        self.sample_counter[module_name][mode] += len(data)
 
     @torch.no_grad()
     def update_ekfac(
@@ -173,12 +173,12 @@ class KFACHessianHandler(HessianHandlerBase):
 
         if self.ekfac:
             for _, ekfac_eigval in self.ekfac_eigval_state.items():
-                ekfac_eigval.div_(world_size)
+                ekfac_eigval.div_(get_world_size())
                 dist.all_reduce(ekfac_eigval, op=dist.ReduceOp.SUM)
         else:
             for _, module_state in self.hessian_state.items():
                 for _, covariance in module_state.items():
-                    covariance.div_(world_size)
+                    covariance.div_(get_world_size())
                     dist.all_reduce(covariance, op=dist.ReduceOp.SUM)
 
     def clear(self) -> None:

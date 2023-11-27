@@ -261,8 +261,6 @@ class AnaLog:
         storage_type = storage_config.get("type", "default")
         if storage_type == "default":
             return DefaultStorageHandler(storage_config)
-        elif storage_type == "mongodb":
-            return MongoDBStorageHandler(storage_config)
         else:
             raise ValueError(f"Unknown storage type: {storage_type}")
 
@@ -341,6 +339,12 @@ class AnaLog:
         if copy:
             return hessian_state.copy()
         return hessian_state
+
+    def get_hessian_svd_state(self) -> Dict[str, Dict[str, torch.Tensor]]:
+        """
+        Returns the SVD of the Hessian from the Hessian handler.
+        """
+        return self.hessian_handler.get_hessian_svd_state()
 
     def hessian_inverse(self):
         """
