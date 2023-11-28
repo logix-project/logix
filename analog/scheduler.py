@@ -17,6 +17,7 @@ class AnaLogScheduler:
         self.execution_schedule = {"ekfac": -1, "lora": -1}
 
         self.generate_schedule(ekfac, lora, sample)
+        self.schedule_iterator = iter(self.analog_state_schedule)
 
     def generate_schedule(
         self, ekfac: bool = False, lora: bool = False, sample: bool = False
@@ -76,15 +77,19 @@ class AnaLogScheduler:
         return self
 
     def __next__(self):
-        self._epoch += 1
-        if self._epoch < len(self.analog_state_schedule):
-            self.analog.set_default_state(*self.analog_state_schedule[self._epoch])
+        try:
+            analog_state = next(self.schedule_iterator)
+            self._epoch += 1
+            self.analog.set_default_state(*analog_state)
             if self._epoch == self.execution_schedule["ekfac"]:
                 self.analog.ekfac()
             if self._epoch == self.execution_schedule["lora"]:
                 self.analog.add_lora()
             return self._epoch
-        raise StopIteration
+        except StopIteration:
+            analog_state = ([], False, False)
+            self.analog.set_default_state(*analog_state)
+            raise StopIteration
 
     def __len__(self):
         return len(self.analog_state_schedule)
