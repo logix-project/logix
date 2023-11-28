@@ -28,13 +28,27 @@ model.to(DEVICE)
 model.eval()
 
 # data
-_, eval_train_loader, test_loader = get_loaders()
+# _, eval_train_loader, test_loader = get_loaders()
+_, eval_train_loader, test_loader = get_loaders(
+    train_batch_size=8,
+    eval_batch_size=8,
+    # train_indices=list(range(32)),
+    valid_indices=list(range(32)),
+)
 
 # Set-up
 analog = AnaLog(project="test", config="config.yaml")
 
 # Hessian logging
-analog.watch(model)
+# LM head in GPT2 is nn.Linear so we need to filter it out
+modules_to_watch = []
+for n, m in model.named_modules():
+    if isinstance(m, torch.nn.Linear):
+        if "lm_head" in n:
+            continue
+        modules_to_watch.append(n)
+
+analog.watch(model, name_filter=modules_to_watch)
 analog_kwargs = {"log": [], "hessian": True, "save": False}
 id_gen = DataIDGenerator(mode="index")
 for epoch in range(2):
@@ -94,4 +108,6 @@ if_scores = analog.influence.compute_influence_all(test_log, log_loader)
 print("Computation time:", time.time() - start)
 
 # Save
-torch.save(if_scores, "if_analog.pt")
+log_dir = analog.config.get_storage_config()["log_dir"]
+save_path = f"{log_dir}/if_analog.pt"
+torch.save(if_scores, save_path)
