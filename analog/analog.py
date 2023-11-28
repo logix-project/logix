@@ -271,12 +271,13 @@ class AnaLog:
         Returns:
             The initialized Hessian handler.
         """
+        global_config = self.config.get_global_config()
         hessian_config = self.config.get_hessian_config()
         hessian_type = hessian_config.get("type", "kfac")
         if hessian_type == "kfac":
-            return KFACHessianHandler(hessian_config)
+            return KFACHessianHandler(hessian_config, global_config)
         elif hessian_type == "raw":
-            return RawHessianHandler(hessian_config)
+            return RawHessianHandler(hessian_config, global_config)
         else:
             raise ValueError(f"Unknown Hessian type: {hessian_type}")
 

@@ -8,13 +8,18 @@ from analog.utils import nested_dict
 
 
 class HessianHandlerBase(ABC):
-    def __init__(self, config) -> None:
+    def __init__(self, config, global_config) -> None:
         self.config = config
+        self.global_config = global_config
         self.hessian_state = nested_dict()
         self.sample_counter = nested_dict()
 
         self.hessian_inverse_with_override = False
         self.hessian_svd_with_override = False
+
+        # Logging
+        self.log_dir = self.global_config.get("log_dir")
+        self.file_prefix = "hessian_log_"
 
         self.parse_config()
 
@@ -109,3 +114,12 @@ class HessianHandlerBase(ABC):
         if hasattr(self, "hessian_inverse_state"):
             del self.hessian_inverse_state
         self.sample_counter.clear()
+
+    def _flush(self) -> None:
+        """
+        Dump the Hessian state to disk - called only within finalize.
+        """
+        pass
+        
+
+        

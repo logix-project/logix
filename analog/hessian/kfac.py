@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 import torch
@@ -18,8 +19,8 @@ class KFACHessianHandler(HessianHandlerBase):
     Compute the Hessian via the K-FAC method.
     """
 
-    def __init__(self, config: dict) -> None:
-        super().__init__(config)
+    def __init__(self, config: dict, global_config: dict) -> None:
+        super().__init__(config, global_config)
         self.ekfac = False
 
     def parse_config(self) -> None:
@@ -111,6 +112,9 @@ class KFACHessianHandler(HessianHandlerBase):
                     covariance.div_(self.sample_counter[module_name][mode])
 
         self.synchronize()
+        # TODO: implement this for all HessianHandlers
+        # Save hessian to disk
+        self._flush()
 
     @torch.no_grad()
     def hessian_inverse(self, set_attr: bool = False):
@@ -203,3 +207,17 @@ class KFACHessianHandler(HessianHandlerBase):
             return extract_forward_activations(data, module)
         assert mode == BACKWARD
         return extract_backward_activations(data, module)
+
+    def _flush(self):
+        if self.ekfac:
+            for module_name, ekfac_eigval in self.ekfac_eigval_state.items():
+                save_filename = os.path.join(self.log_dir, 
+                                             self.file_prefix + f"eigval_{module_name}.pt")
+                torch.save(ekfac_eigval.detach().numpy().cpu(), save_filename)
+        else:
+            for module_name, module_state in self.hessian_state.items():
+                for mode, covariance in module_state.items():
+                    save_filename = os.path.join(
+                        self.log_dir, 
+                        self.file_prefix + f"covariance_{module_name}_{mode}.pt")
+                    torch.save(covariance.detach().numpy().cpu(), save_filename)

@@ -35,6 +35,8 @@ class Config:
             )
             self.data = {}
 
+        self._set_global_config()
+
     def get_global_config(self) -> Dict[str, Any]:
         """
         Retrieve global configuration.
@@ -82,3 +84,25 @@ class Config:
         :return: Dictionary containing LoRA configurations.
         """
         return self.data.get("lora", self._DEFAULTS["lora"])
+
+    def _set_global_config(self) -> None:
+        """
+        Set global configurations.
+        """
+        # There should be just 1 disk location ("log_dir")
+        global_log_dir = self.get_global_config().get("log_dir")
+        storage_log_dir = self.get_storage_config().get("log_dir")
+        if global_log_dir is not None and storage_log_dir is not None:
+            if global_log_dir != storage_log_dir:
+                raise ValueError(
+                    f"Global log directory and storage log directory clash: "
+                    f"global={global_log_dir}, storage={storage_log_dir}"
+                )
+        # one should be None, or both should be the same
+        assert global_log_dir or storage_log_dir, "No log directory specified"
+        log_dir = global_log_dir or storage_log_dir 
+        # Setting global log directory
+        if len(self.data) == 0:
+            self._DEFAULTS["global"]["log_dir"] = log_dir
+        else:
+            self.data["global"]["log_dir"] = log_dir
