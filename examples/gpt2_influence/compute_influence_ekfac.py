@@ -32,7 +32,7 @@ model.eval()
 _, eval_train_loader, test_loader = get_loaders(
     train_batch_size=8,
     eval_batch_size=8,
-    # train_indices=list(range(32)),
+    train_indices=list(range(32)),
     valid_indices=list(range(32)),
 )
 
@@ -40,7 +40,6 @@ _, eval_train_loader, test_loader = get_loaders(
 analog = AnaLog(project="test", config="config.yaml")
 
 # Hessian logging
-# LM head in GPT2 is nn.Linear so we need to filter it out
 modules_to_watch = []
 for n, m in model.named_modules():
     if isinstance(m, torch.nn.Linear):
@@ -75,7 +74,8 @@ for epoch in range(2):
     analog.finalize()
     if epoch == 0:
         analog_kwargs.update({"save": True, "log": ["grad"]})
-        analog.add_lora(model, parameter_sharing=False)
+        # analog.add_lora(model, parameter_sharing=False)
+        analog.ekfac()
 
 # Compute influence
 log_loader = analog.build_log_dataloader()
@@ -104,7 +104,7 @@ with analog(log=["grad"], test=True) as al:
     test_log = al.get_log()
 
 start = time.time()
-if_scores = analog.influence.compute_influence_all(test_log, log_loader)
+if_scores = analog.influence.compute_influence_all(test_log, log_loader, damping=1e-5)
 print("Computation time:", time.time() - start)
 
 # Save
