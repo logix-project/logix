@@ -59,6 +59,7 @@ class LoraLinear(nn.Linear):
             self.analog_lora_A.weight.data.copy_(top_r_singular_vector_forward.T)
             self.analog_lora_C.weight.data.copy_(top_r_singular_vector_backward)
 
+
 class LoraConv2d(nn.Conv2d):
     def __init__(self, rank: int, conv: nn.Conv2d, shared_module: nn.Conv2d = None):
         """Transforms a conv2d layer into a LoraConv2d layer.
@@ -73,13 +74,21 @@ class LoraConv2d(nn.Conv2d):
         stride = conv.stride
         padding = conv.padding
 
-        super().__init__(in_channels, out_channels, kernel_size, stride, padding, bias=False)
+        super().__init__(
+            in_channels, out_channels, kernel_size, stride, padding, bias=False
+        )
 
         self.rank = min(rank, self.in_channels, self.out_channels)
 
-        self.analog_lora_A = nn.Conv2d(self.in_channels, self.rank, kernel_size, stride, padding, bias=False)
-        self.analog_lora_B = shared_module or nn.Conv2d(self.rank, self.rank, (1, 1), (1, 1), bias=False)
-        self.analog_lora_C = nn.Conv2d(self.rank, self.out_channels, (1, 1), (1, 1), bias=False)
+        self.analog_lora_A = nn.Conv2d(
+            self.in_channels, self.rank, kernel_size, stride, padding, bias=False
+        )
+        self.analog_lora_B = shared_module or nn.Conv2d(
+            self.rank, self.rank, (1, 1), (1, 1), bias=False
+        )
+        self.analog_lora_C = nn.Conv2d(
+            self.rank, self.out_channels, (1, 1), (1, 1), bias=False
+        )
 
         nn.init.zeros_(self.analog_lora_B.weight)
 
@@ -112,5 +121,9 @@ class LoraConv2d(nn.Conv2d):
             ) = compute_top_k_singular_vectors(hessian[BACKWARD], self.rank)
             shape_A = self.analog_lora_A.weight.shape
             shape_C = self.analog_lora_C.weight.shape
-            self.analog_lora_A.weight.data.copy_(top_r_singular_vector_forward.T.view(shape_A))
-            self.analog_lora_C.weight.data.copy_(top_r_singular_vector_backward.view(shape_C))
+            self.analog_lora_A.weight.data.copy_(
+                top_r_singular_vector_forward.T.view(shape_A)
+            )
+            self.analog_lora_C.weight.data.copy_(
+                top_r_singular_vector_backward.view(shape_C)
+            )

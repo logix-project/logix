@@ -7,6 +7,7 @@ import torchvision
 import numpy as np
 import random
 
+
 def set_seed(seed):
     seed = int(seed)
     random.seed(seed)
@@ -40,6 +41,7 @@ class Residual(torch.nn.Module):
 
 def construct_rn9(num_classes=10, seed=0):
     set_seed(seed)
+
     def conv_bn(
         channels_in, channels_out, kernel_size=3, stride=1, padding=1, groups=1
     ):
@@ -80,7 +82,7 @@ def get_cifar10_dataloader(
     shuffle=False,
     augment=True,
     drop_last=False,
-    subsample = False,
+    subsample=False,
     indices=None,
 ):
     if augment:
@@ -118,7 +120,11 @@ def get_cifar10_dataloader(
         dataset = torch.utils.data.Subset(dataset, indices)
 
     loader = torch.utils.data.DataLoader(
-        dataset=dataset, shuffle=shuffle, batch_size=batch_size, num_workers=num_workers, drop_last=drop_last
+        dataset=dataset,
+        shuffle=shuffle,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        drop_last=drop_last,
     )
 
     return loader
