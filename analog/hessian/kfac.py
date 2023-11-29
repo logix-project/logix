@@ -22,6 +22,9 @@ class KFACHessianHandler(HessianHandlerBase):
         super().__init__(config)
         self.ekfac = False
 
+        self.hessian_state_unsync = False
+        self.ekfac_state_unsync = False
+
     def parse_config(self) -> None:
         self.damping = self.config.get("damping", 1e-2)
         self.reduce = self.config.get("reduce", False)
@@ -72,6 +75,8 @@ class KFACHessianHandler(HessianHandlerBase):
             self.hessian_state[module_name][mode].addmm_(activation.t(), activation)
         self.sample_counter[module_name][mode] += len(data)
 
+        self.hessian_state_unsync = True
+
     @torch.no_grad()
     def update_ekfac(
         self,
@@ -84,14 +89,13 @@ class KFACHessianHandler(HessianHandlerBase):
             self.ekfac_eigval_state = nested_dict()
             self.ekfac_counter = nested_dict()
 
-        data = data.cpu().detach()
         if module_name not in self.ekfac_eigval_state:
             self.ekfac_eigval_state[module_name] = torch.zeros(
                 data.shape[-2], data.shape[-1]
             )
             self.ekfac_counter[module_name] = 0
 
-        self.ekfac_counter[module_name] += len(data)
+        data = data.cpu().detach()
         rotated_grads = torch.matmul(
             data, self.hessian_eigvec_state[module_name][FORWARD]
         )
@@ -100,17 +104,17 @@ class KFACHessianHandler(HessianHandlerBase):
                 self.hessian_eigvec_state[module_name][BACKWARD].t(), rotated_grad
             )
             self.ekfac_eigval_state[module_name].add_(torch.square(weight), alpha=0.5)
+        self.ekfac_counter[module_name] += len(data)
+
+        self.ekfac_state_unsync = True
 
     def finalize(self) -> None:
-        if self.ekfac:
-            for module_name, ekfac_eigval in self.ekfac_eigval_state.items():
-                ekfac_eigval.div_(self.ekfac_counter[module_name])
-        else:
-            for module_name, module_state in self.hessian_state.items():
-                for mode, covariance in module_state.items():
-                    covariance.div_(self.sample_counter[module_name][mode])
-
-        self.synchronize()
+        if hasattr(self, "hessian_state") and self.hessian_state_unsync:
+            self.synchronize(self.hessian_state, self.sample_counter)
+            self.hessian_state_unsync = False
+        if hasattr(self, "hessian_eigval_state") and self.ekfac_state_unsync:
+            self.synchronize(self.ekfac_eigval_state, self.ekfac_counter)
+            self.ekfac_state_unsync = False
 
     @torch.no_grad()
     def hessian_inverse(self, set_attr: bool = False):
@@ -164,22 +168,21 @@ class KFACHessianHandler(HessianHandlerBase):
             return self.ekfac_eigval_state, self.hessian_eigvec_state, True
         return self.hessian_eigval_state, self.hessian_eigvec_state, False
 
-    def synchronize(self) -> None:
-        """
-        Synchronize the covariance across all processes.
-        """
-        if get_world_size() <= 1:
-            return
+    def synchronize(self, state_dict, counter_dict):
+        world_size = get_world_size()
 
-        if self.ekfac:
-            for _, ekfac_eigval in self.ekfac_eigval_state.items():
-                ekfac_eigval.div_(get_world_size())
-                dist.all_reduce(ekfac_eigval, op=dist.ReduceOp.SUM)
-        else:
-            for _, module_state in self.hessian_state.items():
-                for _, covariance in module_state.items():
-                    covariance.div_(get_world_size())
-                    dist.all_reduce(covariance, op=dist.ReduceOp.SUM)
+        def _synchronize(state_dict, counter_dict):
+            for key in state_dict:
+                assert key in counter_dict
+                if not isinstance(state_dict[key], torch.Tensor):
+                    _synchronize(state_dict[key], counter_dict[key])
+                else:
+                    state_dict[key].div_(counter_dict[key])
+                    if world_size > 1:
+                        state_dict[key].div_(world_size)
+                        dist.all_reduce(state_dict[key], op=dist.ReduceOp.SUM)
+
+        _synchronize(state_dict, counter_dict)
 
     def clear(self) -> None:
         """
