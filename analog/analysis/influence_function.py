@@ -18,6 +18,15 @@ class InfluenceFunction(AnalysisBase):
             is_ekfac,
         ) = self.hessian_handler.get_hessian_svd_state()
         for module_name in src.keys():
+            # if hessian_eigvec is empty, then return src
+            if (module_name not in hessian_eigvec) or not (
+                isinstance(hessian_eigvec[module_name]["forward"], torch.Tensor)
+                and isinstance(hessian_eigvec[module_name]["backward"], torch.Tensor)
+                and isinstance(hessian_eigval[module_name]["forward"], torch.Tensor)
+                and isinstance(hessian_eigval[module_name]["backward"], torch.Tensor)
+            ):
+                return src
+
             src_log = src[module_name].to("cpu")
             module_eigval = hessian_eigval[module_name]
             module_eigvec = hessian_eigvec[module_name]
