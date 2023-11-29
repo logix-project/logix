@@ -23,7 +23,7 @@ class InfluenceFunction(AnalysisBase):
             module_eigvec = hessian_eigvec[module_name]
             rotated_grad = einsum(
                 module_eigvec["backward"].t(),
-                src_log,
+                src_log.view(src_log.shape[0], src_log.shape[1], -1),
                 module_eigvec["forward"],
                 "a b, batch b c, c d -> batch a d",
             )
@@ -51,6 +51,7 @@ class InfluenceFunction(AnalysisBase):
         total_influence = 0.0
         for module_name in src.keys():
             src_log, tgt_log = src[module_name], tgt[module_name]
+            tgt_log = tgt_log.view(tgt_log.shape[0], tgt_log.shape[1], -1)
             assert src_log.shape[1:] == tgt_log.shape[1:]
             src_log_expanded = rearrange(src_log, "n ... -> n 1 ...")
             tgt_log_expanded = rearrange(tgt_log, "m ... -> 1 m ...")
