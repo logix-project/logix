@@ -100,7 +100,7 @@ class Config:
                 )
         # one should be None, or both should be the same
         assert global_log_dir or storage_log_dir, "No log directory specified"
-        log_dir = global_log_dir or storage_log_dir 
+        log_dir = global_log_dir or storage_log_dir
         # Setting global log directory
         if len(self.data) == 0:
             self._DEFAULTS["global"]["log_dir"] = log_dir

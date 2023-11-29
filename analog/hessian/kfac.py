@@ -211,13 +211,15 @@ class KFACHessianHandler(HessianHandlerBase):
     def _flush(self):
         if self.ekfac:
             for module_name, ekfac_eigval in self.ekfac_eigval_state.items():
-                save_filename = os.path.join(self.log_dir, 
-                                             self.file_prefix + f"eigval_{module_name}.pt")
-                torch.save(ekfac_eigval.detach().numpy().cpu(), save_filename)
+                save_filename = os.path.join(
+                    self.log_dir, self.file_prefix + f"eigval_{module_name}.pt"
+                )
+                torch.save(ekfac_eigval.detach().cpu().numpy(), save_filename)
         else:
             for module_name, module_state in self.hessian_state.items():
                 for mode, covariance in module_state.items():
                     save_filename = os.path.join(
-                        self.log_dir, 
-                        self.file_prefix + f"covariance_{module_name}_{mode}.pt")
-                    torch.save(covariance.detach().numpy().cpu(), save_filename)
+                        self.log_dir,
+                        self.file_prefix + f"covariance_{module_name}_{mode}.pt",
+                    )
+                    torch.save(covariance.detach().cpu().numpy(), save_filename)

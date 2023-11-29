@@ -120,6 +120,3 @@ class HessianHandlerBase(ABC):
         Dump the Hessian state to disk - called only within finalize.
         """
         pass
-        
-
-        
