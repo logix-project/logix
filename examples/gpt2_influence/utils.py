@@ -1,10 +1,14 @@
+import gc
+import os
+import random
+import struct
 from itertools import chain
 from typing import List, Optional, Tuple
 
+import numpy as np
 import torch
 import torch.nn as nn
 from datasets import load_dataset
-from torch.utils.data import DataLoader
 from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
@@ -23,7 +27,8 @@ def replace_conv1d_modules(model):
 
         if isinstance(module, Conv1D):
             new_module = nn.Linear(
-                in_features=module.weight.shape[0], out_features=module.weight.shape[1]
+                in_features=module.weight.shape[0],
+                out_features=module.weight.shape[1],
             )
             new_module.weight.data.copy_(module.weight.data.t())
             new_module.bias.data.copy_(module.bias.data)
@@ -153,3 +158,26 @@ def get_wiki_dataloader(
         shuffle=split == "train",
         collate_fn=default_data_collator,
     )
+
+
+def set_seed(seed: int) -> None:
+    """Set random seed for reproducibility."""
+    seed = int(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+
+
+def reset_seed() -> None:
+    """Reset the seed to have randomized experiments."""
+    rng_seed = struct.unpack("I", os.urandom(4))[0]
+    set_seed(rng_seed)
+
+
+def clear_gpu_cache() -> None:
+    """Perform garbage collection and empty GPU cache reserved by Pytorch."""
+    if torch.cuda.is_available():
+        gc.collect()
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
