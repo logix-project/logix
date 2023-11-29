@@ -75,7 +75,7 @@ with analog(log=["grad"], test=True) as al:
     model.zero_grad()
     test_outputs = model(*test_inputs)
 
-    test_logits = test_outputs.view(-1, outputs.shape[-1])
+    test_logits = test_outputs.view(-1, test_outputs.shape[-1])
     test_labels = test_batch["labels"].view(-1).to(DEVICE)
     test_loss = F.cross_entropy(
         test_logits,

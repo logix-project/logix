@@ -56,7 +56,7 @@ class AnaLogScheduler:
             self.analog_state_schedule = [
                 ([], True, False),
                 ([], True, False),
-                ([grad], False, True),
+                (["grad"], False, True),
             ]
         elif not ekfac and lora and not sample:
             self.analog_state_schedule = [
