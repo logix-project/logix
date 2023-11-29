@@ -1,6 +1,7 @@
 import torch
 from einops import einsum, rearrange, reduce
 
+from analog.utils import get_logger
 from analog.analysis import AnalysisBase
 from analog.analysis.utils import reconstruct_grad, do_decompose, rescaled_dot_product
 
@@ -25,6 +26,9 @@ class InfluenceFunction(AnalysisBase):
                 and isinstance(hessian_eigval[module_name]["forward"], torch.Tensor)
                 and isinstance(hessian_eigval[module_name]["backward"], torch.Tensor)
             ):
+                get_logger().warning(
+                    "Hessian has not been computed. No preconditioning applied.\n"
+                )
                 return src
 
             src_log = src[module_name].to("cpu")
