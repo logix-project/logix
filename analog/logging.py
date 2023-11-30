@@ -27,7 +27,7 @@ def compute_per_sample_gradient(fwd, bwd, module):
         fwd_unfold = fwd_unfold.reshape(bsz, fwd_unfold.shape[1], -1)
         bwd = bwd.reshape(bsz, -1, fwd_unfold.shape[-1])
         grad = torch.einsum("ijk,ilk->ijl", bwd, fwd_unfold)
-        shape = [bsz] + list(module.weight.shape)
+        shape = [bsz, module.weight.shape[0], -1]
         return grad.reshape(shape)
     else:
         raise ValueError(f"Unsupported module type: {type(module)}")
