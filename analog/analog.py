@@ -358,7 +358,7 @@ class AnaLog:
         Compute the SVD of the Hessian.
         """
         return self.hessian_handler.hessian_svd()
-    
+
     def save_hessian(self):
         """
         Save Hessian state to disk.

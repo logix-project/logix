@@ -1,3 +1,4 @@
+import os
 from typing import Dict, Any
 import yaml
 
@@ -90,7 +91,7 @@ class Config:
         """
         Set single logging directory for all components.
         """
-        log_root = self.get_global_config.get("log_root")
+        log_root = self.get_global_config().get("log_root")
         log_dir = os.path.join(log_root, self.project_name)
         if len(self.data) == 0:
             self._DEFAULTS["global"]["log_dir"] = log_dir

@@ -236,7 +236,7 @@ class KFACHessianHandler(HessianHandlerBase):
                 self.hessian_inverse_state,
                 os.path.join(self.log_dir, self.file_prefix + "hessian_inverse.pt"),
             )
-    
+
     def load_state(self, log_dir: str):
         """
         Load Hessian state from disk.
@@ -246,16 +246,21 @@ class KFACHessianHandler(HessianHandlerBase):
         log_dir_items = os.listdir(log_dir)
         if self.file_prefix + "hessian.pt" in log_dir_items:
             self.hessian_state = torch.load(
-                os.path.join(log_dir, self.file_prefix + "hessian.pt"))
+                os.path.join(log_dir, self.file_prefix + "hessian.pt")
+            )
         if self.file_prefix + "hessian_eigvec.pt" in log_dir_items:
             self.hessian_eigvec_state = torch.load(
-                os.path.join(log_dir, self.file_prefix + "hessian_eigvec.pt"))
+                os.path.join(log_dir, self.file_prefix + "hessian_eigvec.pt")
+            )
         if self.file_prefix + "hessian_eigval.pt" in log_dir_items:
             self.hessian_eigval_state = torch.load(
-                os.path.join(log_dir, self.file_prefix + "hessian_eigval.pt"))
+                os.path.join(log_dir, self.file_prefix + "hessian_eigval.pt")
+            )
         if self.file_prefix + "ekfac_eigval.pt" in log_dir_items:
             self.ekfac_eigval_state = torch.load(
-                os.path.join(log_dir, self.file_prefix + "ekfac_eigval.pt"))
+                os.path.join(log_dir, self.file_prefix + "ekfac_eigval.pt")
+            )
         if self.file_prefix + "hessian_inverse.pt" in log_dir_items:
             self.hessian_inverse_state = torch.load(
-                os.path.join(log_dir, self.file_prefix + "hessian_inverse.pt"))
+                os.path.join(log_dir, self.file_prefix + "hessian_inverse.pt")
+            )
