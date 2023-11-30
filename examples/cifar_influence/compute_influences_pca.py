@@ -33,7 +33,7 @@ def single_checkpoint_influence(data_name="cifar10", eval_idxs=(0,)):
         batch_size=1, split="valid", shuffle=False, indices=eval_idxs
     )
 
-    analog = AnaLog(project="test", config="examples/cifar/config.yaml")
+    analog = AnaLog(project="test", config="examples/cifar_influence/config.yaml")
 
     # Gradient & Hessian logging
     analog.watch(model)

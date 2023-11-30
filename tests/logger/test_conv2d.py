@@ -85,7 +85,7 @@ class Test2DCNNGradients(unittest.TestCase):
 
         for module_name in analog_grads_dict:
             analog_grad = analog_grads_dict[module_name]
-            func_grad = grads_dict[module_name + ".weight"]
+            func_grad = grads_dict[module_name + ".weight"].view(analog_grad.shape)
             self.assertTrue(torch.allclose(analog_grad, func_grad, atol=1e-6))
 
 
