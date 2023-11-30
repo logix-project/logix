@@ -97,9 +97,9 @@ class Config:
             self._DEFAULTS["global"]["log_dir"] = log_dir
             self._DEFAULTS["logging"]["log_dir"] = log_dir
             self._DEFAULTS["storage"]["log_dir"] = log_dir
-            self._DEFAULTS["hessian"]["log_dir"] = log_dir
+            self._DEFAULTS["hessian"]["log_dir"] = log_dir + "/hessian"
         else:
             self.data["global"]["log_dir"] = log_dir
             self.data["logging"]["log_dir"] = log_dir
             self.data["storage"]["log_dir"] = log_dir
-            self.data["hessian"]["log_dir"] = log_dir
+            self.data["hessian"]["log_dir"] = log_dir + "/hessian"

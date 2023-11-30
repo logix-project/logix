@@ -16,9 +16,6 @@ class HessianHandlerBase(ABC):
         self.hessian_inverse_with_override = False
         self.hessian_svd_with_override = False
 
-        # Logging
-        self.file_prefix = "hessian_log_"
-
         self.parse_config()
 
     @abstractmethod
