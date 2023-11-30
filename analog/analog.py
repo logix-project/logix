@@ -33,7 +33,7 @@ class AnaLog:
         self.model = None
 
         # Config
-        config = Config(config)
+        config = Config(config_file=config, project_name=project)
         self.config = config
 
         # Initialize storage, hessian, and logging handlers from config as well as
@@ -271,6 +271,7 @@ class AnaLog:
         Returns:
             The initialized Hessian handler.
         """
+        global_config = self.config.get_global_config()
         hessian_config = self.config.get_hessian_config()
         hessian_type = hessian_config.get("type", "kfac")
         if hessian_type == "kfac":
@@ -357,6 +358,18 @@ class AnaLog:
         Compute the SVD of the Hessian.
         """
         return self.hessian_handler.hessian_svd()
+
+    def save_hessian(self):
+        """
+        Save Hessian state to disk.
+        """
+        self.hessian_handler.save_state()
+
+    def load_hessian(self, log_dir: str):
+        """
+        Load Hessian state from disk.
+        """
+        self.hessian_handler.load_state(log_dir=log_dir)
 
     def finalize(
         self,

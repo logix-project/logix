@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 import torch
@@ -26,6 +27,7 @@ class KFACHessianHandler(HessianHandlerBase):
         self.ekfac_state_unsync = False
 
     def parse_config(self) -> None:
+        self.log_dir = self.config.get("log_dir")
         self.damping = self.config.get("damping", 1e-2)
         self.reduce = self.config.get("reduce", False)
 
@@ -206,3 +208,61 @@ class KFACHessianHandler(HessianHandlerBase):
             return extract_forward_activations(data, module)
         assert mode == BACKWARD
         return extract_backward_activations(data, module)
+
+    def save_state(self) -> None:
+        """
+        Save Hessian state to disk.
+        """
+        # TODO: should this be in the constructor or initialize-type function?
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
+
+        # TODO: implement this for all HessianHandlers
+        if hasattr(self, "hessian_state"):
+            torch.save(self.hessian_state, os.path.join(self.log_dir, "hessian.pt"))
+        if hasattr(self, "hessian_eigvec_state"):
+            torch.save(
+                self.hessian_eigvec_state,
+                os.path.join(self.log_dir, "hessian_eigvec.pt"),
+            )
+        if hasattr(self, "hessian_eigval_state"):
+            torch.save(
+                self.hessian_eigval_state,
+                os.path.join(self.log_dir, "hessian_eigval.pt"),
+            )
+        if hasattr(self, "ekfac_eigval_state"):
+            torch.save(
+                self.ekfac_eigval_state,
+                os.path.join(self.log_dir, "ekfac_eigval.pt"),
+            )
+        if hasattr(self, "hessian_inverse_state"):
+            torch.save(
+                self.hessian_inverse_state,
+                os.path.join(self.log_dir, "hessian_inverse.pt"),
+            )
+
+    def load_state(self, log_dir: str) -> None:
+        """
+        Load Hessian state from disk.
+        """
+        # TODO: implement this for all HessianHandlers
+        assert os.path.exists(log_dir), "Hessian log directory does not exist!"
+        log_dir_items = os.listdir(log_dir)
+        if "hessian.pt" in log_dir_items:
+            self.hessian_state = torch.load(os.path.join(log_dir, "hessian.pt"))
+        if "hessian_eigvec.pt" in log_dir_items:
+            self.hessian_eigvec_state = torch.load(
+                os.path.join(log_dir, "hessian_eigvec.pt")
+            )
+        if "hessian_eigval.pt" in log_dir_items:
+            self.hessian_eigval_state = torch.load(
+                os.path.join(log_dir, "hessian_eigval.pt")
+            )
+        if "ekfac_eigval.pt" in log_dir_items:
+            self.ekfac_eigval_state = torch.load(
+                os.path.join(log_dir, "ekfac_eigval.pt")
+            )
+        if "hessian_inverse.pt" in log_dir_items:
+            self.hessian_inverse_state = torch.load(
+                os.path.join(log_dir, "hessian_inverse.pt")
+            )
