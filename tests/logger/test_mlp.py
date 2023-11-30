@@ -12,11 +12,11 @@ from analog import AnaLog
 def create_mlp(input_size, hidden_size, num_classes):
     model = nn.Sequential(
         nn.Linear(input_size, hidden_size),
-        nn.ReLU(),
+        nn.GELU(),
         nn.Linear(hidden_size, hidden_size),
         nn.ReLU(),
         nn.Linear(hidden_size, hidden_size),
-        nn.ReLU(),
+        nn.Tanh(),
         nn.Linear(hidden_size, num_classes),
     )
     return model
@@ -114,6 +114,49 @@ class TestMLPGradients(unittest.TestCase):
             output = checkpoint_sequential(
                 self.model, segments=2, input=inputs, use_reentrant=False
             )
+            loss = F.cross_entropy(output, labels, reduction="sum")
+            loss.backward()
+        analog_grads_dict = analog.get_log()
+
+        for module_name in analog_grads_dict:
+            analog_grad = analog_grads_dict[module_name]
+            func_grad = grads_dict[module_name + ".weight"]
+            self.assertTrue(torch.allclose(analog_grad, func_grad, atol=1e-6))
+
+    def test_per_sample_gradient_with_compile(self):
+        # Instantiate AnaLog
+        analog = AnaLog(project="test")
+        analog.watch(self.model)
+
+        compiled_model = torch.compile(self.model)
+
+        # Input and target for batch size of 4
+        inputs = torch.randn(4, 4)  # Dummy input
+        labels = torch.tensor([1, 3, 0, 2])  # Dummy labels
+        batch = (inputs, labels)
+
+        # functorch per-sample gradient
+        def compute_loss_func(_params, _buffers, _batch):
+            _output = torch.func.functional_call(
+                self.func_model,
+                (_params, _buffers),
+                args=(_batch[0],),
+            )
+            _loss = F.cross_entropy(_output, _batch[1])
+            return _loss
+
+        func_compute_grad = torch.func.grad(compute_loss_func, has_aux=False)
+
+        grads_dict = torch.func.vmap(
+            func_compute_grad,
+            in_dims=(None, None, 0),
+            randomness="same",
+        )(self.func_params, self.func_buffers, batch)
+
+        # Forward pass with original model
+        with analog(data_id=inputs, log=["grad"], hessian=False, save=False):
+            compiled_model.zero_grad()
+            output = compiled_model(inputs)
             loss = F.cross_entropy(output, labels, reduction="sum")
             loss.backward()
         analog_grads_dict = analog.get_log()
