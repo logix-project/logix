@@ -2,7 +2,7 @@ from typing import List
 
 import torch.nn as nn
 
-from analog.lora.modules import LoraLinear
+from analog.lora.modules import LoraLinear, LoraConv2d
 
 
 def find_parameter_sharing_group(
@@ -85,7 +85,7 @@ class LoRAHandler:
             elif isinstance(module, nn.Conv1d):
                 raise NotImplementedError
             elif isinstance(module, nn.Conv2d):
-                raise NotImplementedError
+                lora_cls = LoraConv2d
 
             psg = find_parameter_sharing_group(name, parameter_sharing_groups)
             if parameter_sharing and psg not in shared_modules:
