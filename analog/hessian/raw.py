@@ -20,6 +20,7 @@ class RawHessianHandler(HessianHandlerBase):
     """
 
     def parse_config(self) -> None:
+        self.log_dir = self.config.get("log_dir")
         self.damping = self.config.get("damping", 1e-2)
         self.reduce = self.config.get("reduce", True)
 

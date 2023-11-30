@@ -1,3 +1,4 @@
+import os
 from typing import Dict, Any
 import yaml
 
@@ -12,15 +13,15 @@ class Config:
 
     # Default values for each configuration
     _DEFAULTS = {
-        "global": {},
+        "global": {"log_root": "./analog"},
         "logging": {},
-        "storage": {"type": "default", "log_dir": "./analog"},
+        "storage": {"type": "default"},
         "hessian": {"type": "kfac", "damping": 1e-2},
         "analysis": {},
         "lora": {"init": "pca", "rank": 64},
     }
 
-    def __init__(self, config_file: str) -> None:
+    def __init__(self, config_file: str, project_name: str) -> None:
         """
         Initialize Config class with given configuration file.
 
@@ -34,6 +35,9 @@ class Config:
                 "Configuration file not found. Using default values.\n"
             )
             self.data = {}
+
+        self.project_name = project_name
+        self._set_log_dir()
 
     def get_global_config(self) -> Dict[str, Any]:
         """
@@ -82,3 +86,20 @@ class Config:
         :return: Dictionary containing LoRA configurations.
         """
         return self.data.get("lora", self._DEFAULTS["lora"])
+
+    def _set_log_dir(self) -> None:
+        """
+        Set single logging directory for all components.
+        """
+        log_root = self.get_global_config().get("log_root")
+        log_dir = os.path.join(log_root, self.project_name)
+        if len(self.data) == 0:
+            self._DEFAULTS["global"]["log_dir"] = log_dir
+            self._DEFAULTS["logging"]["log_dir"] = log_dir
+            self._DEFAULTS["storage"]["log_dir"] = log_dir
+            self._DEFAULTS["hessian"]["log_dir"] = log_dir + "/hessian"
+        else:
+            self.data["global"]["log_dir"] = log_dir
+            self.data["logging"]["log_dir"] = log_dir
+            self.data["storage"]["log_dir"] = log_dir
+            self.data["hessian"]["log_dir"] = log_dir + "/hessian"
