@@ -23,14 +23,16 @@ set_seed(0)
 
 # model
 model = construct_model(args.data_name)
-model.load_state_dict(
-    torch.load(f"files/checkpoints/0/{args.data_name}_epoch_3.pt", map_location="cpu")
-)
+model_path = f"files/checkpoints/0/{args.data_name}_epoch_3.pt"
+model.load_state_dict(torch.load(model_path, map_location="cpu"))
 model.to(DEVICE)
 model.eval()
 
 # data
-_, eval_train_loader, test_loader = get_loaders(data_name=args.data_name)
+_, eval_train_loader, test_loader = get_loaders(
+    data_name=args.data_name,
+    valid_indices=list(range(32)),
+)
 
 # Set-up
 analog = AnaLog(project="test", config="config.yaml")
@@ -92,4 +94,9 @@ if_scores = analog.influence.compute_influence_all(test_log, log_loader)
 print("Computation time:", time.time() - start)
 
 # Save
-torch.save(if_scores, "if_analog.pt")
+log_dir = analog.config.get_storage_config()["log_dir"]
+config = analog.config.data
+config["model_path"] = model_path
+save_path = f"{log_dir}/if_analog.pt"
+torch.save(if_scores, save_path)
+print(f"Saved influence scores to {save_path}")
