@@ -131,6 +131,10 @@ class LoggingHandler:
             if self.save:
                 self.storage_handler.add(module_name, BACKWARD, grad_outputs[0])
 
+        del module.weight.grad
+        if hasattr(module, "bias") and module.bias is not None:
+            del module.bias.grad
+
     def _grad_hook_fn(
         self,
         module: nn.Module,

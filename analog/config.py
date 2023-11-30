@@ -27,6 +27,7 @@ class Config:
 
         :param config_file: Path to the YAML configuration file.
         """
+        self.project_name = project_name
         try:
             with open(config_file, "r") as file:
                 self.data: Dict[str, Any] = yaml.safe_load(file)
@@ -36,7 +37,13 @@ class Config:
             )
             self.data = {}
 
-        self.project_name = project_name
+        self._global_config = self.data.get("global", self._DEFAULTS["global"])
+        self._logging_config = self.data.get("logging", self._DEFAULTS["logging"])
+        self._storage_config = self.data.get("storage", self._DEFAULTS["storage"])
+        self._hessian_config = self.data.get("hessian", self._DEFAULTS["hessian"])
+        self._analysis_config = self.data.get("analysis", self._DEFAULTS["analysis"])
+        self._lora_config = self.data.get("lora", self._DEFAULTS["lora"])
+
         self._set_log_dir()
 
     def get_global_config(self) -> Dict[str, Any]:
@@ -45,7 +52,7 @@ class Config:
 
         :return: Dictionary containing global configurations.
         """
-        return self.data.get("global", self._DEFAULTS["global"])
+        return self._global_config
 
     def get_logging_config(self) -> Dict[str, Any]:
         """
@@ -53,7 +60,7 @@ class Config:
 
         :return: Dictionary containing logging configurations.
         """
-        return self.data.get("logging", self._DEFAULTS["logging"])
+        return self._logging_config
 
     def get_storage_config(self) -> Dict[str, Any]:
         """
@@ -61,7 +68,7 @@ class Config:
 
         :return: Dictionary containing storage configurations.
         """
-        return self.data.get("storage", self._DEFAULTS["storage"])
+        return self._storage_config
 
     def get_hessian_config(self) -> Dict[str, Any]:
         """
@@ -69,7 +76,7 @@ class Config:
 
         :return: Dictionary containing Hessian configurations.
         """
-        return self.data.get("hessian", self._DEFAULTS["hessian"])
+        return self._hessian_config
 
     def get_analysis_config(self) -> Dict[str, Any]:
         """
@@ -77,7 +84,7 @@ class Config:
 
         :return: Dictionary containing analysis configurations.
         """
-        return self.data.get("analysis", self._DEFAULTS["analysis"])
+        return self._analysis_config
 
     def get_lora_config(self) -> Dict[str, Any]:
         """
@@ -85,21 +92,16 @@ class Config:
 
         :return: Dictionary containing LoRA configurations.
         """
-        return self.data.get("lora", self._DEFAULTS["lora"])
+        return self._lora_config
 
     def _set_log_dir(self) -> None:
         """
         Set single logging directory for all components.
         """
-        log_root = self.get_global_config().get("log_root")
+        log_root = self._global_config.get("log_root", "./analog")
         log_dir = os.path.join(log_root, self.project_name)
-        if len(self.data) == 0:
-            self._DEFAULTS["global"]["log_dir"] = log_dir
-            self._DEFAULTS["logging"]["log_dir"] = log_dir
-            self._DEFAULTS["storage"]["log_dir"] = log_dir
-            self._DEFAULTS["hessian"]["log_dir"] = log_dir + "/hessian"
-        else:
-            self.data["global"]["log_dir"] = log_dir
-            self.data["logging"]["log_dir"] = log_dir
-            self.data["storage"]["log_dir"] = log_dir
-            self.data["hessian"]["log_dir"] = log_dir + "/hessian"
+
+        self._global_config["log_dir"] = log_dir
+        self._logging_config["log_dir"] = log_dir
+        self._storage_config["log_dir"] = log_dir
+        self._hessian_config["log_dir"] = log_dir + "/hessian"
