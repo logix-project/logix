@@ -20,12 +20,7 @@ class InfluenceFunction(AnalysisBase):
         ) = self.hessian_handler.get_hessian_svd_state()
         for module_name in src.keys():
             # if hessian_eigvec is empty, then return src
-            if (module_name not in hessian_eigvec) or not (
-                isinstance(hessian_eigvec[module_name]["forward"], torch.Tensor)
-                and isinstance(hessian_eigvec[module_name]["backward"], torch.Tensor)
-                and isinstance(hessian_eigval[module_name]["forward"], torch.Tensor)
-                and isinstance(hessian_eigval[module_name]["backward"], torch.Tensor)
-            ):
+            if module_name not in hessian_eigvec:
                 get_logger().warning(
                     "Hessian has not been computed. No preconditioning applied.\n"
                 )
