@@ -1,6 +1,7 @@
 import os
 import time
 import argparse
+import yaml
 
 from tqdm import tqdm
 
@@ -15,12 +16,14 @@ from utils import construct_model, get_loaders, set_seed
 
 parser = argparse.ArgumentParser("GLUE Influence Analysis")
 parser.add_argument("--data_name", type=str, default="sst2")
-parser.add_argument("--eval-idxs", type=int, nargs="+", default=[0])
+parser.add_argument("--num_train_data", type=int, default=None)
+parser.add_argument("--num_test_data", type=int, default=None)
 parser.add_argument("--damping", type=float, default=1e-5)
 parser.add_argument("--ekfac", action="store_true")
 parser.add_argument("--lora", action="store_true")
 parser.add_argument("--sample", action="store_true")
 parser.add_argument("--config", type=str, default="lora_pca_32")
+parser.add_argument("--project_name", type=str, default=None)
 args = parser.parse_args()
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -34,15 +37,31 @@ model.to(DEVICE)
 model.eval()
 
 # data
+if args.num_test_data is None:
+    valid_indices = list(range(32))
+elif isinstance(args.num_test_data, int):
+    valid_indices = list(range(args.num_test_data))
+if args.num_train_data is not None:
+    train_indices = list(range(args.num_train_data))
+else:
+    train_indices = None
 _, eval_train_loader, test_loader = get_loaders(
     data_name=args.data_name,
-    valid_indices=list(range(32)),
+    train_indices=train_indices,
+    valid_indices=valid_indices,
 )
+num_train = len(eval_train_loader.dataset)
+num_test = len(test_loader.dataset)
+print(f"Train size: {num_train}")
+print(f"Test size: {num_test}")
 
 # Set-up
 config_path = f"files/configs/{args.config}.yaml"
 assert os.path.exists(config_path), f"Config file {config_path} does not exist"
-project_name = args.config
+if args.project_name is None:
+    project_name = args.config
+else:
+    project_name = args.project_name
 analog = AnaLog(project=project_name, config=config_path)
 config = analog.config.data
 print(config)
@@ -113,3 +132,10 @@ config["model_path"] = model_path
 save_path = f"{log_dir}/if_analog.pt"
 torch.save(if_scores, save_path)
 print(f"Saved influence scores of size {if_scores.size()} to {save_path}")
+yaml_path = f"{log_dir}/if_analog.yaml"
+config["model_path"] = model_path
+config["num_train"] = num_train
+config["num_test"] = num_test
+with open(yaml_path, "w") as f:
+    yaml.dump(config, f)
+print(f"Saved config to {yaml_path}")
