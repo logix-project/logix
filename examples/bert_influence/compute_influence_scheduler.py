@@ -98,33 +98,32 @@ for epoch in al_scheduler:
 # Compute influence
 log_loader = analog.build_log_dataloader()
 analog.add_analysis({"influence": InfluenceFunction})
-test_iter = iter(test_loader)
-with analog(log=["grad"], test=True) as al:
-    test_batch = next(test_iter)
-    test_inputs = (
-        test_batch["input_ids"].to(DEVICE),
-        test_batch["token_type_ids"].to(DEVICE),
-        test_batch["attention_mask"].to(DEVICE),
-    )
-    test_target = test_batch["labels"].to(DEVICE)
-    model.zero_grad()
-    test_outputs = model(*test_inputs)
+if_scores_list = []
+for test_batch in tqdm(test_loader, desc="Computing Influence"):
+    with analog(log=["grad"], test=True) as al:
+        test_inputs = (
+            test_batch["input_ids"].to(DEVICE),
+            test_batch["token_type_ids"].to(DEVICE),
+            test_batch["attention_mask"].to(DEVICE),
+        )
+        test_target = test_batch["labels"].to(DEVICE)
+        model.zero_grad()
+        test_outputs = model(*test_inputs)
 
-    test_logits = test_outputs.view(-1, test_outputs.shape[-1])
-    test_labels = test_batch["labels"].view(-1).to(DEVICE)
-    test_loss = F.cross_entropy(
-        test_logits,
-        test_labels,
-        reduction="sum",
-        ignore_index=-100,
-    )
-    test_loss.backward()
+        test_logits = test_outputs.view(-1, test_outputs.shape[-1])
+        test_labels = test_batch["labels"].view(-1).to(DEVICE)
+        test_loss = F.cross_entropy(
+            test_logits,
+            test_labels,
+            reduction="sum",
+            ignore_index=-100,
+        )
+        test_loss.backward()
 
-    test_log = al.get_log()
-
-start = time.time()
-if_scores = analog.influence.compute_influence_all(test_log, log_loader)
-print("Computation time:", time.time() - start)
+        test_log = al.get_log()
+        if_scores = analog.influence.compute_influence_all(test_log, log_loader)
+        if_scores_list.append(if_scores)
+if_scores = torch.cat(if_scores_list, dim=0)
 
 # Save
 log_dir = analog.config.get_storage_config()["log_dir"]
