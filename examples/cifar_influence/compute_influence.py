@@ -1,6 +1,6 @@
+import argparse
 import time
 import torch
-
 
 from analog import AnaLog
 from analog.utils import DataIDGenerator
@@ -11,10 +11,11 @@ from train import (
     construct_rn9,
 )
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-DAMPING = 0.01
-LISSA_ITER = 100000
+parser = argparse.ArgumentParser("CIFAR Influence Analysis")
+parser.add_argument("--damping", type=float, default=1e-5)
+args = parser.parse_args()
 
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def single_checkpoint_influence(data_name="cifar10", eval_idxs=(0,)):
     model = construct_rn9().to(DEVICE)
@@ -33,7 +34,7 @@ def single_checkpoint_influence(data_name="cifar10", eval_idxs=(0,)):
         batch_size=1, split="valid", shuffle=False, indices=eval_idxs
     )
 
-    analog = AnaLog(project="test", config="examples/cifar/config.yaml")
+    analog = AnaLog(project="test", config="examples/cifar_influence/config.yaml")
 
     # Gradient & Hessian logging
     analog.watch(model)
@@ -68,7 +69,7 @@ def single_checkpoint_influence(data_name="cifar10", eval_idxs=(0,)):
         test_loss.backward()
         test_log = al.get_log()
     start = time.time()
-    if_scores = analog.influence.compute_influence_all(test_log, log_loader)
+    if_scores = analog.influence.compute_influence_all(test_log, log_loader, damping = args.damping)
 
     # Save
     if_scores = if_scores.numpy().tolist()
