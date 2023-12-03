@@ -133,11 +133,9 @@ print(f"Saved influence scores of size {if_scores.size()} to {save_path}")
 
 # Save config
 config["misc"] = {}
-config["misc"]["model_path"] = model_path
-config["misc"]["num_train"] = num_train
-config["misc"]["num_test"] = num_test
-config["misc"]["config_path"] = config_path
-config["misc"]["project_name"] = project_name
+to_log = ["model_path", "num_train", "num_test", "config_path", "project_name"]
+for log in to_log:
+    config["misc"][log] = globals()[log]
 config["args"] = {}
 for k, v in vars(args).items():
     config["args"][k] = v
