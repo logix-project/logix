@@ -4,3 +4,6 @@ einops
 
 pyyaml
 
+faiss-cpu
+faiss-gpu
+
