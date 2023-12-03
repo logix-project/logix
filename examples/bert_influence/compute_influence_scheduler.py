@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser("GLUE Influence Analysis")
 parser.add_argument("--data_name", type=str, default="sst2")
 parser.add_argument("--num_train_data", type=int, default=None)
 parser.add_argument("--num_test_data", type=int, default=None)
-parser.add_argument("--damping", type=float, default=1e-5)
+parser.add_argument("--damping", type=float, default=None)
 parser.add_argument("--ekfac", action="store_true")
 parser.add_argument("--lora", action="store_true")
 parser.add_argument("--sample", action="store_true")
@@ -52,19 +52,17 @@ _, eval_train_loader, test_loader = get_loaders(
 )
 num_train = len(eval_train_loader.dataset)
 num_test = len(test_loader.dataset)
-print(f"Train size: {num_train}")
-print(f"Test size: {num_test}")
 
 # Set-up
 config_path = f"files/configs/{args.config}.yaml"
 assert os.path.exists(config_path), f"Config file {config_path} does not exist"
 if args.project_name is None:
-    project_name = args.config
+    project_name = args.config + f"_d{args.damping}"
 else:
     project_name = args.project_name
 analog = AnaLog(project=project_name, config=config_path)
 config = analog.config.data
-print(config)
+print(f"Experimentting with: {config}")
 al_scheduler = AnaLogScheduler(
     analog, ekfac=args.ekfac, lora=args.lora, sample=args.sample
 )
@@ -121,20 +119,29 @@ for test_batch in tqdm(test_loader, desc="Computing Influence"):
         test_loss.backward()
 
         test_log = al.get_log()
-        if_scores = analog.influence.compute_influence_all(test_log, log_loader)
+        if_scores = analog.influence.compute_influence_all(
+            test_log, log_loader, damping=args.damping
+        )
         if_scores_list.append(if_scores)
 if_scores = torch.cat(if_scores_list, dim=0)
 
-# Save
+# Save influence scores
 log_dir = analog.config.get_storage_config()["log_dir"]
-config["model_path"] = model_path
 save_path = f"{log_dir}/if_analog.pt"
 torch.save(if_scores, save_path)
 print(f"Saved influence scores of size {if_scores.size()} to {save_path}")
+
+# Save config
+config["misc"] = {}
+config["misc"]["model_path"] = model_path
+config["misc"]["num_train"] = num_train
+config["misc"]["num_test"] = num_test
+config["misc"]["config_path"] = config_path
+config["misc"]["project_name"] = project_name
+config["args"] = {}
+for k, v in vars(args).items():
+    config["args"][k] = v
 yaml_path = f"{log_dir}/if_analog.yaml"
-config["model_path"] = model_path
-config["num_train"] = num_train
-config["num_test"] = num_test
 with open(yaml_path, "w") as f:
     yaml.dump(config, f)
 print(f"Saved config to {yaml_path}")
