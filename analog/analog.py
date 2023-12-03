@@ -359,16 +359,18 @@ class AnaLog:
         """
         return self.hessian_handler.hessian_svd()
 
-    def save_hessian(self):
+    def save_hessian_state(self):
         """
         Save Hessian state to disk.
         """
         self.hessian_handler.save_state()
 
-    def load_hessian(self, log_dir: str):
+    def load_hessian_state(self, log_dir: str = None):
         """
         Load Hessian state from disk.
         """
+        if log_dir is None:
+            log_dir = self.hessian_handler.log_dir
         self.hessian_handler.load_state(log_dir=log_dir)
 
     def finalize(

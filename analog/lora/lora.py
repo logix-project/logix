@@ -41,7 +41,7 @@ class LoRAHandler:
         self.parse_config()
 
     def parse_config(self):
-        self.init_strategy = self.config.get("init", "pca")
+        self.init_strategy = self.config.get("init", "random")
         self.rank = self.config.get("rank", 64)
 
     def add_lora(

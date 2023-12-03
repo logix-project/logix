@@ -18,7 +18,7 @@ class Config:
         "storage": {"type": "default"},
         "hessian": {"type": "kfac", "damping": 1e-2},
         "analysis": {},
-        "lora": {"init": "pca", "rank": 64},
+        "lora": {"init": "random", "rank": 64},
     }
 
     def __init__(self, config_file: str, project_name: str) -> None:
