@@ -46,7 +46,14 @@ def to_numpy(tensor):
         raise ValueError("Unsupported tensor type. Supported libraries: NumPy, PyTorch")
 
 
-def get_world_size(group=None) -> int:
+def get_world_size() -> int:
+    if dist.is_initialized():
+        return dist.get_world_size()
+    else:
+        return 0
+
+
+def get_rank(group=None) -> int:
     if dist.is_initialized():
         return dist.get_rank(group)
     else:

@@ -12,10 +12,23 @@ from analog.utils import nested_dict
 
 
 def compute_per_sample_gradient(fwd, bwd, module):
+    """
+    Computes the per-sample gradient of a module.
+
+    Args:
+        fwd: The forward activations of the module.
+        bwd: The backward activations of the module.
+        module: The module whose per-sample gradient needs to be computed.
+    """
     if isinstance(module, nn.Linear):
+        # For linear layers, we can simply compute the outer product of the
+        # forward and backward activations.
         outer_product = einsum(bwd, fwd, "... i, ... j -> ... i j")
         return reduce(outer_product, "n ... i j -> n i j", "sum")
     elif isinstance(module, nn.Conv2d):
+        # For convolutional layers, we need to unfold the forward activations
+        # and compute the outer product of the backward and unfolded forward
+        # activations.
         bsz = fwd.shape[0]
         fwd_unfold = torch.nn.functional.unfold(
             fwd,
@@ -29,6 +42,8 @@ def compute_per_sample_gradient(fwd, bwd, module):
         grad = torch.einsum("ijk,ilk->ijl", bwd, fwd_unfold)
         shape = [bsz, module.weight.shape[0], -1]
         return grad.reshape(shape)
+    elif isinstance(module, nn.Conv1d):
+        raise NotImplementedError
     else:
         raise ValueError(f"Unsupported module type: {type(module)}")
 
@@ -41,7 +56,7 @@ class LoggingHandler:
         hessian_handler: HessianHandlerBase,
     ) -> None:
         """
-        Initializes the HookManager with empty lists for hooks.
+        Initializes the LoggingHandler with empty lists for hooks.
         """
         self.config = config
 
@@ -78,6 +93,7 @@ class LoggingHandler:
         assert len(inputs) == 1
 
         activations = inputs[0]
+        # In case `mask is not None`, apply the mask to activations
         if self.mask is not None:
             if len(self.mask.shape) != len(activations.shape):
                 assert len(self.mask.shape) == len(activations.shape) - 1
@@ -87,6 +103,7 @@ class LoggingHandler:
                 if self.mask.shape[-1] == activations.shape[-1]:
                     activations = activations * self.mask
 
+        # If KFAC is used, update the forward covariance
         if self.hessian and self.hessian_type == "kfac":
             self.hessian_handler.update_hessian(
                 module, module_name, FORWARD, activations, self.mask
@@ -118,6 +135,7 @@ class LoggingHandler:
         """
         assert len(grad_outputs) == 1
 
+        # If KFAC is used, update the backward covariance
         if self.hessian and self.hessian_type == "kfac":
             self.hessian_handler.update_hessian(
                 module, module_name, BACKWARD, grad_outputs[0], self.mask
@@ -131,6 +149,8 @@ class LoggingHandler:
             if self.save:
                 self.storage_handler.add(module_name, BACKWARD, grad_outputs[0])
 
+        # As we are only interested in the per-sample gradient, we can delete the
+        # gradient of the weight and bias parameters
         del module.weight.grad
         if hasattr(module, "bias") and module.bias is not None:
             del module.bias.grad
@@ -153,6 +173,9 @@ class LoggingHandler:
         """
         assert len(inputs) == 1
 
+        # In case, the same module is used multiple times in the forward pass,
+        # we need to accumulate the gradients. We achieve this by using the
+        # additional tensor hook on the output of the module.
         def _grad_backward_hook_fn(grad: torch.Tensor):
             if GRAD in self.log:
                 per_sample_gradient = compute_per_sample_gradient(
@@ -211,6 +234,9 @@ class LoggingHandler:
         Register all module hooks.
         """
         for module in self.modules_to_hook:
+            # As each hook has its own function, we need to register all hooks
+            # separately. We use partial functions to pass the module name to
+            # the hook functions.
             module_name = self.get_module_name(module)
             forward_hook = module.register_forward_pre_hook(
                 partial(self._forward_hook_fn, module_name=module_name)
@@ -288,6 +314,12 @@ class LoggingHandler:
         return self.modules_to_name[module]
 
     def clear(self, clear_modules: bool = False) -> None:
+        """
+        Clear all hooks and internal states.
+
+        Args:
+            clear_modules (bool): Whether to clear the modules to be hooked.
+        """
         self.clear_hooks()
         self.clear_internal_states()
         if clear_modules:

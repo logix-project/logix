@@ -28,7 +28,7 @@ class AnaLog:
 
         Args:
             project (str): The name or identifier of the project.
-            config (str): The path to the YAML configuration file.
+            config (str, optional): The path to the YAML configuration file. Defaults to "".
         """
         self.project = project
 
