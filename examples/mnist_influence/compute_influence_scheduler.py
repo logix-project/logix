@@ -62,12 +62,9 @@ if not args.resume:
                 loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
                 loss.backward()
         analog.finalize()
-    analog.save_hessian_state()
-    torch.save(model.state_dict(), "model.pt")
 else:
     analog.add_lora()
-    analog.load_hessian_state()
-    model.load_state_dict(torch.load("model.pt"))
+    analog.initialize_from_log()
 
 # Influence Analysis
 log_loader = analog.build_log_dataloader()

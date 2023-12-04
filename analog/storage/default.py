@@ -19,8 +19,8 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         Parse the configuration parameters.
         """
+        self.log_dir = self.config.get("log_dir")
         self.flush_threshold = self.config.get("flush_threshold", -1)
-        self.log_dir = self.config.get("log_dir", "analog")
         self.max_workers = self.config.get("worker", 0)
         self.allow_async = True if self.max_workers > 1 else False
 
@@ -40,9 +40,8 @@ class DefaultStorageHandler(StorageHandlerBase):
 
         if self.allow_async:
             self.lock = Lock()
-        if not os.path.exists(self.log_dir):
-            os.makedirs(self.log_dir)
-        else:
+
+        if os.path.exists(self.log_dir):
             get_logger().warning(f"Log directory {self.log_dir} already exists.\n")
 
     def format_log(self, module_name: str, log_type: str, data):

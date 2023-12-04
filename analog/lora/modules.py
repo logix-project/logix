@@ -27,7 +27,9 @@ class LoraLinear(nn.Linear):
         )
         self.analog_lora_C = nn.Linear(self.rank, out_features, bias=False)
 
+        nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
         nn.init.zeros_(self.analog_lora_B.weight)
+        nn.init.kaiming_uniform_(self.analog_lora_C.weight, a=math.sqrt(5))
 
         self._linear = linear
 
@@ -37,27 +39,23 @@ class LoraLinear(nn.Linear):
 
         return result
 
-    def init_weight(self, init_strategy: str = "random", hessian=None):
+    def pca_init_weight(self, init_strategy: str = "random", hessian=None):
         """Initialize the weight of the LoraLinear layer.
 
         Args:
             init_strategy (str): The type of projection to use
             hessian (dict): The forward and backward hessian of the layer
         """
-        if init_strategy == "random":
-            nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
-            nn.init.kaiming_uniform_(self.analog_lora_C.weight, a=math.sqrt(5))
-        elif init_strategy == "pca":
-            (
-                top_r_singular_vector_forward,
-                top_r_singular_value_forward,
-            ) = compute_top_k_singular_vectors(hessian[FORWARD], self.rank)
-            (
-                top_r_singular_vector_backward,
-                top_r_singular_value_backward,
-            ) = compute_top_k_singular_vectors(hessian[BACKWARD], self.rank)
-            self.analog_lora_A.weight.data.copy_(top_r_singular_vector_forward.T)
-            self.analog_lora_C.weight.data.copy_(top_r_singular_vector_backward)
+        (
+            top_r_singular_vector_forward,
+            top_r_singular_value_forward,
+        ) = compute_top_k_singular_vectors(hessian[FORWARD], self.rank)
+        (
+            top_r_singular_vector_backward,
+            top_r_singular_value_backward,
+        ) = compute_top_k_singular_vectors(hessian[BACKWARD], self.rank)
+        self.analog_lora_A.weight.data.copy_(top_r_singular_vector_forward.T)
+        self.analog_lora_C.weight.data.copy_(top_r_singular_vector_backward)
 
 
 class LoraConv2d(nn.Conv2d):
@@ -84,13 +82,13 @@ class LoraConv2d(nn.Conv2d):
             self.in_channels, self.rank, kernel_size, stride, padding, bias=False
         )
         self.analog_lora_B = shared_module or nn.Conv2d(
-            self.rank, self.rank, (1, 1), (1, 1), bias=False
+            self.rank, self.rank, 1, bias=False
         )
-        self.analog_lora_C = nn.Conv2d(
-            self.rank, self.out_channels, (1, 1), (1, 1), bias=False
-        )
+        self.analog_lora_C = nn.Conv2d(self.rank, self.out_channels, 1, bias=False)
 
+        nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
         nn.init.zeros_(self.analog_lora_B.weight)
+        nn.init.kaiming_uniform_(self.analog_lora_C.weight, a=math.sqrt(5))
 
         self._conv = conv
 
@@ -100,30 +98,26 @@ class LoraConv2d(nn.Conv2d):
 
         return result
 
-    def init_weight(self, projection_type, hessian):
+    def pca_init_weight(self, projection_type, hessian):
         """Initialize the weight of the LoraLinear layer.
 
         Args:
             projection_type (str): The type of projection to use
             hessian (dict): The forward and backward hessian of the layer
         """
-        if projection_type == "random":
-            nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
-            nn.init.kaiming_uniform_(self.analog_lora_C.weight, a=math.sqrt(5))
-        elif projection_type == "pca":
-            (
-                top_r_singular_vector_forward,
-                top_r_singular_value_forward,
-            ) = compute_top_k_singular_vectors(hessian[FORWARD], self.rank)
-            (
-                top_r_singular_vector_backward,
-                top_r_singular_value_backward,
-            ) = compute_top_k_singular_vectors(hessian[BACKWARD], self.rank)
-            shape_A = self.analog_lora_A.weight.shape
-            shape_C = self.analog_lora_C.weight.shape
-            self.analog_lora_A.weight.data.copy_(
-                top_r_singular_vector_forward.T.view(shape_A)
-            )
-            self.analog_lora_C.weight.data.copy_(
-                top_r_singular_vector_backward.view(shape_C)
-            )
+        (
+            top_r_singular_vector_forward,
+            top_r_singular_value_forward,
+        ) = compute_top_k_singular_vectors(hessian[FORWARD], self.rank)
+        (
+            top_r_singular_vector_backward,
+            top_r_singular_value_backward,
+        ) = compute_top_k_singular_vectors(hessian[BACKWARD], self.rank)
+        shape_A = self.analog_lora_A.weight.shape
+        shape_C = self.analog_lora_C.weight.shape
+        self.analog_lora_A.weight.data.copy_(
+            top_r_singular_vector_forward.T.view(shape_A)
+        )
+        self.analog_lora_C.weight.data.copy_(
+            top_r_singular_vector_backward.view(shape_C)
+        )
