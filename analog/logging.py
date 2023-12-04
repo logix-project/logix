@@ -272,14 +272,7 @@ class LoggingHandler:
             )
             self.tensor_hooks.append(tensor_hook)
 
-    def set_states(
-        self,
-        log: List[str],
-        hessian: bool,
-        save: bool,
-        test: bool,
-        mask: Optional[torch.Tensor] = None,
-    ):
+    def set_states(self, state):
         """
         Set the internal states of the logging handler.
 
@@ -289,13 +282,21 @@ class LoggingHandler:
             save (bool): Whether to save the logging data.
             test (bool): Whether to run in test mode.
         """
-        self.log = log
-        self.hessian = hessian
-        self.save = save
-        self.test = test
-        self.mask = mask
+        self.log = state.log
+        self.hessian = state.hessian
+        self.save = state.save
+        self.test = state.test
 
         self.current_log = nested_dict()
+
+    def set_mask(self, mask: Optional[torch.Tensor] = None) -> None:
+        """
+        Set the mask to be used for logging.
+
+        Args:
+            mask (torch.Tensor): The mask to be used for logging.
+        """
+        self.mask = mask
 
     def add_module(self, module_name: str, module: nn.Module) -> None:
         """
