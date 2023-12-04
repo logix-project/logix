@@ -8,7 +8,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import evaluate
+from datasets import load_metric
 from torch.nn import CrossEntropyLoss
 
 from utils import clear_gpu_cache, set_seed, construct_model, get_loaders
@@ -23,8 +23,6 @@ os.makedirs("files/", exist_ok=True)
 os.makedirs("files/checkpoints", exist_ok=True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-train_loader, _, valid_loader = get_loaders(data_name=args.data_name)
-model = construct_model(data_name=args.data_name).to(device)
 
 
 def train(
@@ -75,8 +73,7 @@ def model_evaluate(
     model: nn.Module, loader: torch.utils.data.DataLoader
 ) -> Tuple[float, float]:
     model.eval()
-    # Task name does not really matter here.
-    metric = evaluate.load("glue", "qnli")
+    metric = load_metric("glue", args.data_name)
     total_loss, total_num = 0.0, 0.0
     for step, batch in enumerate(loader):
         batch = {k: v.to(device) for k, v in batch.items()}
@@ -101,6 +98,9 @@ for i in range(args.num_train):
     print(f"Training {i}th model ...")
     start_time = time.time()
 
+    train_loader, _, valid_loader = get_loaders(data_name=args.data_name)
+    model = construct_model(data_name=args.data_name).to(device)
+
     set_seed(i)
 
     train(
@@ -112,6 +112,4 @@ for i in range(args.num_train):
 
     _, valid_acc = model_evaluate(model=model, loader=valid_loader)
     print(f"Validation Accuracy: {valid_acc}")
-    del model
-    clear_gpu_cache()
     print(f"Took {time.time() - start_time} seconds.")

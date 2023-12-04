@@ -1,7 +1,19 @@
+# usage: python qualitative_analysis.py --score_path files/analog/lora_random_128_d1e-05/if_analog.pt --score_path2 files/results/0/sst2_ekfac_empirical_d1e-5_32_if.pt
+
+import argparse
+
 import torch
+from scipy.stats import pearsonr
 
 from utils import get_loaders, set_seed
 
+
+parser = argparse.ArgumentParser("GPT2 Influence Score qualtitative analysis")
+parser.add_argument("--score_path", type=str)
+parser.add_argument("--score_path2", type=str)
+args = parser.parse_args()
+
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 set_seed(0)
 
 # data
@@ -10,20 +22,17 @@ _, eval_train_loader, test_loader = get_loaders(
     valid_indices=list(range(32)),
 )
 
-# score
-score_path = "if_analog.pt"
-scores = torch.load(score_path, map_location="cpu")
-print(scores.shape)
+# correlation
+scores = torch.load(args.score_path, map_location="cpu")
+print(f"Loaded scores from {args.score_path}")
+if args.score_path2 is not None:
+    scores2 = torch.load(args.score_path2, map_location="cpu")
+    print(f"Loaded scores from {args.score_path2}")
+    print(f"scores: {scores.shape}")
+    print(f"scores2: {scores2.shape}")
 
-for i in range(16):
-    print("=" * 80)
-    print(f"{i}th data point")
-    print(f"Sequence: {test_loader.dataset[i]['sentence']}")
-    print(f"Label: {test_loader.dataset[i]['label']}")
-
-    print("Most influential data point")
-    rank = torch.argsort(scores[i], descending=True)
-    for j in range(3):
-        print(f"Rank {j} (score = {scores[i][rank[j]]})")
-        print(f"Sentence: {eval_train_loader.dataset[int(rank[j])]['sentence']}")
-        print(f"Label: {eval_train_loader.dataset[int(rank[j])]['label']}")
+    corr = []
+    for s1, s2 in zip(scores, scores2):
+        r = pearsonr(s1, s2)[0]
+        corr.append(r)
+    print(f"Average correlation: {sum(corr) / len(corr)}")
