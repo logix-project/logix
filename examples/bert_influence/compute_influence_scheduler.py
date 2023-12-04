@@ -83,12 +83,15 @@ for epoch in al_scheduler:
         with analog(data_id=data_id, mask=inputs[-1]):
             model.zero_grad()
             outputs = model(*inputs)
+            logits = outputs.view(-1, outputs.shape[-1])
 
             if sample:
-                raise NotImplementedError
+                with torch.no_grad():
+                    probs = torch.nn.functional.softmax(outputs, dim=-1)
+                    labels = torch.multinomial(probs, num_samples=1).flatten()
+            else:
+                labels = batch["labels"].view(-1).to(DEVICE)
 
-            logits = outputs.view(-1, outputs.shape[-1])
-            labels = batch["labels"].view(-1).to(DEVICE)
             loss = F.cross_entropy(logits, labels, reduction="sum", ignore_index=-100)
             loss.backward()
     analog.finalize()
