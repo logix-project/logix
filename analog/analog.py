@@ -249,10 +249,21 @@ class AnaLog:
         This method is essential for ensuring that there are no lingering hooks that could
         interfere with further operations on the model or with future logging sessions.
         """
-        self.hessian_handler.on_exit(self.logging_handler.current_log, self.hessian)
-        self.storage_handler.flush()
-        self.logging_handler.clear()
 
+        # Wait for all async operations to finish
+        if torch.cuda.is_available():
+            torch.cuda.current_stream().synchronize()
+
+        # Compute the Hessian if necessary
+        if self.hessian:
+            self.hessian_handler.on_exit(self.get_log())
+
+        # Flush the storage handler if necessary
+        if self.save:
+            self.storage_handler.flush()
+
+        # Remove all hooks
+        self.logging_handler.clear()
         self.reset()
 
     def build_storage_handler(self) -> None:

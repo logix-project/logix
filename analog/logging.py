@@ -11,7 +11,9 @@ from analog.hessian import HessianHandlerBase
 from analog.utils import nested_dict
 
 
-def compute_per_sample_gradient(fwd, bwd, module):
+def compute_per_sample_gradient(
+    fwd: torch.Tensor, bwd: torch.Tensor, module: nn.Module
+):
     """
     Computes the per-sample gradient of a module.
 
@@ -39,7 +41,9 @@ def compute_per_sample_gradient(fwd, bwd, module):
         )
         fwd_unfold = fwd_unfold.reshape(bsz, fwd_unfold.shape[1], -1)
         bwd = bwd.reshape(bsz, -1, fwd_unfold.shape[-1])
-        grad = torch.einsum("ijk,ilk->ijl", bwd, fwd_unfold)
+        grad = einsum(bwd, fwd_unfold, "i j k, i l k -> i j l")
+
+        # Ensure that each gradient has two dimensions of (out_dim, in_dim)
         shape = [bsz, module.weight.shape[0], -1]
         return grad.reshape(shape)
     elif isinstance(module, nn.Conv1d):
@@ -93,7 +97,10 @@ class LoggingHandler:
         assert len(inputs) == 1
 
         activations = inputs[0]
-        # In case `mask is not None`, apply the mask to activations
+
+        # If `mask` is not None, apply the mask to activations. This is
+        # useful for example when you work with sequence models that use
+        # padding. In this case, you can use the mask to ignore the padding
         if self.mask is not None:
             if len(self.mask.shape) != len(activations.shape):
                 assert len(self.mask.shape) == len(activations.shape) - 1
@@ -105,8 +112,8 @@ class LoggingHandler:
 
         # If KFAC is used, update the forward covariance
         if self.hessian and self.hessian_type == "kfac":
-            self.hessian_handler.update_hessian(
-                module, module_name, FORWARD, activations, self.mask
+            self.hessian_handler.update_hessian_expand(
+                module, module_name, FORWARD, activations
             )
 
         if FORWARD in self.log:
@@ -137,8 +144,8 @@ class LoggingHandler:
 
         # If KFAC is used, update the backward covariance
         if self.hessian and self.hessian_type == "kfac":
-            self.hessian_handler.update_hessian(
-                module, module_name, BACKWARD, grad_outputs[0], self.mask
+            self.hessian_handler.update_hessian_expand(
+                module, module_name, BACKWARD, grad_outputs[0]
             )
 
         if BACKWARD in self.log:

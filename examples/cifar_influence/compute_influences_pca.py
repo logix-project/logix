@@ -1,6 +1,7 @@
 import time
-import torch
+import argparse
 
+import torch
 
 from analog import AnaLog, AnaLogScheduler
 from analog.utils import DataIDGenerator
