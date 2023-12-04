@@ -19,6 +19,7 @@ parser.add_argument("--damping", type=float, default=1e-5)
 parser.add_argument("--ekfac", action="store_true")
 parser.add_argument("--lora", action="store_true")
 parser.add_argument("--sample", action="store_true")
+parser.add_argument("--resume", action="store_true")
 args = parser.parse_args()
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -37,28 +38,34 @@ query_loader = dataloader_fn(
     batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs
 )
 
-analog = AnaLog(project="test")
+analog = AnaLog(project="test", config="./config.yaml")
 al_scheduler = AnaLogScheduler(
     analog, ekfac=args.ekfac, lora=args.lora, sample=args.sample
 )
 
 # Gradient & Hessian logging
 analog.watch(model)
-id_gen = DataIDGenerator()
-for epoch in al_scheduler:
-    sample = True if epoch < (len(al_scheduler) - 1) and args.sample else False
-    for inputs, targets in train_loader:
-        data_id = id_gen(inputs)
-        with analog(data_id=data_id):
-            inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
-            model.zero_grad()
-            outs = model(inputs)
-            if sample:
-                probs = torch.nn.functional.softmax(outs, dim=-1)
-                targets = torch.multinomial(probs, 1).flatten().detach()
-            loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
-            loss.backward()
-    analog.finalize()
+
+if not args.resume:
+    id_gen = DataIDGenerator()
+    for epoch in al_scheduler:
+        sample = True if epoch < (len(al_scheduler) - 1) and args.sample else False
+        for inputs, targets in train_loader:
+            data_id = id_gen(inputs)
+            with analog(data_id=data_id):
+                inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
+                model.zero_grad()
+                outs = model(inputs)
+                if sample:
+                    probs = torch.nn.functional.softmax(outs, dim=-1)
+                    targets = torch.multinomial(probs, 1).flatten().detach()
+                loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
+                loss.backward()
+        analog.finalize()
+else:
+    if args.lora:
+        analog.add_lora()
+    analog.initialize_from_log()
 
 # Influence Analysis
 log_loader = analog.build_log_dataloader()

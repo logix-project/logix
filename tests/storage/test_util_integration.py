@@ -57,18 +57,20 @@ class TestMemoryMapHandler(unittest.TestCase):
 
         handler.write(data_buffer, filename)
 
-        mmap, metadata = handler.read(filename)
-        for item in metadata:
-            offset = item["offset"]
-            size = item["size"]
-            shape = tuple(item["shape"])
-            dtype = np.dtype(item["dtype"])
-            expected_data = data_buffer[item["data_id"]][1]["dummy_data"]
-            read_data = np.frombuffer(
-                mmap, dtype=dtype, count=size // dtype.itemsize, offset=offset
-            ).reshape(shape)
-            # Test if expected value and read value equals
-            self.assertTrue(np.array_equal(read_data, expected_data), "Data mismatch")
+        with handler.read(filename) as (mmap, metadata):
+            for item in metadata:
+                offset = item["offset"]
+                size = item["size"]
+                shape = tuple(item["shape"])
+                dtype = np.dtype(item["dtype"])
+                expected_data = data_buffer[item["data_id"]][1]["dummy_data"]
+                read_data = np.frombuffer(
+                    mmap, dtype=dtype, count=size // dtype.itemsize, offset=offset
+                ).reshape(shape)
+                # Test if expected value and read value equals
+                self.assertTrue(
+                    np.array_equal(read_data, expected_data), "Data mismatch"
+                )
 
     def test_read(self):
         expected_files_path = os.path.join(
@@ -82,11 +84,15 @@ class TestMemoryMapHandler(unittest.TestCase):
         ]
 
         handler.write(data_buffer, filename)
-        mmap, metadata = handler.read(filename)
+        mmap, metadata, expected_mmap = None, None, None
 
-        expected_mmap, _ = handler.read(
-            "expected_data.mmap"
-        )  # Using same metadata file.
+        with handler.read(filename) as (mm, md):
+            mmap = mm
+            metadata = md
+
+        with handler.read("expected_data.mmap") as (em, _):
+            expected_mmap = em
+
         for item in metadata:
             offset = item["offset"]
             size = item["size"]

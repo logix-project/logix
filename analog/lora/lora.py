@@ -3,6 +3,7 @@ from typing import List
 import torch.nn as nn
 
 from analog.lora.modules import LoraLinear, LoraConv2d
+from analog.utils import get_logger
 
 
 def find_parameter_sharing_group(
@@ -41,7 +42,7 @@ class LoRAHandler:
         self.parse_config()
 
     def parse_config(self):
-        self.init_strategy = self.config.get("init", "pca")
+        self.init_strategy = self.config.get("init", "random")
         self.rank = self.config.get("rank", 64)
 
     def add_lora(
@@ -56,8 +57,11 @@ class LoRAHandler:
         """
         Add LoRA modules to a model.
         """
-        if self.init_strategy == "pca" and hessian_state is None:
-            raise ValueError("hessian_state must be provided for pca LoRA")
+        if self.init_strategy == "pca" and len(hessian_state) == 0:
+            get_logger().warning(
+                "Hessian state not provided. Using random initialization instead."
+            )
+            self.init_strategy = "random"
 
         shared_modules = {}
         device = next(model.parameters()).device
@@ -102,7 +106,8 @@ class LoRAHandler:
                 shared_modules[psg] = shared_module
 
             lora_module = lora_cls(self.rank, module, shared_modules.get(psg, None))
-            lora_module.init_weight(self.init_strategy, hessian_state[name])
+            if self.init_strategy == "pca":
+                lora_module.pca_init_weight(self.init_strategy, hessian_state[name])
             lora_module.to(device)
 
             parent, target, target_name = _get_submodules(model, name)

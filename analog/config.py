@@ -13,12 +13,12 @@ class Config:
 
     # Default values for each configuration
     _DEFAULTS = {
-        "global": {"log_root": "./analog"},
+        "root_dir": "./analog",
         "logging": {},
         "storage": {"type": "default"},
         "hessian": {"type": "kfac", "damping": 1e-2},
         "analysis": {},
-        "lora": {"init": "pca", "rank": 64},
+        "lora": {"init": "random", "rank": 64},
     }
 
     def __init__(self, config_file: str, project_name: str) -> None:
@@ -37,22 +37,14 @@ class Config:
             )
             self.data = {}
 
-        self._global_config = self.data.get("global", self._DEFAULTS["global"])
         self._logging_config = self.data.get("logging", self._DEFAULTS["logging"])
         self._storage_config = self.data.get("storage", self._DEFAULTS["storage"])
         self._hessian_config = self.data.get("hessian", self._DEFAULTS["hessian"])
         self._analysis_config = self.data.get("analysis", self._DEFAULTS["analysis"])
         self._lora_config = self.data.get("lora", self._DEFAULTS["lora"])
 
-        self._set_log_dir()
-
-    def get_global_config(self) -> Dict[str, Any]:
-        """
-        Retrieve global configuration.
-
-        :return: Dictionary containing global configurations.
-        """
-        return self._global_config
+        self._log_dir = None
+        self._set_log_dir(self.data.get("root_dir", self._DEFAULTS["root_dir"]))
 
     def get_logging_config(self) -> Dict[str, Any]:
         """
@@ -94,14 +86,22 @@ class Config:
         """
         return self._lora_config
 
-    def _set_log_dir(self) -> None:
+    def get_log_dir(self) -> str:
+        """
+        Retrieve logging directory.
+
+        :return: Path to logging directory.
+        """
+        return self._log_dir
+
+    def _set_log_dir(self, root_dir) -> None:
         """
         Set single logging directory for all components.
         """
-        log_root = self._global_config.get("log_root", "./analog")
-        log_dir = os.path.join(log_root, self.project_name)
+        self._log_dir = os.path.join(root_dir, self.project_name)
 
-        self._global_config["log_dir"] = log_dir
-        self._logging_config["log_dir"] = log_dir
-        self._storage_config["log_dir"] = log_dir
-        self._hessian_config["log_dir"] = log_dir + "/hessian"
+        if not os.path.exists(self._log_dir):
+            os.makedirs(self._log_dir)
+
+        self._storage_config["log_dir"] = self._log_dir
+        self._hessian_config["log_dir"] = os.path.join(self._log_dir, "hessian")

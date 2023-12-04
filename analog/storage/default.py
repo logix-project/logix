@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader, default_collate
 
-from analog.utils import nested_dict, to_numpy, get_logger
+from analog.utils import nested_dict, to_numpy, get_logger, get_rank, get_world_size
 from analog.storage import StorageHandlerBase
 from analog.storage.utils import MemoryMapHandler
 from analog.constants import GRAD
@@ -19,8 +19,8 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         Parse the configuration parameters.
         """
+        self.log_dir = self.config.get("log_dir")
         self.flush_threshold = self.config.get("flush_threshold", -1)
-        self.log_dir = self.config.get("log_dir", "analog")
         self.max_workers = self.config.get("worker", 0)
         self.allow_async = True if self.max_workers > 1 else False
 
@@ -33,6 +33,8 @@ class DefaultStorageHandler(StorageHandlerBase):
         self.push_count = 0
         self.mmap_handler = None
         self.file_prefix = "log_chunk_"
+        if get_world_size() > 1:
+            self.file_prefix += f"rank_{get_rank()}_"
 
         # TODO: configure for memory map options. We can make it as the only option if necessary.
         if True:
@@ -40,9 +42,8 @@ class DefaultStorageHandler(StorageHandlerBase):
 
         if self.allow_async:
             self.lock = Lock()
-        if not os.path.exists(self.log_dir):
-            os.makedirs(self.log_dir)
-        else:
+
+        if os.path.exists(self.log_dir):
             get_logger().warning(f"Log directory {self.log_dir} already exists.\n")
 
     def format_log(self, module_name: str, log_type: str, data):
@@ -87,8 +88,10 @@ class DefaultStorageHandler(StorageHandlerBase):
         """
         _flush_unsafe is thread unsafe flush of current buffer. No shared variable must be allowed.
         """
-        save_path = str(os.path.join(self.log_dir, f"data_{push_count}.pt"))
+        save_path = self.file_prefix + f"{push_count}.mmap"
         torch.save(buffer, save_path)
+        buffer_list = [(k, v) for k, v in buffer]
+        self.mmap_handler.write(buffer_list, save_path)
         return save_path
 
     def _flush_safe(self) -> str:
@@ -227,8 +230,8 @@ class DefaultLogDataset(Dataset):
 
     def _add_metadata_and_mmap(self, mmap_filename, chunk_index):
         # Load the memmap file
-        mmap, metadata = self.mmap_handler.read(mmap_filename)
-        self.memmaps.append(mmap)
+        with self.mmap_handler.read(mmap_filename) as (mmap, metadata):
+            self.memmaps.append(mmap)
 
         # Update the mapping from data_id to chunk
         for entry in metadata:

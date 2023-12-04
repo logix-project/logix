@@ -1,3 +1,5 @@
+import os
+
 from typing import Optional, Iterable, Dict, Any, List
 
 import torch
@@ -26,7 +28,7 @@ class AnaLog:
 
         Args:
             project (str): The name or identifier of the project.
-            config (str): The path to the YAML configuration file.
+            config (str, optional): The path to the YAML configuration file. Defaults to "".
         """
         self.project = project
 
@@ -35,6 +37,9 @@ class AnaLog:
         # Config
         config = Config(config_file=config, project_name=project)
         self.config = config
+
+        # Log dir
+        self.log_dir = config.get_log_dir()
 
         # Initialize storage, hessian, and logging handlers from config as well as
         # inject dependencies between handlers.
@@ -271,7 +276,6 @@ class AnaLog:
         Returns:
             The initialized Hessian handler.
         """
-        global_config = self.config.get_global_config()
         hessian_config = self.config.get_hessian_config()
         hessian_type = hessian_config.get("type", "kfac")
         if hessian_type == "kfac":
@@ -359,17 +363,42 @@ class AnaLog:
         """
         return self.hessian_handler.hessian_svd()
 
-    def save_hessian(self):
+    def save_hessian_state(self) -> None:
         """
         Save Hessian state to disk.
         """
         self.hessian_handler.save_state()
 
-    def load_hessian(self, log_dir: str):
+    def save_lora_state(self) -> None:
         """
-        Load Hessian state from disk.
+        Save LoRA state to disk.
         """
-        self.hessian_handler.load_state(log_dir=log_dir)
+        state_dict = self.model.state_dict()
+        lora_state_dict = {
+            name: param for name, param in state_dict.items() if "analog_lora" in name
+        }
+        if len(lora_state_dict) > 0:
+            log_dir = os.path.join(self.log_dir, "lora")
+            if not os.path.exists(log_dir):
+                os.makedirs(log_dir)
+            torch.save(lora_state_dict, os.path.join(log_dir, "lora_state.pt"))
+
+    def initialize_from_log(self) -> None:
+        """
+        Load all states from disk.
+        """
+        # Load hessian state
+        hessian_dir = os.path.join(self.log_dir, "hessian")
+        if os.path.exists(hessian_dir):
+            self.hessian_handler.load_state(hessian_dir)
+
+        # Load LoRA state
+        lora_dir = os.path.join(self.log_dir, "lora")
+        if os.path.exists(lora_dir):
+            lora_state = torch.load(os.path.join(lora_dir, "lora_state.pt"))
+            for name in lora_state:
+                assert name in self.model.state_dict(), f"{name} not in model!"
+            self.model.load_state_dict(lora_state, strict=False)
 
     def finalize(
         self,
@@ -383,6 +412,9 @@ class AnaLog:
         """
         self.hessian_handler.finalize()
         self.storage_handler.finalize()
+
+        self.save_hessian_state()
+        self.save_lora_state()
 
         if clear:
             self.hessian_handler.clear()

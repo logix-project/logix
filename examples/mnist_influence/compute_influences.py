@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser("MNIST Influence Analysis")
 parser.add_argument("--data", type=str, default="mnist", help="mnist or fmnist")
 parser.add_argument("--eval-idxs", type=int, nargs="+", default=[0])
 parser.add_argument("--damping", type=float, default=1e-5)
+parser.add_argument("--resume", action="store_true")
 args = parser.parse_args()
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -38,16 +39,20 @@ analog = AnaLog(project="test")
 
 # Gradient & Hessian logging
 analog.watch(model)
-id_gen = DataIDGenerator()
-for inputs, targets in train_loader:
-    data_id = id_gen(inputs)
-    with analog(data_id=data_id, log=["grad"], hessian=True, save=True):
-        inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
-        model.zero_grad()
-        outs = model(inputs)
-        loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
-        loss.backward()
-analog.finalize()
+
+if not args.resume:
+    id_gen = DataIDGenerator()
+    for inputs, targets in train_loader:
+        data_id = id_gen(inputs)
+        with analog(data_id=data_id, log=["grad"], hessian=True, save=True):
+            inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
+            model.zero_grad()
+            outs = model(inputs)
+            loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
+            loss.backward()
+    analog.finalize()
+else:
+    analog.initialize_from_log()
 
 # Influence Analysis
 log_loader = analog.build_log_dataloader()
