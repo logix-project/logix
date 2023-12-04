@@ -63,7 +63,8 @@ if not args.resume:
                 loss.backward()
         analog.finalize()
 else:
-    analog.add_lora()
+    if args.lora:
+        analog.add_lora()
     analog.initialize_from_log()
 
 # Influence Analysis
