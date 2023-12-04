@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader, default_collate
 
-from analog.utils import nested_dict, to_numpy, get_logger
+from analog.utils import nested_dict, to_numpy, get_logger, get_rank, get_world_size
 from analog.storage import StorageHandlerBase
 from analog.storage.utils import MemoryMapHandler
 from analog.constants import GRAD
@@ -33,6 +33,8 @@ class DefaultStorageHandler(StorageHandlerBase):
         self.push_count = 0
         self.mmap_handler = None
         self.file_prefix = "log_chunk_"
+        if get_world_size() > 1:
+            self.file_prefix += f"rank_{get_rank()}_"
 
         # TODO: configure for memory map options. We can make it as the only option if necessary.
         if True:

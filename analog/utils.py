@@ -14,6 +14,16 @@ from einops import rearrange
 _logger = None
 
 
+class DistributedRankFilter(logging.Filter):
+    """
+    This is a logging filter which will filter out logs from all ranks
+    in distributed training except for rank 0.
+    """
+
+    def filter(self, record):
+        return get_rank() == 0
+
+
 def get_logger() -> logging.Logger:
     """
     Get global logger.
@@ -31,6 +41,11 @@ def get_logger() -> logging.Logger:
     ch = logging.StreamHandler(stream=sys.stdout)
     ch.setLevel(logging.INFO)
     ch.setFormatter(log_format)
+
+    # Apply the rank filter to the handler
+    rank_filter = DistributedRankFilter()
+    ch.addFilter(rank_filter)
+
     logger.addHandler(ch)
 
     _logger = logger
