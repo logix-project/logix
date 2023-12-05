@@ -21,7 +21,6 @@ set_seed(0)
 _, eval_train_loader, test_loader = get_loaders(
     valid_indices=list(range(128)),
 )
-tokenizer = AutoTokenizer.from_pretrained("gpt2", use_fast=True, trust_remote_code=True)
 
 scores = torch.load(args.score_path, map_location="cpu")
 if args.score_path2 is not None:
@@ -33,6 +32,7 @@ if args.score_path2 is not None:
         corr.append(r)
     print(f"Average correlation: {sum(corr) / len(corr)}")
 
+tokenizer = AutoTokenizer.from_pretrained("gpt2", use_fast=True, trust_remote_code=True)
 for i in range(16):
     print("=" * 80)
     print(f"{i}th data point")
