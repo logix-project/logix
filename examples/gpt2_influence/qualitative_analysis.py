@@ -30,19 +30,28 @@ if args.score_path2 is not None:
     for s1, s2 in zip(scores, scores2):
         r = pearsonr(s1, s2)[0]
         corr.append(r)
-    print(f"Average correlation: {sum(corr) / len(corr)}")
+    print(f"Average correlation: {sum(corr) / len(corr)}, with {len(corr)} data points")
 
-tokenizer = AutoTokenizer.from_pretrained("gpt2", use_fast=True, trust_remote_code=True)
-for i in range(16):
-    print("=" * 80)
-    print(f"{i}th data point")
-    sequence = tokenizer.decode(test_loader.dataset[i]["input_ids"])
-    print(f"Sequence: {sequence}")
+    k = 100
+    overlaps = []
+    for s1, s2 in zip(scores, scores2):
+        top_k_1 = torch.argsort(s1, descending=True)[:k]
+        top_k_2 = torch.argsort(s2, descending=True)[:k]
+        overlap = len(set(top_k_1.tolist()).intersection(set(top_k_2.tolist())))
+        overlaps.append(overlap)
+    print(f"Average overlap: {sum(overlaps) / len(overlaps)} out of {k}, with {len(overlaps)} data points")
 
-    print("Most influential data point")
-    rank = torch.argsort(scores[i], descending=True)
-    for j in range(3):
-        print(f"Rank {j} (score = {scores[i][rank[j]]})")
-        sent = tokenizer.decode(eval_train_loader.dataset[int(rank[j])]["input_ids"])
-        print(f"Sentence: {sent}")
-    input()
+# tokenizer = AutoTokenizer.from_pretrained("gpt2", use_fast=True, trust_remote_code=True)
+# for i in range(16):
+#     print("=" * 80)
+#     print(f"{i}th data point")
+#     sequence = tokenizer.decode(test_loader.dataset[i]["input_ids"])
+#     print(f"Sequence: {sequence}")
+
+#     print("Most influential data point")
+#     rank = torch.argsort(scores[i], descending=True)
+#     for j in range(3):
+#         print(f"Rank {j} (score = {scores[i][rank[j]]})")
+#         sent = tokenizer.decode(eval_train_loader.dataset[int(rank[j])]["input_ids"])
+#         print(f"Sentence: {sent}")
+#     input()
