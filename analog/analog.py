@@ -221,6 +221,17 @@ class AnaLog:
         Returns:
             self: Returns the instance of the AnaLog object.
         """
+        state = {}
+        if log is not None:
+            state["log"] = log
+        if hessian is not None:
+            state["hessian"] = hessian
+        if save is not None:
+            state["save"] = save
+        if test:
+            state["test"] = test
+        self.set_state(state)
+
         self.data_id = data_id
         self.mask = mask
 
@@ -439,7 +450,12 @@ class AnaLog:
         if len(state.log) > 0 and len(set(state.log) - LOG_TYPES) > 0:
             raise ValueError("Invalid value for 'log'.")
         if state.test and (state.hessian or state.save):
-            raise ValueError("Cannot compute Hessian or save logs during testing.")
+            get_logger().warning(
+                "Cannot compute Hessian or save logs during testing. "
+                + "Setting 'hessian' and 'save' to False."
+            )
+            state.hessian = False
+            state.save = False
         if GRAD in state.log and len(state.log) > 1:
             raise ValueError("Cannot log 'grad' with other log types.")
 
@@ -463,7 +479,7 @@ class AnaLog:
         self.state.set_state(state_kwargs)
         self.sanity_check()
 
-    def test(self) -> None:
+    def eval(self) -> None:
         """
         Set the state of AnaLog for testing.
         """
