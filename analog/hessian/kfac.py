@@ -230,12 +230,18 @@ class KFACHessianHandler(HessianHandlerBase):
                 if not isinstance(state_dict[key], torch.Tensor):
                     _synchronize(state_dict[key], counter_dict[key])
                 else:
-                    state_dict[key].div_(counter_dict[key])
                     if world_size > 1:
+                        # we need to move the state to the GPU before reducing
+                        # across processes as the communication is only
+                        # supported on GPU tensors in most PyTorch backends
                         state_gpu = state_dict[key].cuda()
-                        state_gpu.div_(world_size)
                         dist.all_reduce(state_gpu, op=dist.ReduceOp.SUM)
                         state_dict[key].copy_(state_gpu.cpu())
+
+                        count_gpu = torch.tensor(counter_dict[key]).cuda()
+                        dist.all_reduce(count_gpu, op=dist.ReduceOp.SUM)
+                        counter_dict[key] = count_gpu.item()
+                    state_dict[key].div_(counter_dict[key])
 
         _synchronize(state_dict, counter_dict)
 

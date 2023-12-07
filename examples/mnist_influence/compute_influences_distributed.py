@@ -22,7 +22,7 @@ def main():
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
 
-    accelerator = Accelerator()
+    accelerator = Accelerator(even_batches=False)
 
     model = construct_mlp()
     model.load_state_dict(
