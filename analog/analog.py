@@ -207,7 +207,7 @@ class AnaLog:
         log: Optional[Iterable[str]] = None,
         hessian: Optional[bool] = None,
         save: Optional[bool] = None,
-        test: bool = False,
+        test: bool = None,
         mask: Optional[torch.Tensor] = None,
     ):
         """
@@ -384,6 +384,12 @@ class AnaLog:
         """
         return self.hessian_handler.hessian_svd()
 
+    def save_analog_state(self) -> None:
+        """
+        Save AnaLog state to disk.
+        """
+        torch.save(self.state, os.path.join(self.log_dir, "analog_state.pt"))
+
     def save_hessian_state(self) -> None:
         """
         Save Hessian state to disk.
@@ -408,6 +414,11 @@ class AnaLog:
         """
         Load all states from disk.
         """
+        # Load analog state
+        analog_state_path = os.path.join(self.log_dir, "analog_state.pt")
+        if os.path.exists(analog_state_path):
+            self.state = torch.load(analog_state_path)
+
         # Load hessian state
         hessian_dir = os.path.join(self.log_dir, "hessian")
         if os.path.exists(hessian_dir):
@@ -435,6 +446,7 @@ class AnaLog:
         self.storage_handler.finalize()
 
         if get_rank() == 0:
+            self.save_analog_state()
             self.save_hessian_state()
             self.save_lora_state()
 

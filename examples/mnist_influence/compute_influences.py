@@ -39,12 +39,13 @@ analog = AnaLog(project="test")
 
 # Gradient & Hessian logging
 analog.watch(model)
+analog.set_state({"log": ["grad"], "hessian": True, "save": True})
 
 if not args.resume:
     id_gen = DataIDGenerator()
     for inputs, targets in train_loader:
         data_id = id_gen(inputs)
-        with analog(data_id=data_id, log=["grad"], hessian=True, save=True):
+        with analog(data_id=data_id):
             inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
             model.zero_grad()
             outs = model(inputs)
@@ -59,7 +60,7 @@ log_loader = analog.build_log_dataloader()
 
 analog.add_analysis({"influence": InfluenceFunction})
 query_iter = iter(query_loader)
-with analog(log=["grad"], test=True) as al:
+with analog(log=["grad"], test=True):
     test_input, test_target = next(query_iter)
     test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
     model.zero_grad()
@@ -68,7 +69,7 @@ with analog(log=["grad"], test=True) as al:
         test_out, test_target, reduction="sum"
     )
     test_loss.backward()
-    test_log = al.get_log()
+test_log = analog.get_log()
 start = time.time()
 if_scores = analog.influence.compute_influence_all(
     test_log, log_loader, damping=args.damping
