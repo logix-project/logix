@@ -256,7 +256,7 @@ class KFACHessianHandler(HessianHandlerBase):
         Save Hessian state to disk.
         """
         # TODO: should this be in the constructor or initialize-type function?
-        if not os.path.exists(self.log_dir):
+        if not os.path.exists(self.log_dir) and get_rank() == 0:
             os.makedirs(self.log_dir)
 
         # TODO: implement this for all HessianHandlers

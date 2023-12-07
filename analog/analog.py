@@ -406,7 +406,7 @@ class AnaLog:
         }
         if len(lora_state_dict) > 0:
             log_dir = os.path.join(self.log_dir, "lora")
-            if not os.path.exists(log_dir):
+            if not os.path.exists(log_dir) and get_rank() == 0:
                 os.makedirs(log_dir)
             torch.save(lora_state_dict, os.path.join(log_dir, "lora_state.pt"))
 
