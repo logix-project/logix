@@ -1,6 +1,7 @@
 import os
 
 from typing import Optional, Iterable, Dict, Any, List
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -12,7 +13,23 @@ from analog.storage import DefaultStorageHandler
 from analog.hessian import RawHessianHandler, KFACHessianHandler
 from analog.analysis import AnalysisBase
 from analog.lora import LoRAHandler
-from analog.utils import get_logger
+from analog.utils import get_logger, get_rank
+
+
+class AnaLogState:
+    def __init__(self) -> None:
+        self.log = []
+        self.hessian = False
+        self.save = False
+        self.test = False
+
+    def set_state(
+        self,
+        state_kwargs: Dict[str, Any],
+    ) -> None:
+        for key, value in state_kwargs.items():
+            assert hasattr(self, key), f"Invalid state key: {key}"
+            setattr(self, key, value)
 
 
 class AnaLog:
@@ -52,16 +69,7 @@ class AnaLog:
         self.analysis_plugins = {}
 
         # Internal states
-        self.log = None
-        self.hessian = False
-        self.save = False
-        self.test = False
-        self.mask = None
-
-        self.log_default = []
-        self.hessian_default = False
-        self.save_default = False
-        self.test_default = False
+        self.state = AnaLogState()
 
         self.type_filter = None
         self.name_filter = None
@@ -96,11 +104,11 @@ class AnaLog:
             ):
                 continue
             if type_filter is not None and not any(
-                isinstance(module, module_type) for module_type in type_filter
+                isinstance(module, module_type) for module_type in self.type_filter
             ):
                 continue
             if name_filter is not None and not any(
-                keyword in name for keyword in name_filter
+                keyword in name for keyword in self.name_filter
             ):
                 continue
             if lora and "analog_lora_B" not in name:
@@ -199,7 +207,7 @@ class AnaLog:
         log: Optional[Iterable[str]] = None,
         hessian: Optional[bool] = None,
         save: Optional[bool] = None,
-        test: bool = False,
+        test: bool = None,
         mask: Optional[torch.Tensor] = None,
     ):
         """
@@ -213,15 +221,19 @@ class AnaLog:
         Returns:
             self: Returns the instance of the AnaLog object.
         """
+        state = {}
+        if log is not None:
+            state["log"] = log
+        if hessian is not None:
+            state["hessian"] = hessian
+        if save is not None:
+            state["save"] = save
+        if test:
+            state["test"] = test
+        self.set_state(state)
+
         self.data_id = data_id
         self.mask = mask
-
-        self.log = log or self.log_default
-        self.hessian = hessian or self.hessian_default
-        self.save = save or self.save_default
-        self.test = test or self.test_default
-
-        self.sanity_check(self.data_id, self.log, self.hessian, self.save, self.test)
 
         return self
 
@@ -235,9 +247,8 @@ class AnaLog:
 
         self.storage_handler.set_data_id(self.data_id)
 
-        self.logging_handler.set_states(
-            self.log, self.hessian, self.save, self.test, self.mask
-        )
+        self.logging_handler.set_states(self.state)
+        self.logging_handler.set_mask(self.mask)
         self.logging_handler.register_all_module_hooks()
 
         return self
@@ -249,11 +260,21 @@ class AnaLog:
         This method is essential for ensuring that there are no lingering hooks that could
         interfere with further operations on the model or with future logging sessions.
         """
-        self.hessian_handler.on_exit(self.logging_handler.current_log, self.hessian)
-        self.storage_handler.flush()
-        self.logging_handler.clear()
 
-        self.reset()
+        # Wait for all async operations to finish
+        if torch.cuda.is_available():
+            torch.cuda.current_stream().synchronize()
+
+        # Compute the Hessian if necessary
+        if self.state.hessian:
+            self.hessian_handler.on_exit(self.get_log())
+
+        # Flush the storage handler if necessary
+        if self.state.save:
+            self.storage_handler.flush()
+
+        # Remove all hooks
+        self.logging_handler.clear()
 
     def build_storage_handler(self) -> None:
         """
@@ -363,6 +384,12 @@ class AnaLog:
         """
         return self.hessian_handler.hessian_svd()
 
+    def save_analog_state(self) -> None:
+        """
+        Save AnaLog state to disk.
+        """
+        torch.save(self.state, os.path.join(self.log_dir, "analog_state.pt"))
+
     def save_hessian_state(self) -> None:
         """
         Save Hessian state to disk.
@@ -379,7 +406,7 @@ class AnaLog:
         }
         if len(lora_state_dict) > 0:
             log_dir = os.path.join(self.log_dir, "lora")
-            if not os.path.exists(log_dir):
+            if not os.path.exists(log_dir) and get_rank() == 0:
                 os.makedirs(log_dir)
             torch.save(lora_state_dict, os.path.join(log_dir, "lora_state.pt"))
 
@@ -387,6 +414,11 @@ class AnaLog:
         """
         Load all states from disk.
         """
+        # Load analog state
+        analog_state_path = os.path.join(self.log_dir, "analog_state.pt")
+        if os.path.exists(analog_state_path):
+            self.state = torch.load(analog_state_path)
+
         # Load hessian state
         hessian_dir = os.path.join(self.log_dir, "hessian")
         if os.path.exists(hessian_dir):
@@ -413,31 +445,30 @@ class AnaLog:
         self.hessian_handler.finalize()
         self.storage_handler.finalize()
 
-        self.save_hessian_state()
-        self.save_lora_state()
+        if get_rank() == 0:
+            self.save_analog_state()
+            self.save_hessian_state()
+            self.save_lora_state()
 
         if clear:
             self.hessian_handler.clear()
             self.storage_handler.clear()
 
-    def sanity_check(
-        self,
-        data_id: Iterable[Any],
-        log: Iterable[str],
-        hessian: bool,
-        save: bool,
-        test: bool,
-    ) -> None:
+    def sanity_check(self) -> None:
         """
         Performs a sanity check on the provided parameters.
         """
-        if len(log) > 0 and len(set(log) - LOG_TYPES) > 0:
+        state = self.state
+        if len(state.log) > 0 and len(set(state.log) - LOG_TYPES) > 0:
             raise ValueError("Invalid value for 'log'.")
-        if test and (hessian or save):
-            raise ValueError("Cannot compute Hessian or save logs during testing.")
-        if not test and data_id is None:
-            raise ValueError("Must provide data_id for logging.")
-        if GRAD in log and len(log) > 1:
+        if state.test and (state.hessian or state.save):
+            get_logger().warning(
+                "Cannot compute Hessian or save logs during testing. "
+                + "Setting 'hessian' and 'save' to False."
+            )
+            state.hessian = False
+            state.save = False
+        if GRAD in state.log and len(state.log) > 1:
             raise ValueError("Cannot log 'grad' with other log types.")
 
     def ekfac(self, on: bool = True) -> None:
@@ -450,25 +481,27 @@ class AnaLog:
         else:
             self.hessian_handler.ekfac = False
 
-    def set_default_state(self, log: List[str], hessian: bool, save: bool):
-        self.log_default = log
-        self.hessian_default = hessian
-        self.save_default = save
+    def set_state(self, state_kwargs: Dict[str, Any]) -> None:
+        """
+        Set the state of AnaLog.
 
-    def reset(self) -> None:
+        Args:
+            state_kwargs (Dict[str, Any]): The state to be set.
         """
-        Reset the internal states.
+        self.state.set_state(state_kwargs)
+        self.sanity_check()
+
+    def eval(self) -> None:
         """
-        self.log = []
-        self.hessian = False
-        self.save = False
-        self.test = False
+        Set the state of AnaLog for testing.
+        """
+        state = {"hessian": False, "save": False, "test": True}
+        self.state.set_state(state)
 
     def clear(self) -> None:
         """
         Clear everything in AnaLog.
         """
-        self.reset()
         self.logging_handler.clear(clear_modules=True)
         self.storage_handler.clear()
         self.hessian_handler.clear()

@@ -2,7 +2,7 @@ import os
 from typing import Dict, Any
 import yaml
 
-from analog.utils import get_logger
+from analog.utils import get_logger, get_rank
 
 
 class Config:
@@ -100,7 +100,7 @@ class Config:
         """
         self._log_dir = os.path.join(root_dir, self.project_name)
 
-        if not os.path.exists(self._log_dir):
+        if not os.path.exists(self._log_dir) and get_rank() == 0:
             os.makedirs(self._log_dir)
 
         self._storage_config["log_dir"] = self._log_dir

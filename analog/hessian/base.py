@@ -26,20 +26,6 @@ class HessianHandlerBase(ABC):
         pass
 
     @abstractmethod
-    def update_hessian(
-        self,
-        module: nn.Module,
-        module_name: str,
-        mode: str,
-        data: torch.Tensor,
-        mask: Optional[torch.Tensor],
-    ) -> None:
-        """
-        Compute the covariance for given data.
-        """
-        pass
-
-    @abstractmethod
     def finalize(self) -> None:
         """
         Finalize the covariance computation.

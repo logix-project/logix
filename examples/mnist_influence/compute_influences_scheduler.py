@@ -45,9 +45,9 @@ al_scheduler = AnaLogScheduler(
 
 # Gradient & Hessian logging
 analog.watch(model)
+id_gen = DataIDGenerator()
 
 if not args.resume:
-    id_gen = DataIDGenerator()
     for epoch in al_scheduler:
         sample = True if epoch < (len(al_scheduler) - 1) and args.sample else False
         for inputs, targets in train_loader:
@@ -72,8 +72,9 @@ log_loader = analog.build_log_dataloader()
 
 analog.add_analysis({"influence": InfluenceFunction})
 query_iter = iter(query_loader)
-with analog(log=["grad"], test=True) as al:
-    test_input, test_target = next(query_iter)
+test_input, test_target = next(query_iter)
+analog.eval()
+with analog(data_id=id_gen(test_input)):
     test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
     model.zero_grad()
     test_out = model(test_input)
@@ -81,7 +82,7 @@ with analog(log=["grad"], test=True) as al:
         test_out, test_target, reduction="sum"
     )
     test_loss.backward()
-    test_log = al.get_log()
+test_log = analog.get_log()
 start = time.time()
 if_scores = analog.influence.compute_influence_all(
     test_log, log_loader, damping=args.damping

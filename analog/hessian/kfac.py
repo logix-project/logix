@@ -6,12 +6,9 @@ import torch.nn as nn
 import torch.distributed as dist
 
 from analog.constants import FORWARD, BACKWARD
-from analog.utils import deep_get, get_world_size, nested_dict, get_logger
+from analog.utils import get_world_size, nested_dict, get_rank
 from analog.hessian.base import HessianHandlerBase
-from analog.hessian.utils import (
-    extract_forward_activations,
-    extract_backward_activations,
-)
+from analog.hessian.utils import extract_actvations_expand, extract_actvations_reduce
 
 
 class KFACHessianHandler(HessianHandlerBase):
@@ -32,50 +29,98 @@ class KFACHessianHandler(HessianHandlerBase):
         self.reduce = self.config.get("reduce", False)
 
     @torch.no_grad()
-    def on_exit(self, current_log=None, update_hessian=True) -> None:
-        if torch.cuda.is_available():
-            torch.cuda.current_stream().synchronize()
-        if update_hessian:
-            if self.reduce:
-                raise NotImplementedError
+    def on_exit(self, current_log) -> None:
+        """
+        This function is called when the code is exiting the AnaLog context.
+        Given the analogy between Hessian state and traiditional optimizer
+        state, this function is analogous to the optimizer's step function.
 
-            if self.ekfac:
-                for module_name, module_grad in current_log.items():
-                    self.update_ekfac(module_name, module_grad)
+        Args:
+            current_log (optional): The current log. If not specified, the
+                Hessian state will not be updated.
+            update_hessian (optional): Whether to update the Hessian state.
+        """
+        if self.reduce and not self.ekfac:
+            for module_name, module_state in current_log.items():
+                for mode, data in module_state.items():
+                    self.update_hessian_reduce(None, module_name, mode, data)
 
-    @torch.no_grad()
-    def update_hessian(
+        if self.ekfac:
+            for module_name, module_grad in current_log.items():
+                self.update_ekfac(module_name, module_grad)
+
+    def update_hessian_reduce(
         self,
         module: nn.Module,
         module_name: str,
         mode: str,
         data: torch.Tensor,
-        mask: Optional[torch.Tensor] = None,
-    ) -> None:
+    ):
+        if self.expand or self.ekfac:
+            return
+
+        # extract activations
+        activations = extract_actvations_reduce(module, mode, data).detach()
+
+        # update hessian
+        self.update_hessian(module_name, mode, activations)
+
+    def update_hessian_expand(
+        self,
+        module: nn.Module,
+        module_name: str,
+        mode: str,
+        data: torch.Tensor,
+    ):
         if self.reduce or self.ekfac:
             return
-        # extract activations
-        activation = self.extract_activations(module, mode, data).detach()
 
-        # update covariance
-        if deep_get(self.hessian_state, [module_name, mode]) is None:
+        # extract activations
+        activations = extract_actvations_expand(module, mode, data).detach()
+
+        # update hessian
+        self.update_hessian(module_name, mode, activations)
+
+    @torch.no_grad()
+    def update_hessian(
+        self,
+        module_name: str,
+        mode: str,
+        activations: torch.Tensor,
+    ) -> None:
+        """
+        Update the Hessian state given a module and data. In KFAC, the Hessian
+        state is divided into two parts: the forward and backward covariance.
+
+        Args:
+            module_name: The name of the module.
+            mode: The mode of the module.
+            data: The input data.
+        """
+        # initialize hessian state if necessary
+        if mode not in self.hessian_state[module_name]:
             self.hessian_state[module_name][mode] = torch.zeros(
-                (activation.shape[-1], activation.shape[-1])
+                (activations.shape[-1], activations.shape[-1])
             )
             self.sample_counter[module_name][mode] = 0
 
-        # move to gpu
-        if activation.is_cuda:
+        # compute covariance and update hessian state
+        if activations.is_cuda:
+            # By default, the hessian state is stored on the CPU. However,
+            # computing/updating the hessian state is on CPU is slow. Thus,
+            # we move the hessian state to the GPU if the activation is on
+            # the GPU, and then move it back to the CPU asynchrously.
             hessian_state_gpu = self.hessian_state[module_name][mode].to(
-                device=activation.device
+                device=activations.device
             )
-            hessian_state_gpu.addmm_(activation.t(), activation)
+            hessian_state_gpu.addmm_(activations.t(), activations)
             self.hessian_state[module_name][mode] = hessian_state_gpu.to(
                 device="cpu", non_blocking=True
             )
         else:
-            self.hessian_state[module_name][mode].addmm_(activation.t(), activation)
-        self.sample_counter[module_name][mode] += len(data)
+            self.hessian_state[module_name][mode].addmm_(activations.t(), activations)
+
+        self.sample_counter[module_name][mode] += len(activations)
 
         self.hessian_state_unsync = True
 
@@ -111,6 +156,9 @@ class KFACHessianHandler(HessianHandlerBase):
         self.ekfac_state_unsync = True
 
     def finalize(self) -> None:
+        """
+        Finalize the Hessian state by synchronizing the state across processes.
+        """
         if hasattr(self, "hessian_state") and self.hessian_state_unsync:
             self.synchronize(self.hessian_state, self.sample_counter)
             self.hessian_state_unsync = False
@@ -171,6 +219,9 @@ class KFACHessianHandler(HessianHandlerBase):
         return self.hessian_eigval_state, self.hessian_eigvec_state, False
 
     def synchronize(self, state_dict, counter_dict):
+        """
+        Synchronize the Hessian state across processes.
+        """
         world_size = get_world_size()
 
         def _synchronize(state_dict, counter_dict):
@@ -179,10 +230,18 @@ class KFACHessianHandler(HessianHandlerBase):
                 if not isinstance(state_dict[key], torch.Tensor):
                     _synchronize(state_dict[key], counter_dict[key])
                 else:
-                    state_dict[key].div_(counter_dict[key])
                     if world_size > 1:
-                        state_dict[key].div_(world_size)
-                        dist.all_reduce(state_dict[key], op=dist.ReduceOp.SUM)
+                        # we need to move the state to the GPU before reducing
+                        # across processes as the communication is only
+                        # supported on GPU tensors in most PyTorch backends
+                        state_gpu = state_dict[key].cuda()
+                        dist.all_reduce(state_gpu, op=dist.ReduceOp.SUM)
+                        state_dict[key].copy_(state_gpu.cpu())
+
+                        count_gpu = torch.tensor(counter_dict[key]).cuda()
+                        dist.all_reduce(count_gpu, op=dist.ReduceOp.SUM)
+                        counter_dict[key] = count_gpu.item()
+                    state_dict[key].div_(counter_dict[key])
 
         _synchronize(state_dict, counter_dict)
 
@@ -198,23 +257,12 @@ class KFACHessianHandler(HessianHandlerBase):
             del self.ekfac_eigval_state
             del self.ekfac_counter
 
-    def extract_activations(
-        self,
-        module: nn.Module,
-        mode: str,
-        data: torch.Tensor,
-    ) -> torch.Tensor:
-        if mode == FORWARD:
-            return extract_forward_activations(data, module)
-        assert mode == BACKWARD
-        return extract_backward_activations(data, module)
-
     def save_state(self) -> None:
         """
         Save Hessian state to disk.
         """
         # TODO: should this be in the constructor or initialize-type function?
-        if not os.path.exists(self.log_dir):
+        if not os.path.exists(self.log_dir) and get_rank() == 0:
             os.makedirs(self.log_dir)
 
         # TODO: implement this for all HessianHandlers

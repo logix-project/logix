@@ -34,7 +34,7 @@ class DefaultStorageHandler(StorageHandlerBase):
         self.mmap_handler = None
         self.file_prefix = "log_chunk_"
         if get_world_size() > 1:
-            self.file_prefix += f"rank_{get_rank()}_"
+            self.file_prefix = f"log_rank_{get_rank()}_chunk_"
 
         # TODO: configure for memory map options. We can make it as the only option if necessary.
         if True:
@@ -211,21 +211,19 @@ class DefaultLogDataset(Dataset):
         self.mmap_handler = mmap_handler
 
         # Find all chunk indices
-        self.chunk_indices = self._find_chunk_indices(self.mmap_handler.get_path())
+        chunk_indices = self._find_chunk_indices(self.mmap_handler.get_path())
 
         # Add metadata and mmap files for all indices
-        for chunk_index in self.chunk_indices:
-            mmap_filename = f"log_chunk_{chunk_index}.mmap"
-            self._add_metadata_and_mmap(mmap_filename, chunk_index)
+        for idx, chunk_index in enumerate(chunk_indices):
+            mmap_filename = f"log_{chunk_index}.mmap"
+            self._add_metadata_and_mmap(mmap_filename, idx)
 
     def _find_chunk_indices(self, directory):
         chunk_indices = []
         for filename in os.listdir(directory):
-            if filename.endswith(".mmap"):
-                parts = filename.rstrip(".mmap").split("_")
-                if len(parts) != 0:
-                    chunk_index = parts[-1]
-                chunk_indices.append(int(chunk_index))
+            if filename.endswith(".mmap") and filename.startswith("log_"):
+                chunk_index = filename.rstrip(".mmap").strip("log_")
+                chunk_indices.append(chunk_index)
         return sorted(chunk_indices)
 
     def _add_metadata_and_mmap(self, mmap_filename, chunk_index):

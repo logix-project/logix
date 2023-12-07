@@ -30,47 +30,47 @@ class AnaLogScheduler:
         # (log, hessian, save) for analog
         if ekfac and lora and sample:
             self.analog_state_schedule = [
-                ([], True, False),
-                ([], True, False),
-                (["grad"], True, False),
-                (["grad"], False, True),
+                {"log": [], "hessian": True, "save": False},
+                {"log": [], "hessian": True, "save": False},
+                {"log": ["grad"], "hessian": True, "save": False},
+                {"log": ["grad"], "hessian": False, "save": True},
             ]
         elif ekfac and lora and not sample:
             self.analog_state_schedule = [
-                ([], True, False),
-                ([], True, False),
-                (["grad"], True, True),
+                {"log": [], "hessian": True, "save": False},
+                {"log": [], "hessian": True, "save": False},
+                {"log": ["grad"], "hessian": True, "save": True},
             ]
         elif ekfac and not lora and sample:
             self.analog_state_schedule = [
-                ([], True, False),
-                (["grad"], True, False),
-                (["grad"], False, True),
+                {"log": [], "hessian": True, "save": False},
+                {"log": ["grad"], "hessian": True, "save": False},
+                {"log": ["grad"], "hessian": False, "save": True},
             ]
         elif ekfac and not lora and not sample:
             self.analog_state_schedule = [
-                ([], True, False),
-                (["grad"], True, True),
+                {"log": [], "hessian": True, "save": False},
+                {"log": ["grad"], "hessian": True, "save": True},
             ]
         elif not ekfac and lora and sample:
             self.analog_state_schedule = [
-                ([], True, False),
-                ([], True, False),
-                (["grad"], False, True),
+                {"log": [], "hessian": True, "save": False},
+                {"log": [], "hessian": True, "save": False},
+                {"log": ["grad"], "hessian": False, "save": True},
             ]
         elif not ekfac and lora and not sample:
             self.analog_state_schedule = [
-                ([], True, False),
-                (["grad"], True, True),
+                {"log": [], "hessian": True, "save": False},
+                {"log": ["grad"], "hessian": True, "save": True},
             ]
         elif not ekfac and not lora and sample:
             self.analog_state_schedule = [
-                ([], True, False),
-                (["grad"], False, True),
+                {"log": [], "hessian": True, "save": False},
+                {"log": ["grad"], "hessian": False, "save": True},
             ]
         elif not ekfac and not lora and not sample:
             self.analog_state_schedule = [
-                (["grad"], True, True),
+                {"log": ["grad"], "hessian": True, "save": True},
             ]
 
     def __iter__(self):
@@ -80,15 +80,13 @@ class AnaLogScheduler:
         try:
             analog_state = next(self.schedule_iterator)
             self._epoch += 1
-            self.analog.set_default_state(*analog_state)
+            self.analog.set_state(analog_state)
             if self._epoch == self.execution_schedule["ekfac"]:
                 self.analog.ekfac()
             if self._epoch == self.execution_schedule["lora"]:
                 self.analog.add_lora()
             return self._epoch
         except StopIteration:
-            analog_state = ([], False, False)
-            self.analog.set_default_state(*analog_state)
             raise StopIteration
 
     def __len__(self):

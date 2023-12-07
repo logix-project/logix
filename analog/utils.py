@@ -52,7 +52,13 @@ def get_logger() -> logging.Logger:
     return _logger
 
 
-def to_numpy(tensor):
+def to_numpy(tensor) -> np.ndarray:
+    """
+    Convert a tensor to NumPy array.
+
+    Args:
+        tensor: The tensor to be converted.
+    """
     if isinstance(tensor, np.ndarray):
         return tensor
     elif isinstance(tensor, torch.Tensor):
@@ -62,6 +68,9 @@ def to_numpy(tensor):
 
 
 def get_world_size() -> int:
+    """
+    Get the number of processes in the current distributed group.
+    """
     if dist.is_initialized():
         return dist.get_world_size()
     else:
@@ -69,6 +78,13 @@ def get_world_size() -> int:
 
 
 def get_rank(group=None) -> int:
+    """
+    Get the rank of the current process in the current distributed group.
+
+    Args:
+        group (optional): The process group to work on. If not specified,
+            the default process group will be used.
+    """
     if dist.is_initialized():
         return dist.get_rank(group)
     else:
@@ -89,6 +105,10 @@ def deep_get(d, keys):
 
 
 class DataIDGenerator:
+    """
+    Generate unique IDs for data.
+    """
+
     def __init__(self, mode="hash") -> None:
         self.mode = mode
         if mode == "index":
@@ -118,4 +138,7 @@ class DataIDGenerator:
 
 
 def stack_tensor(tensor_list):
+    """
+    Stack a list of tensors into a single tensor.
+    """
     return rearrange(tensor_list, "a ... -> a ...")
