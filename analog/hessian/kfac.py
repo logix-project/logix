@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.distributed as dist
 
 from analog.constants import FORWARD, BACKWARD
-from analog.utils import get_world_size, nested_dict
+from analog.utils import get_world_size, nested_dict, get_rank
 from analog.hessian.base import HessianHandlerBase
 from analog.hessian.utils import extract_actvations_expand, extract_actvations_reduce
 
@@ -232,8 +232,10 @@ class KFACHessianHandler(HessianHandlerBase):
                 else:
                     state_dict[key].div_(counter_dict[key])
                     if world_size > 1:
-                        state_dict[key].div_(world_size)
-                        dist.all_reduce(state_dict[key], op=dist.ReduceOp.SUM)
+                        state_gpu = state_dict[key].cuda()
+                        state_gpu.div_(world_size)
+                        dist.all_reduce(state_gpu, op=dist.ReduceOp.SUM)
+                        state_dict[key].copy_(state_gpu.cpu())
 
         _synchronize(state_dict, counter_dict)
 

@@ -3,6 +3,7 @@ import time
 
 import torch
 import torch.nn.functional as F
+from accelerate import Accelerator
 from analog import AnaLog
 from analog.analysis import InfluenceFunction
 from analog.utils import DataIDGenerator
@@ -16,25 +17,25 @@ parser.add_argument("--eval-idxs", type=int, nargs="+", default=[0])
 parser.add_argument("--damping", type=float, default=1e-5)
 args = parser.parse_args()
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 set_seed(0)
+accelerator = Accelerator()
 
 # model
 model = construct_model()
 model.load_state_dict(
     torch.load(f"files/checkpoints/0/{args.data_name}_epoch_3.pt", map_location="cpu")
 )
-model.to(DEVICE)
 model.eval()
 
 # data
 # _, eval_train_loader, test_loader = get_loaders()
 _, eval_train_loader, test_loader = get_loaders(
-    train_batch_size=8,
     eval_batch_size=8,
     # train_indices=list(range(32)),
     valid_indices=list(range(32)),
 )
+
+mode, eval_train_loader = accelerator.prepare(model, eval_train_loader)
 
 # Set-up
 analog = AnaLog(project="test", config="config.yaml")
@@ -49,17 +50,17 @@ for n, m in model.named_modules():
         modules_to_watch.append(n)
 
 analog.watch(model, name_filter=modules_to_watch)
-analog_kwargs = {"log": [], "hessian": True, "save": False}
+analog.set_state({"log": [], "hessian": True, "save": False})
 id_gen = DataIDGenerator(mode="index")
 for epoch in range(2):
     for batch in tqdm(eval_train_loader, desc="Hessian logging"):
         data_id = id_gen(batch["input_ids"])
         inputs = (
-            batch["input_ids"].to(DEVICE),
-            batch["attention_mask"].to(DEVICE),
+            batch["input_ids"],
+            batch["attention_mask"],
         )
-        targets = batch["labels"].to(DEVICE)
-        with analog(data_id=data_id, mask=inputs[-1], **analog_kwargs):
+        targets = batch["labels"]
+        with analog(data_id=data_id, mask=inputs[-1]):
             model.zero_grad()
             lm_logits = model(*inputs)
 
@@ -74,18 +75,19 @@ for epoch in range(2):
             loss.backward()
     analog.finalize()
     if epoch == 0:
-        analog_kwargs.update({"save": True, "log": ["grad"]})
-        analog.add_lora(model, parameter_sharing=False)
+        analog.set_state({"save": True, "log": ["grad"]})
+        analog.add_lora(model)
 
 # Compute influence
+analog.eval()
 log_loader = analog.build_log_dataloader()
 analog.add_analysis({"influence": InfluenceFunction})
 test_iter = iter(test_loader)
-with analog(log=["grad"], test=True) as al:
-    test_batch = next(test_iter)
+test_batch = next(test_iter)
+with analog(data_id=id_gen(test_batch["input_ids"]), mask=test_batch["attention_mask"]):
     test_inputs = (
-        test_batch["input_ids"].to(DEVICE),
-        test_batch["attention_mask"].to(DEVICE),
+        test_batch["input_ids"],
+        test_batch["attention_mask"],
     )
     test_targets = test_batch["labels"].to(DEVICE)
     model.zero_grad()
