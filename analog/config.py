@@ -14,7 +14,7 @@ class Config:
     # Default values for each configuration
     _DEFAULTS = {
         "root_dir": "./analog",
-        "logging": {},
+        "logging": {"log": [], "hessian": False, "save": False},
         "storage": {"type": "default"},
         "hessian": {"type": "kfac", "damping": 1e-2},
         "analysis": {},
@@ -104,4 +104,3 @@ class Config:
             os.makedirs(self._log_dir)
 
         self._storage_config["log_dir"] = self._log_dir
-        self._hessian_config["log_dir"] = os.path.join(self._log_dir, "hessian")

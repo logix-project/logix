@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 
 class StorageHandlerBase(ABC):
-    def __init__(self, config=None) -> None:
+    def __init__(self, config, state) -> None:
         """
         Initializes the StorageHandlerBase.
 
@@ -10,6 +10,7 @@ class StorageHandlerBase(ABC):
             config (dict, optional): Configuration parameters for the handler.
         """
         self.config = config
+        self._state = state
         self.buffer = None
         self.lock = None
         self.buffer_size = 0

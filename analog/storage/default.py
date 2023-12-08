@@ -84,6 +84,27 @@ class DefaultStorageHandler(StorageHandlerBase):
                     self.buffer[data_id][module_name][log_type] += numpy_datum
             self.buffer_size += numpy_datum.size
 
+    def add_on_exit(self):
+        """
+        Add log state on exit.
+        """
+        log_state = self._state.log_state
+
+        def _add(log, buffer, idx):
+            for key, value in log.items():
+                if isinstance(value, torch.Tensor):
+                    # print(value.shape)
+                    numpy_value = to_numpy(value[idx])
+                    buffer[key] = numpy_value
+                    self.buffer_size += numpy_value.size
+                else:
+                    _add(value, buffer[key], idx)
+
+        for idx, data_id in enumerate(self.data_id):
+            # print("=======")
+            # print(len(self.data_id))
+            _add(log_state, self.buffer[data_id], idx)
+
     def _flush_unsafe(self, buffer, push_count) -> str:
         """
         _flush_unsafe is thread unsafe flush of current buffer. No shared variable must be allowed.
