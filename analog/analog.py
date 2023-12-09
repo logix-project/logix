@@ -1,7 +1,6 @@
 import os
 
 from typing import Optional, Iterable, Dict, Any, List
-from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
@@ -18,6 +17,10 @@ from analog.utils import get_logger, get_rank, get_world_size
 
 
 class AnaLog:
+    """
+    AnaLog is a tool for logging and analyzing neural networks.
+    """
+
     _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d}
 
     def __init__(

@@ -2,13 +2,15 @@ from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any
 
 import torch
-import torch.nn as nn
 
 from analog.state import AnaLogState
-from analog.utils import nested_dict
 
 
 class HessianHandlerBase(ABC):
+    """
+    Base class for Hessian handlers.
+    """
+
     def __init__(self, config: Dict[str, Any], state: AnaLogState) -> None:
         self.config = config
         self._state = state
@@ -23,7 +25,10 @@ class HessianHandlerBase(ABC):
         pass
 
     @abstractmethod
-    def on_exit(self, current_log=None) -> None:
+    def on_exit(self, log_state=None) -> None:
+        """
+        This function is called when the code is exiting the AnaLog context.
+        """
         pass
 
     def get_sample_size(

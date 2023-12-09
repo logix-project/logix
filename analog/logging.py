@@ -1,15 +1,13 @@
 from functools import partial
-from typing import Optional, Callable, List, Dict, Tuple
+from typing import Optional, Dict, Tuple
 
 import torch
 import torch.nn as nn
 from einops import einsum, reduce
 
-from analog.constants import FORWARD, BACKWARD, GRAD, LOG_TYPES
+from analog.constants import FORWARD, BACKWARD, GRAD
 from analog.state import AnaLogState
-from analog.storage import StorageHandlerBase
 from analog.hessian import HessianHandlerBase
-from analog.utils import nested_dict
 
 
 def compute_per_sample_gradient(
@@ -266,7 +264,7 @@ class LoggingHandler:
         """
         for tensor_name, tensor in tensor_dict.items():
             self._tensor_forward_hook_fn(tensor, tensor_name)
-            tensor_hook = self.tensor.register_hook(
+            tensor_hook = tensor.register_hook(
                 partial(self._tensor_backward_hook_fn, tensor_name=tensor_name)
             )
             self.tensor_hooks.append(tensor_hook)

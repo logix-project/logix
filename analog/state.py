@@ -1,11 +1,18 @@
 import os
 
 import torch
+import torch.distributed as dist
 
-from analog.utils import nested_dict, get_world_size, get_rank, get_logger
+from analog.utils import nested_dict, get_world_size, get_rank
 
 
 class AnaLogState:
+    """
+    AnaLogState stores all these relevant log states that are used for
+    communication between different handlers. All states in AnaLogState
+    follow the nested dictionary data structure.
+    """
+
     def __init__(self) -> None:
         self._states = set()
         self._states_to_synchronize = set()
@@ -77,14 +84,25 @@ class AnaLogState:
                 )
 
     def get_hessian_state(self):
+        """
+        Return the Hessian state.
+        """
         return self.hessian_state
 
     def get_hessian_inverse_state(self):
+        """
+        Return the Hessian inverse state. If the state is not computed, compute
+        it first.
+        """
         if not hasattr(self, "hessian_inverse_state"):
             self.hessian_inverse()
         return self.hessian_inverse_state
 
     def get_hessian_svd_state(self):
+        """
+        Return the Hessian SVD state. If the state is not computed, compute
+        it first.
+        """
         if not hasattr(self, "hessian_eigval_state") or not hasattr(
             self, "hessian_eigvec_state"
         ):
@@ -180,7 +198,8 @@ class AnaLogState:
         """
         Clear the log state.
         """
-        self.log_state = nested_dict()
+        # self.log_state = nested_dict()
+        self.log_state.clear()
 
     def clear(self) -> None:
         for state_name in self._states:

@@ -1,17 +1,7 @@
-from typing import Optional
-
 import torch
-import torch.nn as nn
-import torch.distributed as dist
 from einops import rearrange
 
-from analog.constants import FORWARD, BACKWARD
-from analog.utils import get_world_size, nested_dict, get_logger
 from analog.hessian.base import HessianHandlerBase
-from analog.hessian.utils import (
-    extract_forward_activations,
-    extract_backward_activations,
-)
 
 
 class RawHessianHandler(HessianHandlerBase):
@@ -20,7 +10,6 @@ class RawHessianHandler(HessianHandlerBase):
     """
 
     def parse_config(self) -> None:
-        self.log_dir = self.config.get("log_dir")
         self.damping = self.config.get("damping", 1e-2)
 
     @torch.no_grad()
@@ -30,6 +19,10 @@ class RawHessianHandler(HessianHandlerBase):
 
     @torch.no_grad()
     def update_hessian(self, module_name: str, data: torch.Tensor) -> None:
+        """
+        Update the Hessian state by computing covariance of the per-sample
+        gradients.
+        """
         hessian_state = self._state.hessian_state
         sample_counter = self._state.sample_counter
 
@@ -47,11 +40,9 @@ class RawHessianHandler(HessianHandlerBase):
             # computing/updating the hessian state is on CPU is slow. Thus,
             # we move the hessian state to the GPU if the activation is on
             # the GPU, and then move it back to the CPU asynchrously.
-            hessian_state_gpu = hessian_state[module_name][mode].to(
-                device=activations.device
-            )
+            hessian_state_gpu = hessian_state[module_name].to(device=flat_grad.device)
             hessian_state_gpu.addmm_(flat_grad.t(), flat_grad)
-            hessian_state[module_name][mode] = hessian_state_gpu.to(
+            hessian_state[module_name] = hessian_state_gpu.to(
                 device="cpu", non_blocking=True
             )
         else:

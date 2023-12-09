@@ -1,13 +1,10 @@
-import os
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 import torch
 import torch.nn as nn
-import torch.distributed as dist
 
 from analog.constants import FORWARD, BACKWARD
 from analog.state import AnaLogState
-from analog.utils import get_world_size, nested_dict, get_rank
 from analog.hessian.base import HessianHandlerBase
 from analog.hessian.utils import extract_actvations_expand, extract_actvations_reduce
 
@@ -26,7 +23,7 @@ class KFACHessianHandler(HessianHandlerBase):
         self.reduce = self.config.get("reduce", False)
 
     @torch.no_grad()
-    def on_exit(self, log_state) -> None:
+    def on_exit(self, log_state=None) -> None:
         """
         This function is called when the code is exiting the AnaLog context.
         Given the analogy between Hessian state and traiditional optimizer
@@ -53,7 +50,7 @@ class KFACHessianHandler(HessianHandlerBase):
         mode: str,
         data: torch.Tensor,
     ):
-        if self.expand or self.ekfac:
+        if not self.reduce or self.ekfac:
             return
 
         # extract activations
