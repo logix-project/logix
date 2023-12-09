@@ -87,8 +87,8 @@ class AnaLog:
             lora (bool, optional): Whether to use LoRA to watch the model.
         """
         self.model = model
-        # if get_world_size() > 1 and hasattr(self.model, "module"):
-        #    self.model = self.model.module
+        if get_world_size() > 1 and hasattr(self.model, "module"):
+            self.model = self.model.module
         self.type_filter = type_filter or self.type_filter
         self.name_filter = name_filter or self.name_filter
 
@@ -435,8 +435,15 @@ class AnaLog:
         """
         assert self.hessian_handler.config.get("type", "kfac") == "kfac"
         if on:
+            get_logger().info("Enabling EKFAC approximation for the Hessian.\n")
+            self.state.hessian_svd()
+            self.state.register_state("ekfac_eigval_state", synchronize=True, save=True)
+            self.state.register_state("ekfac_counter", synchronize=True, save=False)
+            self.state.register_normalize_pair("ekfac_eigval_state", "ekfac_counter")
+
             self.hessian_handler.ekfac = True
         else:
+            get_logger().info("Disabling EKFAC approximation for the Hessian.\n")
             self.hessian_handler.ekfac = False
 
     def update(self, logging_config_kwargs: Dict[str, Any]) -> None:

@@ -128,11 +128,6 @@ class KFACHessianHandler(HessianHandlerBase):
         module_name: str,
         data: torch.Tensor,
     ) -> None:
-        if not hasattr(self._state, "hessian_eigval_state"):
-            self._state.hessian_svd()
-        self._state.register_state("ekfac_eigval_state", synchronize=True, save=True)
-        self._state.register_state("ekfac_counter", synchronize=True, save=False)
-        self._state.register_normalize_pair("ekfac_eigval_state", "ekfac_counter")
 
         hessian_eigvec_state = self._state.hessian_eigvec_state
         hessian_eigval_state = self._state.hessian_eigval_state

@@ -116,7 +116,6 @@ class LoggingHandler:
             )
 
         if FORWARD in config["log"]:
-            print("forward add")
             if FORWARD not in log_state[module_name]:
                 log_state[module_name][FORWARD] = activations
             else:
