@@ -380,14 +380,13 @@ class AnaLog:
         Load all states from disk.
         """
         # Load analog config
+        assert os.path.exists(self.log_dir), f"{self.log_dir} does not exist!"
+
         config_path = os.path.join(self.log_dir, "config.pt")
-        if os.path.exists(config_path):
-            self.config = torch.load(config_path)
+        self.config.load_config(config_path)
 
         # Load state
-        state_dir = os.path.join(self.log_dir, "state")
-        if os.path.exists(state_dir):
-            self.state.load_state(state_dir)
+        self.state.load_state(self.log_dir)
 
         # Load LoRA state
         lora_dir = os.path.join(self.log_dir, "lora")

@@ -2,6 +2,8 @@ import os
 from typing import Dict, Any
 import yaml
 
+import torch
+
 from analog.utils import get_logger, get_rank
 
 
@@ -104,3 +106,12 @@ class Config:
             os.makedirs(self._log_dir)
 
         self._storage_config["log_dir"] = self._log_dir
+
+    def load_config(self, config_path: str) -> None:
+        config = torch.load(config_path)
+        self._logging_config.update(config._logging_config)
+        self._storage_config.update(config._storage_config)
+        self._hessian_config.update(config._hessian_config)
+        self._analysis_config.update(config._analysis_config)
+        self._lora_config.update(config._lora_config)
+        self._log_dir = config._log_dir
