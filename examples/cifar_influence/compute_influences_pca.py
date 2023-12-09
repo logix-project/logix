@@ -44,28 +44,26 @@ analog_scheduler = AnaLogScheduler(analog, lora=True)
 # Gradient & Hessian logging
 analog.watch(model)
 
-if args.resume:
+if True:
     id_gen = DataIDGenerator()
     for epoch in analog_scheduler:
         for inputs, targets in train_loader:
             data_id = id_gen(inputs)
-            with analog(data_id=data_id, **analog_kwargs):
+            with analog(data_id=data_id):
                 inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
                 model.zero_grad()
                 outs = model(inputs)
                 loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
                 loss.backward()
         analog.finalize()
-    analog.save_hessian_state()
-    torch.save(model.state_dict(), "model.pt")
 else:
     analog.add_lora()
-    analog.load_hessian_state()
-    model.load_state_dict(torch.load("model.pt"))
+    analog.initialize_from_log()
 
 # Influence Analysis
 log_loader = analog.build_log_dataloader()
 
+analog.eval()
 analog.add_analysis({"influence": InfluenceFunction})
 query_iter = iter(query_loader)
 with analog(log=["grad"], test=True) as al:
