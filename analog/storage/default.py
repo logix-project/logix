@@ -101,8 +101,6 @@ class DefaultStorageHandler(StorageHandlerBase):
                     _add(value, buffer[key], idx)
 
         for idx, data_id in enumerate(self.data_id):
-            # print("=======")
-            # print(len(self.data_id))
             _add(log_state, self.buffer[data_id], idx)
 
     def _flush_unsafe(self, buffer, push_count) -> str:

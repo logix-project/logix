@@ -119,7 +119,7 @@ class AnaLogState:
         # synchronize helper function
         def _synchronize(state_dict):
             for key in state_dict:
-                if not isinstance(state_dict[key], torch.Tensor):
+                if isinstance(state_dict[key], dict):
                     _synchronize(state_dict[key])
                 else:
                     # we need to move the state to the GPU before all-reducing
@@ -130,6 +130,7 @@ class AnaLogState:
                     state_gpu = state_dict[key].cuda()
                     dist.all_reduce(state_gpu, op=dist.ReduceOp.SUM)
                     state_dict[key].copy_(state_gpu.cpu())
+                    torch.cuda.synchronize()
 
         for state_name in self._states_to_synchronize:
             state_dict = getattr(self, state_name)
