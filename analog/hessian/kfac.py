@@ -106,7 +106,7 @@ class KFACHessianHandler(HessianHandlerBase):
             # By default, the hessian state is stored on the CPU. However,
             # computing/updating the hessian state is on CPU is slow. Thus,
             # we move the hessian state to the GPU if the activation is on
-            # the GPU, and then move it back to the CPU asynchronously.
+            # the GPU, and then move it back to the CPU asynchrously.
             hessian_state_gpu = hessian_state[module_name][mode].to(
                 device=activations.device
             )
@@ -142,5 +142,5 @@ class KFACHessianHandler(HessianHandlerBase):
             weight = torch.matmul(
                 hessian_eigvec_state[module_name][BACKWARD].t(), rotated_grad
             )
-            ekfac_eigval_state[module_name].add_(torch.square(weight), alpha=1.0)
+            ekfac_eigval_state[module_name].add_(torch.square(weight), alpha=0.5)
         ekfac_counter[module_name] += len(data)
