@@ -1,14 +1,13 @@
 from functools import partial
-from typing import Optional, Callable, List, Dict, Tuple
+from typing import Optional, Dict, Tuple
 
 import torch
 import torch.nn as nn
 from einops import einsum, reduce
 
-from analog.constants import FORWARD, BACKWARD, GRAD, LOG_TYPES
-from analog.storage import StorageHandlerBase
+from analog.constants import FORWARD, BACKWARD, GRAD
+from analog.state import AnaLogState
 from analog.hessian import HessianHandlerBase
-from analog.utils import nested_dict
 
 
 def compute_per_sample_gradient(
@@ -56,26 +55,22 @@ class LoggingHandler:
     def __init__(
         self,
         config: Dict,
-        storage_handler: StorageHandlerBase,
+        state: AnaLogState,
         hessian_handler: HessianHandlerBase,
     ) -> None:
         """
         Initializes the LoggingHandler with empty lists for hooks.
         """
         self.config = config
+        self._state = state
 
-        self.storage_handler = storage_handler
+        # TODO: Need a cleaner way to handle mask
+        self.mask = None
+
         self.hessian_handler = hessian_handler
         self.hessian_type = hessian_handler.config.get("type", "kfac")
 
-        # Internal states
-        self.log = None
-        self.hessian = False
-        self.save = False
-        self.test = False
-        self.current_log = None
-
-        # hook handles
+        # hooks
         self.modules_to_hook = []
         self.modules_to_name = {}
         self.forward_hooks = []
@@ -97,6 +92,8 @@ class LoggingHandler:
         assert len(inputs) == 1
 
         activations = inputs[0]
+        log_state = self._state.log_state
+        config = self.config
 
         # If `mask` is not None, apply the mask to activations. This is
         # useful for example when you work with sequence models that use
@@ -111,18 +108,16 @@ class LoggingHandler:
                     activations = activations * self.mask
 
         # If KFAC is used, update the forward covariance
-        if self.hessian and self.hessian_type == "kfac":
+        if config["hessian"] and self.hessian_type == "kfac":
             self.hessian_handler.update_hessian_expand(
                 module, module_name, FORWARD, activations
             )
 
-        if FORWARD in self.log:
-            if FORWARD not in self.current_log[module_name]:
-                self.current_log[module_name][FORWARD] = activations
+        if FORWARD in config["log"]:
+            if FORWARD not in log_state[module_name]:
+                log_state[module_name][FORWARD] = activations
             else:
-                self.current_log[module_name][FORWARD] += activations
-            if self.save:
-                self.storage_handler.add(module_name, FORWARD, activations)
+                log_state[module_name][FORWARD] += activations
 
     def _backward_hook_fn(
         self,
@@ -142,19 +137,20 @@ class LoggingHandler:
         """
         assert len(grad_outputs) == 1
 
+        log_state = self._state.log_state
+        config = self.config
+
         # If KFAC is used, update the backward covariance
-        if self.hessian and self.hessian_type == "kfac":
+        if config["hessian"] and self.hessian_type == "kfac":
             self.hessian_handler.update_hessian_expand(
                 module, module_name, BACKWARD, grad_outputs[0]
             )
 
-        if BACKWARD in self.log:
-            if BACKWARD not in self.current_log[module_name]:
-                self.current_log[module_name][BACKWARD] = grad_outputs[0]
+        if BACKWARD in config["log"]:
+            if BACKWARD not in log_state[module_name]:
+                log_state[module_name][BACKWARD] = grad_outputs[0]
             else:
-                self.current_log[module_name][BACKWARD] += grad_outputs[0]
-            if self.save:
-                self.storage_handler.add(module_name, BACKWARD, grad_outputs[0])
+                log_state[module_name][BACKWARD] += grad_outputs[0]
 
         # As we are only interested in the per-sample gradient, we can delete the
         # gradient of the weight and bias parameters
@@ -180,20 +176,21 @@ class LoggingHandler:
         """
         assert len(inputs) == 1
 
+        log_state = self._state.log_state
+        config = self.config
+
         # In case, the same module is used multiple times in the forward pass,
         # we need to accumulate the gradients. We achieve this by using the
         # additional tensor hook on the output of the module.
         def _grad_backward_hook_fn(grad: torch.Tensor):
-            if GRAD in self.log:
+            if GRAD in config["log"]:
                 per_sample_gradient = compute_per_sample_gradient(
                     inputs[0], grad, module
                 )
-                if module_name not in self.current_log:
-                    self.current_log[module_name] = per_sample_gradient
+                if module_name not in log_state:
+                    log_state[module_name] = per_sample_gradient
                 else:
-                    self.current_log[module_name] += per_sample_gradient
-                if self.save:
-                    self.storage_handler.add(module_name, GRAD, per_sample_gradient)
+                    log_state[module_name] += per_sample_gradient
 
         tensor_hook = outputs.register_hook(_grad_backward_hook_fn)
         self.tensor_hooks.append(tensor_hook)
@@ -209,13 +206,13 @@ class LoggingHandler:
             tensor: The tensor triggering the hook.
             tensor_name (str): A string identifier for the tensor, useful for logging.
         """
-        if self.hessian:
+        log_state = self._state.log_state
+        config = self.config
+
+        if config["hessian"]:
             self.hessian_handler.update_hessian(None, tensor_name, FORWARD, tensor)
 
-        if self.save and FORWARD in self.log:
-            self.storage_handler.add(tensor_name, FORWARD, tensor)
-
-        self.current_log[tensor_name][FORWARD] = tensor
+        log_state[tensor_name][FORWARD] = tensor
 
     def _tensor_backward_hook_fn(self, grad: torch.Tensor, tensor_name: str) -> None:
         """
@@ -228,13 +225,13 @@ class LoggingHandler:
             grad: The gradient tensor triggering the hook.
             tensor_name (str): A string identifier for the tensor whose gradient is being tracked.
         """
-        if self.hessian:
+        log_state = self._state.log_state
+        config = self.config
+
+        if config["hessian"]:
             self.hessian_handler.update_hessian(None, tensor_name, BACKWARD, grad)
 
-        if self.save and BACKWARD in self.log:
-            self.storage_handler.add(tensor_name, BACKWARD, grad)
-
-        self.current_log[tensor_name][BACKWARD] = grad
+        log_state[tensor_name][BACKWARD] = grad
 
     def register_all_module_hooks(self) -> None:
         """
@@ -267,27 +264,10 @@ class LoggingHandler:
         """
         for tensor_name, tensor in tensor_dict.items():
             self._tensor_forward_hook_fn(tensor, tensor_name)
-            tensor_hook = self.tensor.register_hook(
+            tensor_hook = tensor.register_hook(
                 partial(self._tensor_backward_hook_fn, tensor_name=tensor_name)
             )
             self.tensor_hooks.append(tensor_hook)
-
-    def set_states(self, state):
-        """
-        Set the internal states of the logging handler.
-
-        Args:
-            log (list): The list of logging types to be used.
-            hessian (bool): Whether to compute the hessian.
-            save (bool): Whether to save the logging data.
-            test (bool): Whether to run in test mode.
-        """
-        self.log = state.log
-        self.hessian = state.hessian
-        self.save = state.save
-        self.test = state.test
-
-        self.current_log = nested_dict()
 
     def set_mask(self, mask: Optional[torch.Tensor] = None) -> None:
         """
@@ -329,7 +309,6 @@ class LoggingHandler:
             clear_modules (bool): Whether to clear the modules to be hooked.
         """
         self.clear_hooks()
-        self.clear_internal_states()
         if clear_modules:
             self.modules_to_hook = []
             self.modules_to_name = {}
@@ -346,12 +325,3 @@ class LoggingHandler:
             hook.remove()
         for hook in self.tensor_hooks:
             hook.remove()
-
-    def clear_internal_states(self) -> None:
-        """
-        Clear all internal states.
-        """
-        self.log = None
-        self.hessian = False
-        self.save = False
-        self.test = False

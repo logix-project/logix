@@ -16,8 +16,8 @@ class InfluenceFunction(AnalysisBase):
         (
             hessian_eigval,
             hessian_eigvec,
-            is_ekfac,
-        ) = self.hessian_handler.get_hessian_svd_state()
+        ) = self._state.get_hessian_svd_state()
+        is_ekfac = hasattr(self._state, "ekfac_eigval_state")
         for module_name in src.keys():
             # if hessian_eigvec is empty, then return src
             if module_name not in hessian_eigvec:

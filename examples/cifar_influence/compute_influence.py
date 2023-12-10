@@ -33,31 +33,31 @@ train_loader = dataloader_fn(
     batch_size=512, split="train", shuffle=False, subsample=True, augment=False
 )
 query_loader = dataloader_fn(
-    batch_size=1, split="valid", shuffle=False, indices=eval_idxs, augment=False
+    batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs, augment=False
 )
 
 analog = AnaLog(project="test", config="./config.yaml")
 
 # Gradient & Hessian logging
 analog.watch(model)
+analog.update({"log": ["grad"], "hessian": True, "save": True})
 
 if not args.resume:
-    analog_kwargs = {"log": ["grad"], "hessian": True, "save": True}
     id_gen = DataIDGenerator()
     for inputs, targets in train_loader:
         data_id = id_gen(inputs)
-        with analog(data_id=data_id, **analog_kwargs):
+        with analog(data_id=data_id):
             inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
             model.zero_grad()
             outs = model(inputs)
             loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
             loss.backward()
     analog.finalize()
-    analog.save_hessian_state()
 else:
-    analog.load_hessian_state()
+    analog.initialize_from_log()
 
 # Influence Analysis
+analog.eval()
 log_loader = analog.build_log_dataloader()
 
 analog.add_analysis({"influence": InfluenceFunction})

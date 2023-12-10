@@ -98,12 +98,6 @@ def nested_dict():
     return defaultdict(nested_dict)
 
 
-def deep_get(d, keys):
-    if not keys or d is None:
-        return d
-    return deep_get(d.get(keys[0]), keys[1:])
-
-
 class DataIDGenerator:
     """
     Generate unique IDs for data.
@@ -123,6 +117,9 @@ class DataIDGenerator:
             raise ValueError(f"Unsupported mode: {self.mode}")
 
     def generate_hash_id(self, data: Any) -> List[str]:
+        """
+        Given data, generate id using SHA256 hash.
+        """
         data_id = []
         for d in data:
             ndarray = to_numpy(d)
@@ -131,14 +128,10 @@ class DataIDGenerator:
         return data_id
 
     def generate_index_id(self, data: Any) -> List[int]:
+        """
+        Given data, generate id based on the index.
+        """
         data_id = np.arange(self.count, self.count + len(data))
         data_id = [str(d) for d in data_id]
         self.count += len(data)
         return data_id
-
-
-def stack_tensor(tensor_list):
-    """
-    Stack a list of tensors into a single tensor.
-    """
-    return rearrange(tensor_list, "a ... -> a ...")
