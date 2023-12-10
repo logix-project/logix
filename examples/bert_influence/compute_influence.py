@@ -60,7 +60,7 @@ for epoch in range(2):
     analog.finalize()
     if epoch == 0:
         analog_kwargs.update({"save": True, "log": ["grad"]})
-        analog.add_lora(model, parameter_sharing=False)
+        analog.add_lora(model)
 
 # Compute influence
 log_loader = analog.build_log_dataloader()

@@ -1,33 +1,11 @@
-from typing import List
+from typing import List, Dict, Any
 
 import torch.nn as nn
 
+from analog.state import AnaLogState
 from analog.lora.modules import LoraLinear, LoraConv2d
+from analog.lora.utils import find_parameter_sharing_group, _get_submodules
 from analog.utils import get_logger
-
-
-def find_parameter_sharing_group(
-    module_name: str, parameter_sharing_groups: List[str] = None
-):
-    if parameter_sharing_groups is None:
-        return "analog_lora_none"
-
-    found_groups = [psg for psg in parameter_sharing_groups if psg in module_name]
-    assert (
-        len(found_groups) == 1
-    ), "Each module can belong to only one parameter sharing group."
-    return found_groups[0]
-
-
-def _get_submodules(model, key):
-    """
-    Helper function to replace a module with transformers model
-    https://github.com/huggingface/peft/blob/c0dd27bc974e4a62c6072142146887b75bb2de6c/src/peft/utils/other.py#L251
-    """
-    parent = model.get_submodule(".".join(key.split(".")[:-1]))
-    target_name = key.split(".")[-1]
-    target = model.get_submodule(key)
-    return parent, target, target_name
 
 
 class LoRAHandler:
@@ -37,26 +15,30 @@ class LoRAHandler:
 
     _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d}
 
-    def __init__(self, config):
+    def __init__(self, config: Dict[str, Any], state: AnaLogState):
         self.config = config
+        self._state = state
+
         self.parse_config()
 
     def parse_config(self):
         self.init_strategy = self.config.get("init", "random")
         self.rank = self.config.get("rank", 64)
+        self.parameter_sharing = self.config.get("parameter_sharing", False)
+        self.parameter_sharing_groups = self.config.get(
+            "parameter_sharing_groups", None
+        )
 
     def add_lora(
         self,
         model: nn.Module,
         type_filter: List[nn.Module],
         name_filter: List[str],
-        hessian_state=None,
-        parameter_sharing=False,
-        parameter_sharing_groups=None,
     ):
         """
         Add LoRA modules to a model.
         """
+        hessian_state = self._state.get_hessian_state()
         if self.init_strategy == "pca" and len(hessian_state) == 0:
             get_logger().warning(
                 "Hessian state not provided. Using random initialization instead."
@@ -91,8 +73,8 @@ class LoRAHandler:
             elif isinstance(module, nn.Conv2d):
                 lora_cls = LoraConv2d
 
-            psg = find_parameter_sharing_group(name, parameter_sharing_groups)
-            if parameter_sharing and psg not in shared_modules:
+            psg = find_parameter_sharing_group(name, self.parameter_sharing_groups)
+            if self.parameter_sharing and psg not in shared_modules:
                 if isinstance(module, nn.Linear):
                     shared_module = nn.Linear(self.rank, self.rank, bias=False)
                 elif isinstance(module, nn.Conv1d):

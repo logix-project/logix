@@ -50,7 +50,7 @@ for n, m in model.named_modules():
         modules_to_watch.append(n)
 
 analog.watch(model, name_filter=modules_to_watch)
-analog.set_state({"log": [], "hessian": True, "save": False})
+analog.update({"log": [], "hessian": True, "save": False})
 id_gen = DataIDGenerator(mode="index")
 for epoch in range(2):
     for batch in tqdm(eval_train_loader, desc="Hessian logging"):
@@ -75,7 +75,7 @@ for epoch in range(2):
             loss.backward()
     analog.finalize()
     if epoch == 0:
-        analog.set_state({"save": True, "log": ["grad"]})
+        analog.update({"save": True, "log": ["grad"]})
         analog.add_lora(model)
 
 # Compute influence

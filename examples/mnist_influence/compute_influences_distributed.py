@@ -22,7 +22,7 @@ def main():
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
 
-    accelerator = Accelerator(even_batches=False)
+    accelerator = Accelerator()
 
     model = construct_mlp()
     model.load_state_dict(
@@ -34,7 +34,7 @@ def main():
         get_mnist_dataloader if args.data == "mnist" else get_fmnist_dataloader
     )
     train_loader = dataloader_fn(
-        batch_size=512, split="train", shuffle=False, subsample=True
+        batch_size=500, split="train", shuffle=False, subsample=True
     )
     query_loader = dataloader_fn(
         batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs
@@ -47,7 +47,7 @@ def main():
     analog = AnaLog(project="test", config="config.yaml")
 
     analog.watch(model)
-    analog.set_state({"log": ["grad"], "hessian": True, "save": False})
+    analog.update({"log": ["grad"], "hessian": True, "save": False})
     id_gen = DataIDGenerator()
 
     if not args.resume:
@@ -65,18 +65,14 @@ def main():
                     loss.backward()
             analog.finalize()
             if epoch == 0:
-                if get_world_size() > 1 and get_rank() == 0:
-                    print(analog.get_hessian_state()["module.5"])
-                elif get_world_size() == 0:
-                    print(analog.get_hessian_state()["5"])
-                analog.set_state({"save": True})
+                analog.update({"save": True})
                 analog.add_lora()
-                print(model)
     else:
         analog.add_lora()
         analog.initialize_from_log()
 
     log_loader = analog.build_log_dataloader()
+    analog.eval()
 
     analog.add_analysis({"influence": InfluenceFunction})
     query_iter = iter(query_loader)
@@ -97,7 +93,7 @@ def main():
 
     # Save
     if_scores = if_scores.numpy().tolist()
-    torch.save(if_scores, "if_analog_lora64_pca.pt")
+    torch.save(if_scores, "if_distributed.pt")
     print("Computation time:", time.time() - start)
     print("Top influential data indices:", top_influential_data.numpy().tolist())
 

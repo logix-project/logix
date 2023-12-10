@@ -35,7 +35,7 @@ query_loader = dataloader_fn(
 )
 
 analog = AnaLog(project="test")
-analog_kwargs = {"log": ["grad"], "hessian": True, "save": True}
+analog.update({"log": ["grad"], "hessian": True, "save": True})
 
 # Gradient & Hessian logging
 analog.watch(model)
@@ -43,10 +43,10 @@ id_gen = DataIDGenerator()
 for epoch in range(2):
     if epoch == 1:
         analog.ekfac()
-        analog_kwargs.update({"save": False})
+        analog.update({"save": False})
     for inputs, targets in train_loader:
         data_id = id_gen(inputs)
-        with analog(data_id=data_id, **analog_kwargs):
+        with analog(data_id=data_id):
             inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
             model.zero_grad()
             outs = model(inputs)

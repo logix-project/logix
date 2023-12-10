@@ -80,7 +80,7 @@ class AnaLogScheduler:
         try:
             analog_state = next(self.schedule_iterator)
             self._epoch += 1
-            self.analog.set_state(analog_state)
+            self.analog.update(analog_state)
             if self._epoch == self.execution_schedule["ekfac"]:
                 self.analog.ekfac()
             if self._epoch == self.execution_schedule["lora"]:

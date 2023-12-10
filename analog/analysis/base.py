@@ -1,21 +1,18 @@
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict, Any
 
-from analog.storage import StorageHandlerBase
-from analog.hessian import HessianHandlerBase
+from analog.state import AnaLogState
 
 
 class AnalysisBase(ABC):
     def __init__(
         self,
-        config: Dict,
-        storage_handler: StorageHandlerBase,
-        hessian_handler: HessianHandlerBase,
+        config: Dict[str, Any],
+        state: AnaLogState,
     ):
-        self.storage_handler = storage_handler
-        self.hessian_handler = hessian_handler
-
         self.config = config
+        self._state = state
+
         self.parse_config()
 
     @abstractmethod

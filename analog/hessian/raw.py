@@ -1,17 +1,7 @@
-from typing import Optional
-
 import torch
-import torch.nn as nn
-import torch.distributed as dist
 from einops import rearrange
 
-from analog.constants import FORWARD, BACKWARD
-from analog.utils import deep_get, get_world_size, nested_dict, get_logger
 from analog.hessian.base import HessianHandlerBase
-from analog.hessian.utils import (
-    extract_forward_activations,
-    extract_backward_activations,
-)
 
 
 class RawHessianHandler(HessianHandlerBase):
@@ -20,86 +10,41 @@ class RawHessianHandler(HessianHandlerBase):
     """
 
     def parse_config(self) -> None:
-        self.log_dir = self.config.get("log_dir")
         self.damping = self.config.get("damping", 1e-2)
-        self.reduce = self.config.get("reduce", True)
 
     @torch.no_grad()
-    def on_exit(self, current_log=None) -> None:
-        if self.reduce:
-            for module_name, module_grad in current_log.items():
-                flat_grad = rearrange(module_grad, "b ... -> b (...)").cpu().detach()
-                grad_dim = flat_grad.shape[-1]
-                if module_name not in self.hessian_state:
-                    self.hessian_state[module_name] = torch.zeros(
-                        (grad_dim, grad_dim), device="cpu"
-                    )
-                    self.sample_counter[module_name] = 0
-                self.hessian_state[module_name].addmm_(flat_grad.t(), flat_grad)
-                self.sample_counter[module_name] += flat_grad.shape[0]
+    def on_exit(self, log_state=None) -> None:
+        for module_name, module_grad in log_state:
+            self.update_hessian(module_name, module_grad)
 
     @torch.no_grad()
-    def update_hessian(
-        self,
-        module: nn.Module,
-        module_name: str,
-        mode: str,
-        data: torch.Tensor,
-        mask: Optional[torch.Tensor] = None,
-    ) -> None:
-        if not self.reduce:
-            flat_grad = rearrange(data, "b ... -> b (...)").cpu().detach()
-            grad_dim = flat_grad.shape[-1]
-
-            # update covariance
-            if module_name not in self.hessian_state:
-                self.hessian_state[module_name] = torch.zeros(
-                    (grad_dim, grad_dim), device="cpu"
-                )
-                self.sample_counter[module_name] = 0
-            self.hessian_state[module_name].addmm_(flat_grad.t(), flat_grad)
-            self.sample_counter[module_name] += data.shape[0]
-
-    def finalize(self) -> None:
-        for module_name, module_hessian in self.hessian_state.items():
-            module_hessian.div_(self.sample_counter[module_name])
-        self.synchronize()
-
-    @torch.no_grad()
-    def hessian_inverse(self, override: bool = False) -> None:
+    def update_hessian(self, module_name: str, data: torch.Tensor) -> None:
         """
-        Compute the inverse of the covariance.
+        Update the Hessian state by computing covariance of the per-sample
+        gradients.
         """
-        if self.hessian_inverse_with_override:
-            get_logger().warning("Hessian inverse already computed with override.")
-            return
+        hessian_state = self._state.hessian_state
+        sample_counter = self._state.sample_counter
 
-        if override:
-            self.hessian_inverse_with_override = True
+        flat_grad = rearrange(data, "b ... -> b (...)")
+
+        # update covariance
+        if module_name not in hessian_state:
+            hessian_state[module_name] = torch.zeros(
+                (flat_grad.shape[-1], flat_grad.shape[-1]), device="cpu"
+            )
+            sample_counter[module_name] = 0
+
+        if flat_grad.is_cuda:
+            # By default, the hessian state is stored on the CPU. However,
+            # computing/updating the hessian state is on CPU is slow. Thus,
+            # we move the hessian state to the GPU if the activation is on
+            # the GPU, and then move it back to the CPU asynchrously.
+            hessian_state_gpu = hessian_state[module_name].to(device=flat_grad.device)
+            hessian_state_gpu.addmm_(flat_grad.t(), flat_grad)
+            hessian_state[module_name] = hessian_state_gpu.to(
+                device="cpu", non_blocking=True
+            )
         else:
-            self.hessian_inverse_state = nested_dict()
-        for module_name, module_hessian in self.hessian_state.items():
-            if override:
-                self.hessian_state[module_name] = torch.inverse(
-                    module_hessian
-                    + torch.trace(module_hessian)
-                    * self.damping
-                    * torch.eye(module_hessian.size(0))
-                )
-            else:
-                self.hessian_inverse_state[module_name] = torch.inverse(
-                    module_hessian
-                    + torch.trace(module_hessian)
-                    * self.damping
-                    * torch.eye(module_hessian.size(0))
-                )
-
-    def synchronize(self) -> None:
-        """
-        Synchronize the covariance across all processes.
-        """
-        world_size = get_world_size()
-        if world_size > 1:
-            for _, module_hessian in self.hessian_state.items():
-                module_hessian.div_(world_size)
-                dist.all_reduce(module_hessian, op=dist.ReduceOp.SUM)
+            hessian_state[module_name].addmm_(flat_grad.t(), flat_grad)
+        sample_counter[module_name] += data.shape[0]

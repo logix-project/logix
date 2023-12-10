@@ -38,7 +38,7 @@ query_loader = dataloader_fn(
 analog = AnaLog(project="test", config="config.yaml")
 
 analog.watch(model)
-analog.set_state({"log": ["grad"], "hessian": True, "save": False})
+analog.update({"log": [], "hessian": True, "save": False})
 id_gen = DataIDGenerator()
 
 if not args.resume:
@@ -55,7 +55,7 @@ if not args.resume:
                 loss.backward()
         analog.finalize()
         if epoch == 0:
-            analog.set_state({"save": True})
+            analog.update({"log": ["grad"], "save": True})
             analog.add_lora()
 else:
     analog.add_lora()
@@ -65,7 +65,8 @@ log_loader = analog.build_log_dataloader()
 
 analog.add_analysis({"influence": InfluenceFunction})
 query_iter = iter(query_loader)
-with analog(log=["grad"], test=True):
+analog.eval()
+with analog(log=["grad"]):
     test_input, test_target = next(query_iter)
     test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
     model.zero_grad()
