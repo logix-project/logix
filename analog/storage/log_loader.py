@@ -27,7 +27,6 @@ class DefaultLogDataset(Dataset):
             file_root = f"log_chunk_{chunk_index}"
             mmap_filename = f"{file_root}.mmap"
             entry = get_mmap_data(self.log_dir, mmap_filename)
-            print("e" + str(len(entry)))
             self.memmaps.append(entry)
             self.data_id_to_chunk = get_mmap_metadata(
                 self.data_id_to_chunk,
