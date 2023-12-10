@@ -3,7 +3,11 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from analog.storage.log_loader_util import get_mmap_data, get_mmap_metadata, find_chunk_indices
+from analog.storage.log_loader_util import (
+    get_mmap_data,
+    get_mmap_metadata,
+    find_chunk_indices,
+)
 
 
 class DefaultLogDataset(Dataset):
@@ -23,9 +27,14 @@ class DefaultLogDataset(Dataset):
             file_root = f"log_chunk_{chunk_index}"
             mmap_filename = f"{file_root}.mmap"
             entry = get_mmap_data(self.log_dir, mmap_filename)
-            print("e"+str(len(entry)))
+            print("e" + str(len(entry)))
             self.memmaps.append(entry)
-            self.data_id_to_chunk = get_mmap_metadata(self.data_id_to_chunk, self.log_dir, f"{file_root}_metadata.json", chunk_index)
+            self.data_id_to_chunk = get_mmap_metadata(
+                self.data_id_to_chunk,
+                self.log_dir,
+                f"{file_root}_metadata.json",
+                chunk_index,
+            )
 
     def __getitem__(self, index):
         data_id = list(self.data_id_to_chunk.keys())[index]

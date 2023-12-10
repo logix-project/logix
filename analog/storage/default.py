@@ -20,7 +20,7 @@ class StorageHandler:
         self.config = config
 
         # Default log saving config.
-        self.log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'log')
+        self.log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "log")
 
         # Init buffer.
         if buffer_handler is None:
@@ -46,7 +46,9 @@ class StorageHandler:
         self.log_dir = self.config.get("log_dir", self.log_dir)
         self.buffer_handler.set_log_dir(self.log_dir)
 
-        flush_threshold = self.config.get("flush_threshold", -1)  # -1 flushes once at the end.
+        flush_threshold = self.config.get(
+            "flush_threshold", -1
+        )  # -1 flushes once at the end.
         self.buffer_handler.set_flush_threshold(flush_threshold)
 
         max_workers = self.config.get("worker", 1)

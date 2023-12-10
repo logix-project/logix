@@ -26,7 +26,7 @@ def find_chunk_indices(path) -> List:
     return sorted(chunk_indices)
 
 
-def get_mmap_data(path, mmap_filename, dtype = "uint8") -> List:
+def get_mmap_data(path, mmap_filename, dtype="uint8") -> List:
     """
     Adds memory-mapped files for the given mmap file.
 
@@ -40,7 +40,10 @@ def get_mmap_data(path, mmap_filename, dtype = "uint8") -> List:
     with MemoryMapHandler.read(path, mmap_filename, dtype) as mm:
         return mm
 
-def get_mmap_metadata(data_id_to_chunk, path, metadata_filename, chunk_index) -> OrderedDict:
+
+def get_mmap_metadata(
+    data_id_to_chunk, path, metadata_filename, chunk_index
+) -> OrderedDict:
     metadata = MemoryMapHandler.read_metafile(path, metadata_filename)
     # Update the mapping from data_id to chunk
     for entry in metadata:

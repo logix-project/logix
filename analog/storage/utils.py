@@ -29,9 +29,7 @@ class MemoryMapHandler:
         total_size = sum(
             arr.nbytes for _, d in data_buffer for _, arr in extract_arrays(d)
         )
-        mmap = np.memmap(
-            mmap_filename, dtype=dtype, mode="w+", shape=(total_size,)
-        )
+        mmap = np.memmap(mmap_filename, dtype=dtype, mode="w+", shape=(total_size,))
 
         metadata = []
         offset = 0
@@ -39,7 +37,7 @@ class MemoryMapHandler:
         for data_id, nested_dict in data_buffer:
             for path, arr in extract_arrays(nested_dict):
                 bytes = arr.nbytes
-                mmap[offset: offset + bytes] = arr.ravel().view(dtype)
+                mmap[offset : offset + bytes] = arr.ravel().view(dtype)
                 metadata.append(
                     {
                         "data_id": data_id,
@@ -73,9 +71,7 @@ class MemoryMapHandler:
         if file_ext == "":
             filename += ".mmap"
 
-        mmap = np.memmap(
-            os.path.join(path, filename), dtype=dtype, mode="r"
-        )
+        mmap = np.memmap(os.path.join(path, filename), dtype=dtype, mode="r")
         try:
             yield mmap
         finally:

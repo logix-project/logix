@@ -58,7 +58,9 @@ class TestMemoryMapHandler(unittest.TestCase):
         mmap = None
         with MemoryMapHandler.read(self.test_dir, filename) as mm:
             mmap = mm
-        metadata = MemoryMapHandler.read_metafile(self.test_dir, filename + "_metadata.json")
+        metadata = MemoryMapHandler.read_metafile(
+            self.test_dir, filename + "_metadata.json"
+        )
 
         for item in metadata:
             offset = item["offset"]
@@ -86,9 +88,11 @@ class TestMemoryMapHandler(unittest.TestCase):
         mmap = None
         with MemoryMapHandler.read(expected_files_path, filename) as mm:
             mmap = mm
-        metadata = MemoryMapHandler.read_metafile(expected_files_path, filename + "_metadata.json")
+        metadata = MemoryMapHandler.read_metafile(
+            expected_files_path, filename + "_metadata.json"
+        )
         expected_mmap = None
-        with MemoryMapHandler.read(expected_files_path,"expected_data.mmap") as mm:
+        with MemoryMapHandler.read(expected_files_path, "expected_data.mmap") as mm:
             expected_mmap = mm
         for item in metadata:
             offset = item["offset"]

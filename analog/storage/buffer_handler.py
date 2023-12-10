@@ -81,7 +81,10 @@ class BufferHandler:
         buffer_list = [(k, v) for k, v in self.buffer.items()]
 
         MemoryMapHandler.write(
-            log_dir, self.file_prefix + f"{self.flush_count}.mmap", buffer_list, dtype="uint8"
+            log_dir,
+            self.file_prefix + f"{self.flush_count}.mmap",
+            buffer_list,
+            dtype="uint8",
         )
 
         self.flush_count += 1
@@ -123,4 +126,3 @@ class BufferHandler:
 
     def get_buffer(self):
         return self.buffer
-

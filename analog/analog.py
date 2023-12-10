@@ -212,7 +212,7 @@ class AnaLog:
 
     def __call__(
             self,
-            data_id: Optional[Iterable[Any]] = None,  # qq: @sang is this optional it fails to set data id I think.
+            data_id: Optional[Iterable[Any]] = None,
             log: Optional[Iterable[str]] = None,
             hessian: Optional[bool] = None,
             save: Optional[bool] = None,
