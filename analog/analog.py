@@ -328,6 +328,12 @@ class AnaLog:
         """
         return LoRAHandler(lora_config, state)
 
+    def build_log_dataset(self):
+        """
+        Constructs the log dataset from the storage handler.
+        """
+        return self.storage_handler.build_log_dataset()
+
     def build_log_dataloader(self, batch_size=16, num_workers=0):
         """
         Constructs the log dataloader from the storage handler.
