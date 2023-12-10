@@ -37,16 +37,11 @@ def get_mmap_data(path, mmap_filename, dtype = "uint8") -> List:
     Returns:
        List: A list of memory maps and an ordered dictionary mapping data_ids to chunks.
     """
-    memmaps = []
     with MemoryMapHandler.read(path, mmap_filename, dtype) as mm:
-        memmaps.append(mm)
-    return memmaps
+        return mm
 
-
-def get_mmap_metadata(path, metadata_filename, chunk_index) -> OrderedDict:
+def get_mmap_metadata(data_id_to_chunk, path, metadata_filename, chunk_index) -> OrderedDict:
     metadata = MemoryMapHandler.read_metafile(path, metadata_filename)
-    data_id_to_chunk = OrderedDict()
-
     # Update the mapping from data_id to chunk
     for entry in metadata:
         data_id = entry["data_id"]

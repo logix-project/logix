@@ -44,6 +44,7 @@ class StorageHandler:
         Parse the configuration parameters.
         """
         self.log_dir = self.config.get("log_dir", self.log_dir)
+        self.buffer_handler.set_log_dir(self.log_dir)
 
         flush_threshold = self.config.get("flush_threshold", -1)  # -1 flushes once at the end.
         self.buffer_handler.set_flush_threshold(flush_threshold)
@@ -168,7 +169,7 @@ class StorageHandler:
         For the DefaultHandler, there's no batch operation needed since each add operation writes to the file.
         This can be a placeholder or used for any finalization operations.
         """
-        self.buffer_handler.flush(self.log_dir)
+        self.buffer_handler.flush()
 
     def query(self, data_id: Any):
         """
@@ -210,7 +211,7 @@ class StorageHandler:
         """
         Dump everything in the buffer to a disk.
         """
-        self.buffer_handler.finalize(self.log_dir)
+        self.buffer_handler.finalize()
 
     def _build_log_dataset(self):
         """

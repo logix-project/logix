@@ -9,6 +9,7 @@ from analog.storage.utils import MemoryMapHandler
 
 class BufferHandler:
     def __init__(self):
+        self.log_dir = ""
         self.max_worker = 0
         self.allow_async = False
 
@@ -44,6 +45,8 @@ class BufferHandler:
                 else:
                     self.buffer[data_id][module_name][log_type] += numpy_datum
             self.buffer_size += numpy_datum.size
+        if self.buffer_size >= self.flush_threshold:
+            self.flush()
 
     def _flush_unsafe(self, log_dir, buffer, flush_count) -> str:
         """
@@ -76,28 +79,31 @@ class BufferHandler:
         if len(self.buffer) == 0:
             return log_dir
         buffer_list = [(k, v) for k, v in self.buffer.items()]
+
         MemoryMapHandler.write(
             log_dir, self.file_prefix + f"{self.flush_count}.mmap", buffer_list, dtype="uint8"
         )
 
         self.flush_count += 1
-        self.buffer_clear()
+        del buffer_list
+        self.buffer.clear()
+        self.buffer_size = 0
         return log_dir
 
-    def flush(self, log_dir) -> None:
+    def flush(self) -> None:
         """
         For the DefaultHandler, there's no batch operation needed since each add operation writes to the file.
         This can be a placeholder or used for any finalization operations.
         """
         if 0 < self.flush_threshold < self.buffer_size:
             if self.allow_async:
-                self._flush_safe(log_dir)
+                self._flush_safe(self.log_dir)
                 return
-            self._flush_serialized(log_dir)
+            self._flush_serialized(self.log_dir)
 
-    def finalize(self, log_dir):
+    def finalize(self):
         if self.buffer_size > 0:
-            self._flush_serialized(log_dir)
+            self._flush_serialized(self.log_dir)
 
     def set_data_id(self, data_id):
         self.data_id = data_id
@@ -112,9 +118,9 @@ class BufferHandler:
     def set_flush_threshold(self, flush_threshold):
         self.flush_threshold = flush_threshold
 
+    def set_log_dir(self, log_dir):
+        self.log_dir = log_dir
+
     def get_buffer(self):
         return self.buffer
 
-    def buffer_clear(self):
-        self.buffer.clear()
-        self.buffer_size = 0

@@ -22,13 +22,14 @@ class DefaultLogDataset(Dataset):
         for chunk_index in self.chunk_indices:
             file_root = f"log_chunk_{chunk_index}"
             mmap_filename = f"{file_root}.mmap"
-            self.memmaps = get_mmap_data(self.log_dir, mmap_filename)
-            self.data_id_to_chunk = get_mmap_metadata(self.log_dir, file_root + "_metadata.json", chunk_index)
+            entry = get_mmap_data(self.log_dir, mmap_filename)
+            print("e"+str(len(entry)))
+            self.memmaps.append(entry)
+            self.data_id_to_chunk = get_mmap_metadata(self.data_id_to_chunk, self.log_dir, f"{file_root}_metadata.json", chunk_index)
 
     def __getitem__(self, index):
         data_id = list(self.data_id_to_chunk.keys())[index]
         chunk_idx, entries = self.data_id_to_chunk[data_id]
-
         nested_dict = {}
         mmap = self.memmaps[chunk_idx]
 
@@ -38,7 +39,6 @@ class DefaultLogDataset(Dataset):
             offset = entry["offset"]
             shape = tuple(entry["shape"])
             dtype = np.dtype(entry["dtype"])
-
             array = np.ndarray(shape, dtype, buffer=mmap, offset=offset, order="C")
             tensor = torch.Tensor(array)
 
