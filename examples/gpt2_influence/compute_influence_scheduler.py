@@ -67,10 +67,13 @@ else:
     project_name = args.project_name
 analog = AnaLog(project=project_name, config=config_path)
 config = analog.config.data
-print(f"Experimentting with: {config}")
 al_scheduler = AnaLogScheduler(
     analog, ekfac=args.ekfac, lora=args.lora, sample=args.sample
 )
+
+print(f"Experimentting with: {config}")
+print(f"Args: {args}")
+print(f"Num train: {num_train}, Num test: {num_test}")
 
 # Hessian logging
 modules_to_watch = []
