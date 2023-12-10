@@ -57,7 +57,7 @@ class InfluenceFunction(AnalysisBase):
             src = self.precondition(src, damping)
 
         total_influence = 0.0
-        for module_name in src.keys():
+        for module_name in src.keys(): # change to layer?
             src_log, tgt_log = src[module_name], tgt[module_name]
             assert src_log.shape[1:] == tgt_log.shape[1:]
             src_log_expanded = rearrange(src_log, "n ... -> n 1 ...")

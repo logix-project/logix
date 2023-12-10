@@ -17,7 +17,7 @@ class Config:
     _DEFAULTS = {
         "root_dir": "./analog",
         "logging": {"log": [], "hessian": False, "save": False},
-        "storage": {"type": "default"},
+        "storage": {"type": "default"},  # erase default.
         "hessian": {"type": "kfac", "damping": 1e-2},
         "analysis": {},
         "lora": {"init": "random", "rank": 64},

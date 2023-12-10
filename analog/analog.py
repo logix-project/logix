@@ -5,15 +5,33 @@ from typing import Optional, Iterable, Dict, Any, List
 import torch
 import torch.nn as nn
 
-from analog.config import Config
-from analog.constants import FORWARD, BACKWARD, GRAD, LOG_TYPES
-from analog.state import AnaLogState
-from analog.logging import LoggingHandler
-from analog.storage import DefaultStorageHandler
-from analog.hessian import RawHessianHandler, KFACHessianHandler
 from analog.analysis import AnalysisBase
+from analog.config import Config
+from analog.constants import GRAD, LOG_TYPES
+from analog.logging import LoggingHandler
+from analog.state import AnaLogState
+from analog.storage import StorageHandler
+from analog.hessian import RawHessianHandler, KFACHessianHandler
 from analog.lora import LoRAHandler
+from analog.storage.buffer_handler import BufferHandler
 from analog.utils import get_logger, get_rank, get_world_size
+
+
+# AnalogState in two places?
+class AnaLogState:
+    def __init__(self) -> None:
+        self.log = []
+        self.hessian = False
+        self.save = False
+        self.test = False
+
+    def set_state(
+            self,
+            state_kwargs: Dict[str, Any],
+    ) -> None:
+        for key, value in state_kwargs.items():
+            assert hasattr(self, key), f"Invalid state key: {key}"
+            setattr(self, key, value)
 
 
 class AnaLog:
@@ -24,9 +42,9 @@ class AnaLog:
     _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d}
 
     def __init__(
-        self,
-        project: str,
-        config: str = "",
+            self,
+            project: str,
+            config: str = "",
     ) -> None:
         """
         Initializes the AnaLog class for neural network logging.
@@ -74,11 +92,11 @@ class AnaLog:
         self.name_filter = None
 
     def watch(
-        self,
-        model: nn.Module,
-        type_filter: List[nn.Module] = None,
-        name_filter: List[str] = None,
-        lora: bool = False,
+            self,
+            model: nn.Module,
+            type_filter: List[nn.Module] = None,
+            name_filter: List[str] = None,
+            lora: bool = False,
     ) -> None:
         """
         Sets up modules in the model to be watched.
@@ -100,16 +118,16 @@ class AnaLog:
             if len(list(module.children())) > 0:
                 continue
             if not any(
-                isinstance(module, module_type)
-                for module_type in self._SUPPORTED_MODULES
+                    isinstance(module, module_type)
+                    for module_type in self._SUPPORTED_MODULES
             ):
                 continue
             if type_filter is not None and not any(
-                isinstance(module, module_type) for module_type in self.type_filter
+                    isinstance(module, module_type) for module_type in self.type_filter
             ):
                 continue
             if name_filter is not None and not any(
-                keyword in name for keyword in self.name_filter
+                    keyword in name for keyword in self.name_filter
             ):
                 continue
             if lora and "analog_lora_B" not in name:
@@ -127,10 +145,10 @@ class AnaLog:
         self.logging_handler.register_all_tensor_hooks(tensor_dict)
 
     def add_lora(
-        self,
-        model: Optional[nn.Module] = None,
-        watch: bool = True,
-        clear: bool = True,
+            self,
+            model: Optional[nn.Module] = None,
+            watch: bool = True,
+            clear: bool = True,
     ) -> None:
         """
         Adds LoRA for gradient compression.
@@ -193,13 +211,13 @@ class AnaLog:
         delattr(self, analysis_name)
 
     def __call__(
-        self,
-        data_id: Optional[Iterable[Any]] = None,
-        log: Optional[Iterable[str]] = None,
-        hessian: Optional[bool] = None,
-        save: Optional[bool] = None,
-        test: bool = None,
-        mask: Optional[torch.Tensor] = None,
+            self,
+            data_id: Optional[Iterable[Any]] = None,  # qq: @sang is this optional it fails to set data id I think.
+            log: Optional[Iterable[str]] = None,
+            hessian: Optional[bool] = None,
+            save: Optional[bool] = None,
+            test: bool = None,
+            mask: Optional[torch.Tensor] = None,
     ):
         """
         Args:
@@ -274,11 +292,8 @@ class AnaLog:
         Returns:
             The initialized storage handler.
         """
-        storage_type = storage_config.get("type", "default")
-        if storage_type == "default":
-            return DefaultStorageHandler(storage_config, state)
-        else:
-            raise ValueError(f"Unknown storage type: {storage_type}")
+        buffer_handler = BufferHandler()
+        return StorageHandler(buffer_handler, storage_config, state)
 
     def build_hessian_handler(self, hessian_config, state):
         """
@@ -312,12 +327,6 @@ class AnaLog:
             The initialized Hessian handler.
         """
         return LoRAHandler(lora_config, state)
-
-    def build_log_dataset(self):
-        """
-        Constructs the log dataset from the storage handler.
-        """
-        return self.storage_handler.build_log_dataset()
 
     def build_log_dataloader(self, batch_size=16, num_workers=0):
         """
@@ -400,8 +409,8 @@ class AnaLog:
             self.model.load_state_dict(lora_state, strict=False)
 
     def finalize(
-        self,
-        clear: bool = False,
+            self,
+            clear: bool = False,
     ) -> None:
         """
         Finalizes the logging session.

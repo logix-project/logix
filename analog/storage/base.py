@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 
+from analog.storage.buffer_handler import BufferHandler
+
 
 class StorageHandlerBase(ABC):
-    def __init__(self, config, state) -> None:
+    def __init__(self, buffer_handler: BufferHandler, config ,state) -> None:
         """
         Initializes the StorageHandlerBase.
 
@@ -12,10 +14,10 @@ class StorageHandlerBase(ABC):
         self.config = config
         self._state = state
         self.buffer = None
-        self.lock = None
         self.buffer_size = 0
-        self.parse_config()
-        self.initialize()
+
+        # self.parse_config()
+        # self.initialize()
 
     @abstractmethod
     def parse_config(self) -> None:
@@ -54,7 +56,7 @@ class StorageHandlerBase(ABC):
         pass
 
     @abstractmethod
-    def add(self, module_name: str, log_type: str, data, mask=None):
+    def buffer_append(self, module_name: str, log_type: str, data, mask=None):
         """
         Adds activation data to the buffer.
 
