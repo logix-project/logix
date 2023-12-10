@@ -45,8 +45,6 @@ class BufferHandler:
                 else:
                     self.buffer[data_id][module_name][log_type] += numpy_datum
             self.buffer_size += numpy_datum.size
-        if self.buffer_size >= self.flush_threshold:
-            self.flush()
 
     def _flush_unsafe(self, log_dir, buffer, flush_count) -> str:
         """
@@ -89,8 +87,6 @@ class BufferHandler:
 
         self.flush_count += 1
         del buffer_list
-        self.buffer.clear()
-        self.buffer_size = 0
         return log_dir
 
     def flush(self) -> None:
@@ -126,3 +122,7 @@ class BufferHandler:
 
     def get_buffer(self):
         return self.buffer
+
+    def buffer_clear(self):
+        self.buffer.clear()
+        self.buffer_size = 0
