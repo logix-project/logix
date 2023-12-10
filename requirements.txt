@@ -1,6 +1,8 @@
 numpy
 torch
 einops
-
+torchvision
 pyyaml
-
+tqdm
+datasets
+transformers
