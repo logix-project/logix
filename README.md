@@ -1,4 +1,19 @@
-# AnaLog
+<p align="center">
+  <a href="https://https://github.com/sangkeun00/analog/">
+    <img src="assets/logo.png" alt="" width="40%" align="top">
+  </a>
+</p>
+
+<div align="center">
+
+  [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/leopard-ai/betty/blob/main/LICENSE)
+  <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="code style: black"></a>
+  
+</div>
+
+```bash
+pip install betty-ml
+```
 
 ### What is AnaLog?
 AnaLog is a scalable and interoperable machine learning debugging tool. It's built upon the asssumption that training logs (e.g. activations) have rich information about the final model, so debugging can be facilitated by analyzing these logs.
