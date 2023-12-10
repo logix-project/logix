@@ -24,6 +24,7 @@ parser.add_argument("--lora", action="store_true")
 parser.add_argument("--sample", action="store_true")
 parser.add_argument("--config", type=str, default="lora_pca_32")
 parser.add_argument("--project_name", type=str, default=None)
+parser.add_argument("--accelerate", action="store_true")
 args = parser.parse_args()
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -38,7 +39,7 @@ model.eval()
 
 # data
 if args.num_test_data is None:
-    valid_indices = list(range(32))
+    valid_indices = None
 elif isinstance(args.num_test_data, int):
     valid_indices = list(range(args.num_test_data))
 if args.num_train_data is not None:
@@ -51,6 +52,11 @@ _, eval_train_loader, test_loader = get_loaders(
 )
 num_train = len(eval_train_loader.dataset)
 num_test = len(test_loader.dataset)
+
+if args.accelerate:
+    from accelerate import Accelerator
+    accelerator = Accelerator()
+    model, eval_train_loader = accelerator.prepare(model, eval_train_loader)
 
 # Set-up
 config_path = f"files/configs/{args.config}.yaml"
