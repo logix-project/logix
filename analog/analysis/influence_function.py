@@ -65,7 +65,7 @@ class InfluenceFunction(AnalysisBase):
             module_influence = reduce(
                 src_log_expanded * tgt_log_expanded, "n m a b -> n m", "sum"
             )
-            total_influence += module_influence.squeeze()
+            total_influence += module_influence
         return total_influence
 
     def compute_self_influence(self, src, damping=None):
