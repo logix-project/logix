@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://https://github.com/sangkeun00/analog/">
+  <a href="https://github.com/sangkeun00/analog/">
     <img src="assets/logo.png" alt="" width="40%" align="top">
   </a>
 </p>
