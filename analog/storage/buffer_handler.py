@@ -1,9 +1,7 @@
-import os
 from concurrent.futures import ThreadPoolExecutor
 import torch
 
 from analog.utils import nested_dict, to_numpy
-from analog.constants import GRAD
 from analog.storage.utils import MemoryMapHandler
 
 
@@ -26,10 +24,10 @@ class BufferHandler:
         """
         Add log state on exit.
         """
+
         def _add(log, buffer, idx):
             for key, value in log.items():
                 if isinstance(value, torch.Tensor):
-                    # print(value.shape)
                     numpy_value = to_numpy(value[idx])
                     buffer[key] = numpy_value
                     self.buffer_size += numpy_value.size
@@ -79,6 +77,7 @@ class BufferHandler:
         )
 
         self.flush_count += 1
+        self.buffer_clear()
         del buffer_list
         return log_dir
 
@@ -94,8 +93,7 @@ class BufferHandler:
             self._flush_serialized(self.log_dir)
 
     def finalize(self):
-        if self.buffer_size > 0:
-            self._flush_serialized(self.log_dir)
+        self._flush_serialized(self.log_dir)
 
     def set_data_id(self, data_id):
         self.data_id = data_id

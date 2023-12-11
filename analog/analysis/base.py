@@ -6,9 +6,9 @@ from analog.state import AnaLogState
 
 class AnalysisBase(ABC):
     def __init__(
-            self,
-            config: Dict[str, Any],
-            state: AnaLogState,
+        self,
+        config: Dict[str, Any],
+        state: AnaLogState,
     ):
         self.config = config
         self._state = state

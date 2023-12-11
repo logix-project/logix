@@ -12,11 +12,12 @@ from analog.utils import get_logger, get_rank, get_world_size
 
 
 class StorageHandler:
-    def __init__(self,
-                 buffer_handler: BufferHandler = None,
-                 config: Dict = None,
-                 state: AnaLogState = None,
-                 ):
+    def __init__(
+        self,
+        buffer_handler: BufferHandler = None,
+        config: Dict = None,
+        state: AnaLogState = None,
+    ):
         self.log_dir = ""
 
         self.config = config
@@ -82,7 +83,7 @@ class StorageHandler:
         """
         Add log state on exit.
         """
-        self.buffer_handler.buffer_append_on_exit(self._state.log_state)
+        self.buffer_handler.buffer_append_on_exit(self.state.log_state)
 
     def flush(self) -> None:
         """
@@ -114,18 +115,6 @@ class StorageHandler:
             The queried data.
         """
         return [self.buffer[data_id] for data_id in data_ids]
-
-    def serialize_tensor(self, tensor: torch.Tensor):
-        """
-        Serializes the given tensor.
-
-        Args:
-            tensor: The tensor to be serialized.
-
-        Returns:
-            The serialized tensor.
-        """
-        pass
 
     def finalize(self) -> None:
         """
