@@ -332,12 +332,6 @@ class AnaLog:
         """
         return self.state.log_state
 
-    def get_storage_buffer(self):
-        """
-        Returns the storage buffer from the storage handler.
-        """
-        return self.storage_handler.get_buffer()
-
     def get_hessian_state(self) -> Dict[str, Dict[str, torch.Tensor]]:
         """
         Returns the Hessian state from the Hessian handler.

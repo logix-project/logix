@@ -92,30 +92,6 @@ class StorageHandler:
         """
         self.buffer_handler.flush()
 
-    def query(self, data_id: Any):
-        """
-        Query the data with the given data ID.
-
-        Args:
-            data_id: The data ID.
-
-        Returns:
-            The queried data.
-        """
-        return self.buffer[data_id]
-
-    def query_batch(self, data_ids: List[Any]):
-        """
-        Query the data with the given data IDs.
-
-        Args:
-            data_ids: The data IDs.
-
-        Returns:
-            The queried data.
-        """
-        return [self.buffer[data_id] for data_id in data_ids]
-
     def finalize(self) -> None:
         """
         Dump everything in the buffer to a disk.
@@ -126,7 +102,6 @@ class StorageHandler:
         """
         Returns log dataset class.
         """
-
         return DefaultLogDataset(self.log_dir)
 
     def build_log_dataloader(self, batch_size=16, num_workers=0):

@@ -111,9 +111,6 @@ class BufferHandler:
     def set_log_dir(self, log_dir):
         self.log_dir = log_dir
 
-    def get_buffer(self):
-        return self.buffer
-
     def buffer_clear(self):
         self.buffer.clear()
         self.buffer_size = 0
