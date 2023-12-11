@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/sangkeun00/analog/">
-    <img src="assets/logo.png" alt="" width="40%" align="top">
+    <img src="assets/logo_light.jpg" alt="" width="40%" align="top" style="border-radius: 10px; padding-left: 120px; padding-right: 120px; background-color: white;">
   </a>
 </p>
 
