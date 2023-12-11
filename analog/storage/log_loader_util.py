@@ -18,11 +18,10 @@ def find_chunk_indices(path) -> List:
     """
     chunk_indices = []
     for filename in os.listdir(path):
-        if filename.endswith(".mmap"):
-            parts = filename.rstrip(".mmap").split("_")
-            if len(parts) != 0:
-                chunk_index = parts[-1]
-            chunk_indices.append(int(chunk_index))
+        if filename.endswith(".mmap") and filename.startswith("log_"):
+            chunk_index = filename.rstrip(".mmap").strip("log_")
+            chunk_indices.append(chunk_index)
+
     return sorted(chunk_indices)
 
 

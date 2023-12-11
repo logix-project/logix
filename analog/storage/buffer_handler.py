@@ -2,7 +2,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 import torch
 
-from analog.utils import get_logger, nested_dict, to_numpy
+from analog.utils import nested_dict, to_numpy
 from analog.constants import GRAD
 from analog.storage.utils import MemoryMapHandler
 
@@ -22,29 +22,22 @@ class BufferHandler:
         self.data_id = None
         self.file_prefix = ""
 
-    def buffer_append(self, module_name: str, log_type: str, data) -> None:
+    def buffer_append_on_exit(self, log_state):
         """
-        Adds activation data to the buffer.
+        Add log state on exit.
+        """
+        def _add(log, buffer, idx):
+            for key, value in log.items():
+                if isinstance(value, torch.Tensor):
+                    # print(value.shape)
+                    numpy_value = to_numpy(value[idx])
+                    buffer[key] = numpy_value
+                    self.buffer_size += numpy_value.size
+                    continue
+                _add(value, buffer[key], idx)
 
-        Args:
-            module_name (str): The name of the module.
-            log_type (str): Type of log (e.g., "forward", "backward", or "grad").
-            data: Data to be logged.
-        """
-        assert len(data) == len(self.data_id)
-        for datum, data_id in zip(data, self.data_id):
-            numpy_datum = to_numpy(datum)
-            if log_type == GRAD:
-                if module_name not in self.buffer[data_id]:
-                    self.buffer[data_id][module_name] = numpy_datum
-                else:
-                    self.buffer[data_id][module_name] += numpy_datum
-            else:
-                if log_type not in self.buffer[data_id][module_name]:
-                    self.buffer[data_id][module_name][log_type] = numpy_datum
-                else:
-                    self.buffer[data_id][module_name][log_type] += numpy_datum
-            self.buffer_size += numpy_datum.size
+        for idx, data_id in enumerate(self.data_id):
+            _add(log_state, self.buffer[data_id], idx)
 
     def _flush_unsafe(self, log_dir, buffer, flush_count) -> str:
         """

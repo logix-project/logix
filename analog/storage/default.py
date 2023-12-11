@@ -8,7 +8,7 @@ from analog.state import AnaLogState
 from analog.storage.log_loader import DefaultLogDataset
 from analog.storage.log_loader_util import collate_nested_dicts
 from analog.storage.buffer_handler import BufferHandler
-from analog.utils import get_logger
+from analog.utils import get_logger, get_rank, get_world_size
 
 
 class StorageHandler:
@@ -17,10 +17,10 @@ class StorageHandler:
                  config: Dict = None,
                  state: AnaLogState = None,
                  ):
-        self.config = config
+        self.log_dir = ""
 
-        # Default log saving config.
-        self.log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "log")
+        self.config = config
+        self.state = state
 
         # Init buffer.
         if buffer_handler is None:
@@ -29,21 +29,21 @@ class StorageHandler:
             self.buffer_handler = buffer_handler
 
         self.buffer_handler.set_file_prefix("log_chunk_")
+        if get_world_size() > 1:
+            self.buffer_handler.set_file_prefix(f"log_rank_{get_rank()}_chunk_")
 
         # Parse config.
         self.parse_config()
 
         # Precondition.
-        if not os.path.exists(self.log_dir):
-            os.makedirs(self.log_dir)
-        else:
+        if os.path.exists(self.log_dir):
             get_logger().warning(f"Log directory {self.log_dir} already exists.\n")
 
     def parse_config(self) -> None:
         """
         Parse the configuration parameters.
         """
-        self.log_dir = self.config.get("log_dir", self.log_dir)
+        self.log_dir = self.config.get("log_dir")
         self.buffer_handler.set_log_dir(self.log_dir)
 
         flush_threshold = self.config.get(
@@ -78,93 +78,11 @@ class StorageHandler:
         """
         return self.buffer_handler.get_buffer()
 
-    # TODO: Clean up before release.
-    def format_log(self, module_name: str, log_type: str, data):
-        """
-        Formats the data in the structure needed for the JSON file.
-
-        Args:
-            module_name (str): The name of the module.
-            log_type (str): The type of activation (e.g., "forward", "backward", or "grad").
-            aa: The data to be logged.
-
-        Returns:
-            dict: The formatted log data.
-        """
-        pass
-
-    def buffer_append(self, module_name: str, log_type: str, data) -> None:
-        """
-        Adds activation data to the buffer.
-
-        Args:
-            module_name (str): The name of the module.
-            log_type (str): Type of log (e.g., "forward", "backward", or "grad").
-            data: Data to be logged.
-        """
-        self.buffer_handler.buffer_append(module_name, log_type, data)
-
-    # TODO: fix.
-    def add_on_exit(self):
+    def buffer_append_on_exit(self):
         """
         Add log state on exit.
         """
-        log_state = self._state.log_state
-
-        def _add(log, buffer, idx):
-            for key, value in log.items():
-                if isinstance(value, torch.Tensor):
-                    # print(value.shape)
-                    numpy_value = to_numpy(value[idx])
-                    buffer[key] = numpy_value
-                    self.buffer_size += numpy_value.size
-                else:
-                    _add(value, buffer[key], idx)
-
-        for idx, data_id in enumerate(self.data_id):
-            _add(log_state, self.buffer[data_id], idx)
-
-    def _flush_unsafe(self, buffer, push_count) -> str:
-        """
-        _flush_unsafe is thread unsafe flush of current buffer. No shared variable must be allowed.
-        """
-        save_path = self.file_prefix + f"{push_count}.mmap"
-        torch.save(buffer, save_path)
-        buffer_list = [(k, v) for k, v in buffer]
-        self.mmap_handler.write(buffer_list, save_path)
-        return save_path
-
-    def _flush_safe(self) -> str:
-        """
-        _flush_safe is thread safe flush of current buffer.
-        """
-        buffer_copy = self.buffer.copy()
-        push_count_copy = self.push_count
-        self.push_count += 1
-        self.buffer.clear()
-        self.buffer_size = 0
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            save_path = executor.submit(
-                self._flush_unsafe, buffer_copy, push_count_copy
-            )
-        return save_path
-
-    def _flush_serialized(self) -> str:
-        """
-        _flush_serialized executes the flushing of the buffers in serialized manner.
-        """
-        if len(self.buffer) == 0:
-            return self.log_dir
-        buffer_list = [(k, v) for k, v in self.buffer.items()]
-        self.mmap_handler.write(
-            buffer_list, self.file_prefix + f"{self.push_count}.mmap"
-        )
-
-        self.push_count += 1
-        del buffer_list
-        self.buffer.clear()
-        self.buffer_size = 0
-        return self.log_dir
+        self.buffer_handler.buffer_append_on_exit(self._state.log_state)
 
     def flush(self) -> None:
         """
