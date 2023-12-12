@@ -20,7 +20,7 @@ class BufferHandler:
         self.data_id = None
         self.file_prefix = ""
 
-    def buffer_append_on_exit(self, log_state):
+    def buffer_write_on_exit(self, log_state):
         """
         Add log state on exit.
         """

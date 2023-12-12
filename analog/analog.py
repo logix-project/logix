@@ -262,7 +262,7 @@ class AnaLog:
 
         # Flush the storage handler if necessary
         if self.logging_config["save"]:
-            self.storage_handler.buffer_append_on_exit()
+            self.storage_handler.buffer_write_on_exit()
             self.storage_handler.flush()
 
         # Remove all hooks

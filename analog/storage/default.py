@@ -79,11 +79,11 @@ class StorageHandler:
         """
         return self.buffer_handler.get_buffer()
 
-    def buffer_append_on_exit(self):
+    def buffer_write_on_exit(self):
         """
         Add log state on exit.
         """
-        self.buffer_handler.buffer_append_on_exit(self.state.log_state)
+        self.buffer_handler.buffer_write_on_exit(self.state.log_state)
 
     def flush(self) -> None:
         """
