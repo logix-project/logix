@@ -11,9 +11,21 @@ from utils import construct_model, get_loaders
 
 parser = argparse.ArgumentParser("GLUE Influence Analysis")
 parser.add_argument("--data_name", type=str, default="sst2", options=["sst2", "qnli"])
-parser.add_argument("--num_train_data", type=int, default=None, help="If set to not None, only inspect the first num_train_data samples.")
-parser.add_argument("--num_test_data", type=int, default=None, help="If set to not None, only inspect the first num_test_data samples.")
-parser.add_argument("--damping", type=float, default=None, help="Damping factor for influence function.")
+parser.add_argument(
+    "--num_train_data",
+    type=int,
+    default=None,
+    help="If set to not None, only inspect the first num_train_data samples.",
+)
+parser.add_argument(
+    "--num_test_data",
+    type=int,
+    default=None,
+    help="If set to not None, only inspect the first num_test_data samples.",
+)
+parser.add_argument(
+    "--damping", type=float, default=None, help="Damping factor for influence function."
+)
 parser.add_argument("--ekfac", action="store_true")
 parser.add_argument("--lora", action="store_true")
 parser.add_argument(
@@ -50,7 +62,10 @@ analog.watch(model)
 id_gen = DataIDGenerator(mode="index")
 for epoch in al_scheduler:
     sample = True if epoch < (len(al_scheduler) - 1) and args.sample else False
-    for batch in tqdm(eval_train_loader, desc="Collecting statistics (covariances) and saving logs (compressed gradients)"):
+    for batch in tqdm(
+        eval_train_loader,
+        desc="Collecting statistics (covariances) and saving logs (compressed gradients)",
+    ):
         data_id = id_gen(batch["input_ids"])
         inputs = (
             batch["input_ids"].to(DEVICE),
@@ -69,7 +84,9 @@ for epoch in al_scheduler:
             else:
                 labels = batch["labels"].view(-1).to(DEVICE)
 
-            loss = F.cross_entropy(logits, labels, reduction="sum", ignore_index=-100)  # influence function requires sum reduction
+            loss = F.cross_entropy(
+                logits, labels, reduction="sum", ignore_index=-100
+            )  # influence function requires sum reduction
             loss.backward()
     analog.finalize()
 
