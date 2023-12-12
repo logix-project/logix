@@ -1,11 +1,13 @@
+import os
 import time
 import argparse
+import yaml
 
 from tqdm import tqdm
 
 import torch
 import torch.nn.functional as F
-from analog import AnaLog
+from analog import AnaLog, AnaLogScheduler
 from analog.analysis import InfluenceFunction
 from analog.utils import DataIDGenerator
 from tqdm import tqdm
@@ -13,9 +15,20 @@ from tqdm import tqdm
 from utils import construct_model, get_loaders, set_seed
 
 parser = argparse.ArgumentParser("GLUE Influence Analysis")
-parser.add_argument("--data_name", type=str, default="sst2")
-parser.add_argument("--eval-idxs", type=int, nargs="+", default=[0])
-parser.add_argument("--damping", type=float, default=1e-5)
+parser.add_argument("--data_name", type=str, default="sst2", options=["sst2", "qnli"])
+parser.add_argument(
+    "--num_train_data",
+    type=int,
+    default=None,
+    help="Number of training data to use for influence analysis.",
+    )
+parser.add_argument("--num_test_data", type=int, default=None)
+parser.add_argument("--damping", type=float, default=None)
+parser.add_argument("--ekfac", action="store_true")
+parser.add_argument("--lora", action="store_true")
+parser.add_argument("--sample", action="store_true")
+parser.add_argument("--config", type=str, default="lora_pca_32")
+parser.add_argument("--project_name", type=str, default=None)
 args = parser.parse_args()
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -29,19 +42,42 @@ model.to(DEVICE)
 model.eval()
 
 # data
+if args.num_test_data is None:
+    valid_indices = list(range(32))
+elif isinstance(args.num_test_data, int):
+    valid_indices = list(range(args.num_test_data))
+if args.num_train_data is not None:
+    train_indices = list(range(args.num_train_data))
+else:
+    train_indices = None
 _, eval_train_loader, test_loader = get_loaders(
     data_name=args.data_name,
-    valid_indices=list(range(32)),
+    train_indices=train_indices,
+    valid_indices=valid_indices,
 )
+num_train = len(eval_train_loader.dataset)
+num_test = len(test_loader.dataset)
 
 # Set-up
-analog = AnaLog(project="test", config="config.yaml")
+config_path = f"files/configs/{args.config}.yaml"
+assert os.path.exists(config_path), f"Config file {config_path} does not exist"
+if args.project_name is None:
+    project_name = args.config + f"_d{args.damping}"
+else:
+    project_name = args.project_name
+analog = AnaLog(project=project_name, config=config_path)
+config = analog.config.data
+print(f"Experimentting with: {config}")
+al_scheduler = AnaLogScheduler(
+    analog, ekfac=args.ekfac, lora=args.lora, sample=args.sample
+)
 
 # Hessian logging
 analog.watch(model)
-analog_kwargs = {"log": [], "hessian": True, "save": False}
 id_gen = DataIDGenerator(mode="index")
-for epoch in range(2):
+for epoch in al_scheduler:
+    # TODO: fix this
+    sample = True if epoch < (len(al_scheduler) - 1) and args.sample else False
     for batch in tqdm(eval_train_loader, desc="Hessian logging"):
         data_id = id_gen(batch["input_ids"])
         inputs = (
@@ -49,54 +85,69 @@ for epoch in range(2):
             batch["token_type_ids"].to(DEVICE),
             batch["attention_mask"].to(DEVICE),
         )
-        with analog(data_id=data_id, mask=inputs[-1], **analog_kwargs):
+        with analog(data_id=data_id, mask=inputs[-1]):
             model.zero_grad()
             outputs = model(*inputs)
-
             logits = outputs.view(-1, outputs.shape[-1])
-            labels = batch["labels"].view(-1).to(DEVICE)
+
+            if sample:
+                with torch.no_grad():
+                    probs = torch.nn.functional.softmax(outputs, dim=-1)
+                    labels = torch.multinomial(probs, num_samples=1).flatten()
+            else:
+                labels = batch["labels"].view(-1).to(DEVICE)
+
             loss = F.cross_entropy(logits, labels, reduction="sum", ignore_index=-100)
             loss.backward()
     analog.finalize()
-    if epoch == 0:
-        analog_kwargs.update({"save": True, "log": ["grad"]})
-        analog.add_lora(model)
 
 # Compute influence
 log_loader = analog.build_log_dataloader()
 analog.add_analysis({"influence": InfluenceFunction})
-test_iter = iter(test_loader)
-with analog(log=["grad"], test=True) as al:
-    test_batch = next(test_iter)
-    test_inputs = (
-        test_batch["input_ids"].to(DEVICE),
-        test_batch["token_type_ids"].to(DEVICE),
-        test_batch["attention_mask"].to(DEVICE),
-    )
-    test_target = test_batch["labels"].to(DEVICE)
-    model.zero_grad()
-    test_outputs = model(*test_inputs)
+if_scores_list = []
+for test_batch in tqdm(test_loader, desc="Computing Influence"):
+    with analog(log=["grad"], test=True) as al:
+        test_inputs = (
+            test_batch["input_ids"].to(DEVICE),
+            test_batch["token_type_ids"].to(DEVICE),
+            test_batch["attention_mask"].to(DEVICE),
+        )
+        test_target = test_batch["labels"].to(DEVICE)
+        model.zero_grad()
+        test_outputs = model(*test_inputs)
 
-    test_logits = test_outputs.view(-1, test_outputs.shape[-1])
-    test_labels = test_batch["labels"].view(-1).to(DEVICE)
-    test_loss = F.cross_entropy(
-        test_logits,
-        test_labels,
-        reduction="sum",
-        ignore_index=-100,
-    )
-    test_loss.backward()
+        test_logits = test_outputs.view(-1, test_outputs.shape[-1])
+        test_labels = test_batch["labels"].view(-1).to(DEVICE)
+        test_loss = F.cross_entropy(
+            test_logits,
+            test_labels,
+            reduction="sum",
+            ignore_index=-100,
+        )
+        test_loss.backward()
 
-    test_log = al.get_log()
+        test_log = al.get_log()
+        if_scores = analog.influence.compute_influence_all(
+            test_log, log_loader, damping=args.damping
+        )
+        if_scores_list.append(if_scores)
+if_scores = torch.cat(if_scores_list, dim=0)
 
-start = time.time()
-if_scores = analog.influence.compute_influence_all(test_log, log_loader)
-print("Computation time:", time.time() - start)
-
-# Save
+# Save influence scores
 log_dir = analog.config.get_storage_config()["log_dir"]
-config = analog.config.data
-config["model_path"] = model_path
 save_path = f"{log_dir}/if_analog.pt"
 torch.save(if_scores, save_path)
-print(f"Saved influence scores to {save_path}")
+print(f"Saved influence scores of size {if_scores.size()} to {save_path}")
+
+# Save config
+config["misc"] = {}
+to_log = ["model_path", "num_train", "num_test", "config_path", "project_name"]
+for log in to_log:
+    config["misc"][log] = globals()[log]
+config["args"] = {}
+for k, v in vars(args).items():
+    config["args"][k] = v
+yaml_path = f"{log_dir}/if_analog.yaml"
+with open(yaml_path, "w") as f:
+    yaml.dump(config, f)
+print(f"Saved config to {yaml_path}")

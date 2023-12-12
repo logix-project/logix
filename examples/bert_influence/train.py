@@ -16,7 +16,7 @@ from utils import clear_gpu_cache, set_seed, construct_model, get_loaders
 
 parser = argparse.ArgumentParser("MNIST Influence Analysis")
 parser.add_argument("--data_name", type=str, default="sst2")
-parser.add_argument("--num_train", type=int, default=1)
+parser.add_argument("--num_train", type=int, default=1, help="Number of models to train")
 args = parser.parse_args()
 
 os.makedirs("files/", exist_ok=True)
