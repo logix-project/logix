@@ -62,9 +62,7 @@ class LoRAHandler:
         """
         Analytically computed compressed covariances using projection matrices(LoRA weights).
         """
-        for name, _ in self._named_modules(
-            model, type_filter, name_filter
-        ):
+        for name, _ in self._named_modules(model, type_filter, name_filter):
             parent, target, target_name = _get_submodules(model, name)
             if "lora_A" in target_name:
                 mode = FORWARD
@@ -89,7 +87,9 @@ class LoRAHandler:
         for k in keys:  # FIXME: do this with analog.clear
             if "analog_lora_B" not in k:
                 del self._state.hessian_state[k]
-        self._state._states_to_normalize.remove(("hessian_state", "hessian_counter"))  # FIXME: do this with analog.finalize -> state.finalize
+        self._state._states_to_normalize.remove(
+            ("hessian_state", "hessian_counter")
+        )  # FIXME: do this with analog.finalize -> state.finalize
 
     def add_lora(
         self,
@@ -109,9 +109,7 @@ class LoRAHandler:
 
         shared_modules = {}
         device = next(model.parameters()).device
-        for name, module in self._named_modules(
-            model, type_filter, name_filter
-        ):
+        for name, module in self._named_modules(model, type_filter, name_filter):
             lora_cls = None
             if isinstance(module, nn.Linear):
                 lora_cls = LoraLinear
@@ -120,9 +118,7 @@ class LoRAHandler:
             elif isinstance(module, nn.Conv2d):
                 lora_cls = LoraConv2d
 
-            psg = find_parameter_sharing_group(
-                name, self.parameter_sharing_groups
-            )
+            psg = find_parameter_sharing_group(name, self.parameter_sharing_groups)
             if self.parameter_sharing and psg not in shared_modules:
                 if isinstance(module, nn.Linear):
                     shared_module = nn.Linear(self.rank, self.rank, bias=False)
@@ -136,13 +132,9 @@ class LoRAHandler:
                     )
                 shared_modules[psg] = shared_module
 
-            lora_module = lora_cls(
-                self.rank, module, shared_modules.get(psg, None)
-            )
+            lora_module = lora_cls(self.rank, module, shared_modules.get(psg, None))
             if self.init_strategy == "pca":
-                lora_module.pca_init_weight(
-                    self.init_strategy, hessian_state[name]
-                )
+                lora_module.pca_init_weight(self.init_strategy, hessian_state[name])
             lora_module.to(device)
 
             parent, target, target_name = _get_submodules(model, name)

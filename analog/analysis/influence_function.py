@@ -64,7 +64,8 @@ class InfluenceFunction(AnalysisBase):
             tgt_log_expanded = rearrange(tgt_log, "m ... -> 1 m ...")
             module_influence = reduce(
                 src_log_expanded * tgt_log_expanded.to(src_log_expanded.device),
-                "n m a b -> n m", "sum",
+                "n m a b -> n m",
+                "sum",
             )
             total_influence += module_influence
         return total_influence

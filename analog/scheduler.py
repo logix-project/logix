@@ -30,39 +30,83 @@ class AnaLogScheduler:
         # (log, hessian, save) for analog
         if ekfac and lora and sample:
             self.analog_state_schedule = [
-                {"log": [], "hessian": True, "save": False},  # collect covariances using sampling
-                {"log": ["grad"], "hessian": True, "save": False},  # fit lambda for ekfac using sampling
-                {"log": ["grad"], "hessian": False, "save": True},  # collect LoRA gradients
+                {
+                    "log": [],
+                    "hessian": True,
+                    "save": False,
+                },  # collect covariances using sampling
+                {
+                    "log": ["grad"],
+                    "hessian": True,
+                    "save": False,
+                },  # fit lambda for ekfac using sampling
+                {
+                    "log": ["grad"],
+                    "hessian": False,
+                    "save": True,
+                },  # collect LoRA gradients
             ]
         elif ekfac and lora and not sample:
             self.analog_state_schedule = [
                 {"log": [], "hessian": True, "save": False},  # collect covariances
-                {"log": ["grad"], "hessian": True, "save": True}, # fit lambda for ekfac while collectng LoRA gradient
+                {
+                    "log": ["grad"],
+                    "hessian": True,
+                    "save": True,
+                },  # fit lambda for ekfac while collectng LoRA gradient
             ]
         elif ekfac and not lora and sample:
             self.analog_state_schedule = [
-                {"log": [], "hessian": True, "save": False},  # collect covariances using sampling
-                {"log": ["grad"], "hessian": True, "save": False},  # fit lambda for ekfac using sampling
+                {
+                    "log": [],
+                    "hessian": True,
+                    "save": False,
+                },  # collect covariances using sampling
+                {
+                    "log": ["grad"],
+                    "hessian": True,
+                    "save": False,
+                },  # fit lambda for ekfac using sampling
                 {"log": ["grad"], "hessian": False, "save": True},  # collect gradients
             ]
         elif ekfac and not lora and not sample:
             self.analog_state_schedule = [
                 {"log": [], "hessian": True, "save": False},  # collect covariances
-                {"log": ["grad"], "hessian": True, "save": True},  # fit lambda for ekfac while collecting gradients
+                {
+                    "log": ["grad"],
+                    "hessian": True,
+                    "save": True,
+                },  # fit lambda for ekfac while collecting gradients
             ]
         elif not ekfac and lora and sample:
             self.analog_state_schedule = [
-                {"log": [], "hessian": True, "save": False},  # collect covariances using sampling
-                {"log": ["grad"], "hessian": False, "save": True},  # collect LoRA gradients
+                {
+                    "log": [],
+                    "hessian": True,
+                    "save": False,
+                },  # collect covariances using sampling
+                {
+                    "log": ["grad"],
+                    "hessian": False,
+                    "save": True,
+                },  # collect LoRA gradients
             ]
         elif not ekfac and lora and not sample:
             self.analog_state_schedule = [
                 {"log": [], "hessian": True, "save": False},  # collect covariances
-                {"log": ["grad"], "hessian": False, "save": True},  # collect LoRA gradients
+                {
+                    "log": ["grad"],
+                    "hessian": False,
+                    "save": True,
+                },  # collect LoRA gradients
             ]
         elif not ekfac and not lora and sample:
             self.analog_state_schedule = [
-                {"log": [], "hessian": True, "save": False},  # collect covariances using sampling
+                {
+                    "log": [],
+                    "hessian": True,
+                    "save": False,
+                },  # collect covariances using sampling
                 {"log": ["grad"], "hessian": False, "save": True},  # collect gradients
             ]
         elif not ekfac and not lora and not sample:
