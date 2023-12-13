@@ -81,7 +81,7 @@ for epoch in range(2):
 log_loader = analog.build_log_dataloader()
 analog.add_analysis({"influence": InfluenceFunction})
 test_iter = iter(test_loader)
-with analog(log=["grad"], test=True) as al:
+with analog(log=["grad"]) as al:
     test_batch = next(test_iter)
     test_inputs = (
         test_batch["input_ids"].to(DEVICE),
