@@ -62,7 +62,8 @@ class TestTransformerGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        with analog(data_id=input, log=["grad"], hessian=False, save=False):
+        analog.update({"log" = ["grad"], "hessian": False, "save": False})
+        with analog(data_id=input):
             self.model.zero_grad()
             output = self.model(input_ids, attention_mask).logits
             loss = F.cross_entropy(output, labels, reduction="sum")
@@ -114,9 +115,8 @@ class TestTransformerGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        with analog(
-            data_id=input, log=["grad"], mask=attention_mask, hessian=False, save=False
-        ):
+        analog.update({"log" = ["grad"], "hessian": False, "save": False})
+        with analog(data_id=input, mask=attention_mask):
             self.model.zero_grad()
             output = self.model(input_ids, attention_mask).logits
             loss = F.cross_entropy(output, labels, reduction="sum")
@@ -172,9 +172,8 @@ class TestTransformerGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        with analog(
-            data_id=input, log=["grad"], mask=attention_mask, hessian=False, save=False
-        ):
+        analog.update({"log" = ["grad"], "hessian": False, "save": False}})
+        with analog(data_id=input, mask=attention_mask):
             self.model.zero_grad()
             output = self.model(input_ids, attention_mask).logits
             loss = F.cross_entropy(output, labels, reduction="sum")

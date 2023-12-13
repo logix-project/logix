@@ -66,7 +66,8 @@ class TestMLPGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        with analog(data_id=inputs, log=["grad"], hessian=False, save=False):
+        analog.update({"log" = ["grad"], "hessian" = False, "save" = False})
+        with analog(data_id=inputs):
             self.model.zero_grad()
             output = self.model(inputs)
             loss = F.cross_entropy(output, labels, reduction="sum")
@@ -109,7 +110,8 @@ class TestMLPGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        with analog(data_id=inputs, log=["grad"], hessian=False, save=False):
+        analog.update({"log" = ["grad"], "hessian" = False, "save" = False})
+        with analog(data_id=inputs):
             self.model.zero_grad()
             output = checkpoint_sequential(
                 self.model, segments=2, input=inputs, use_reentrant=False
@@ -154,7 +156,8 @@ class TestMLPGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        with analog(data_id=inputs, log=["grad"], hessian=False, save=False):
+        analog.update({"log" = ["grad"], "hessian" = False, "save" = False})
+        with analog(data_id=inputs):
             compiled_model.zero_grad()
             output = compiled_model(inputs)
             loss = F.cross_entropy(output, labels, reduction="sum")

@@ -76,7 +76,8 @@ class Test2DCNNGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        with analog(data_id=inputs, log=["grad"], hessian=False, save=False):
+        analog.update({"log": ["grad"], "hessian": False, "save": False})
+        with analog(data_id=inputs):
             self.model.zero_grad()
             output = self.model(inputs)
             loss = F.cross_entropy(output, labels, reduction="sum")
