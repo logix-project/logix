@@ -463,7 +463,7 @@ class AnaLog:
         """
         Set the state of AnaLog for testing.
         """
-        eval_logging_config = {"hessian": False, "save": False}
+        eval_logging_config = {"hessian": False, "save": False, "log": ["grad"]}
         self.update(eval_logging_config)
 
     def clear(self) -> None:

@@ -66,7 +66,7 @@ log_loader = analog.build_log_dataloader()
 analog.add_analysis({"influence": InfluenceFunction})
 query_iter = iter(query_loader)
 analog.eval()
-with analog(log=["grad"]):
+with analog():
     test_input, test_target = next(query_iter)
     test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
     model.zero_grad()
