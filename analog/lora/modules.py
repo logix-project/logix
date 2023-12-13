@@ -35,9 +35,8 @@ class LoraLinear(nn.Linear):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         result = self._linear(input)
-        result += self.analog_lora_C(self.analog_lora_B(self.analog_lora_A(input)))
-
-        return result
+        lora = self.analog_lora_C(self.analog_lora_B(self.analog_lora_A(input)))
+        return result + lora
 
     def pca_init_weight(self, init_strategy: str = "random", hessian=None):
         """Initialize the weight of the LoraLinear layer.
