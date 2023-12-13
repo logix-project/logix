@@ -49,6 +49,7 @@ for n, m in model.named_modules():
 
 analog.watch(model, name_filter=modules_to_watch)
 analog_kwargs = {"log": [], "hessian": True, "save": False}
+analog.update(analog_kwargs)
 id_gen = DataIDGenerator(mode="index")
 for epoch in range(2):
     for batch in tqdm(eval_train_loader, desc="Hessian logging"):
@@ -58,7 +59,7 @@ for epoch in range(2):
             batch["attention_mask"].to(DEVICE),
         )
         targets = batch["labels"].to(DEVICE)
-        with analog(data_id=data_id, mask=inputs[-1], **analog_kwargs):
+        with analog(data_id=data_id, mask=inputs[-1]):
             model.zero_grad()
             lm_logits = model(*inputs)
 
@@ -74,6 +75,7 @@ for epoch in range(2):
     analog.finalize()
     if epoch == 0:
         analog_kwargs.update({"save": True, "log": ["grad"]})
+        analog.update(analog_kwargs)
         # analog.add_lora(model, parameter_sharing=False)
         analog.ekfac()
 
