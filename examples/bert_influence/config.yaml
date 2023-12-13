@@ -4,3 +4,6 @@ storage:
 lora:
   init: pca
   rank: 32
+hessian:
+  type: kfac
+  damping: 1e-5
