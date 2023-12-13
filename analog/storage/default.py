@@ -1,20 +1,19 @@
 import os
-from typing import Any, List, Dict
+from typing import Dict
 
-import torch
 from torch.utils.data import DataLoader
 
 from analog.state import AnaLogState
 from analog.storage.log_loader import DefaultLogDataset
 from analog.storage.log_loader_util import collate_nested_dicts
-from analog.storage.buffer_handler import BufferHandler
+from analog.storage.log_saver import LogSaver
 from analog.utils import get_logger, get_rank, get_world_size
 
 
 class StorageHandler:
     def __init__(
         self,
-        buffer_handler: BufferHandler = None,
+        log_saver: LogSaver = None,
         config: Dict = None,
         state: AnaLogState = None,
     ):
@@ -24,14 +23,14 @@ class StorageHandler:
         self.state = state
 
         # Init buffer.
-        if buffer_handler is None:
-            self.buffer_handler = BufferHandler()
+        if log_saver is None:
+            self.log_saver = LogSaver()
         else:
-            self.buffer_handler = buffer_handler
+            self.log_saver = log_saver
 
-        self.buffer_handler.set_file_prefix("log_chunk_")
+        self.log_saver.set_file_prefix("log_chunk_")
         if get_world_size() > 1:
-            self.buffer_handler.set_file_prefix(f"log_rank_{get_rank()}_chunk_")
+            self.log_saver.set_file_prefix(f"log_rank_{get_rank()}_chunk_")
 
         # Parse config.
         self.parse_config()
@@ -45,21 +44,21 @@ class StorageHandler:
         Parse the configuration parameters.
         """
         self.log_dir = self.config.get("log_dir")
-        self.buffer_handler.set_log_dir(self.log_dir)
+        self.log_saver.set_log_dir(self.log_dir)
 
         flush_threshold = self.config.get(
             "flush_threshold", -1
         )  # -1 flushes once at the end.
-        self.buffer_handler.set_flush_threshold(flush_threshold)
+        self.log_saver.set_flush_threshold(flush_threshold)
 
         max_workers = self.config.get("worker", 1)
-        self.buffer_handler.set_max_worker(max_workers)
+        self.log_saver.set_max_worker(max_workers)
 
     def clear(self):
         """
         Clears the buffer.
         """
-        self.buffer_handler.buffer_clear()
+        self.log_saver.buffer_clear()
 
     def set_data_id(self, data_id):
         """
@@ -68,7 +67,7 @@ class StorageHandler:
         Args:
             data_id: The ID associated with the data.
         """
-        self.buffer_handler.set_data_id(data_id)
+        self.log_saver.set_data_id(data_id)
 
     def get_buffer(self):
         """
@@ -77,26 +76,26 @@ class StorageHandler:
         Returns:
             dict: The buffer.
         """
-        return self.buffer_handler.get_buffer()
+        return self.log_saver.get_buffer()
 
     def buffer_write_on_exit(self):
         """
         Add log state on exit.
         """
-        self.buffer_handler.buffer_write_on_exit(self.state.log_state)
+        self.log_saver.buffer_write_on_exit(self.state.log_state)
 
     def flush(self) -> None:
         """
         For the DefaultHandler, there's no batch operation needed since each add operation writes to the file.
         This can be a placeholder or used for any finalization operations.
         """
-        self.buffer_handler.flush()
+        self.log_saver.flush()
 
     def finalize(self) -> None:
         """
         Dump everything in the buffer to a disk.
         """
-        self.buffer_handler.finalize()
+        self.log_saver.finalize()
 
     def _build_log_dataset(self):
         """

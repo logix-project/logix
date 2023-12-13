@@ -5,7 +5,7 @@ from analog.utils import nested_dict, to_numpy
 from analog.storage.utils import MemoryMapHandler
 
 
-class BufferHandler:
+class LogSaver:
     def __init__(self):
         self.log_dir = ""
         self.max_worker = 0

@@ -13,7 +13,7 @@ from analog.state import AnaLogState
 from analog.storage import StorageHandler
 from analog.hessian import RawHessianHandler, KFACHessianHandler
 from analog.lora import LoRAHandler
-from analog.storage.buffer_handler import BufferHandler
+from analog.storage.log_saver import LogSaver
 from analog.utils import get_logger, get_rank, get_world_size
 
 
@@ -275,8 +275,8 @@ class AnaLog:
         Returns:
             The initialized storage handler.
         """
-        buffer_handler = BufferHandler()
-        return StorageHandler(buffer_handler, storage_config, state)
+        log_saver = LogSaver()
+        return StorageHandler(log_saver, storage_config, state)
 
     def build_hessian_handler(self, hessian_config, state):
         """
