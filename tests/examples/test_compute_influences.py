@@ -95,7 +95,8 @@ class TestSingleCheckpointInfluence(unittest.TestCase):
         id_gen = DataIDGenerator()
         for inputs, targets in train_loader:
             data_id = id_gen(inputs)
-            with analog(data_id=data_id, log=["grad"], hessian=True, save=True):
+            analog.update({"log": ["grad"], "hessian": True, "save": True})
+            with analog(data_id=data_id):
                 inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
                 model.zero_grad()
                 outs = model(inputs)
@@ -111,7 +112,7 @@ class TestSingleCheckpointInfluence(unittest.TestCase):
         analog.add_analysis({"influence": InfluenceFunction})
         query_iter = iter(query_loader)
         analog.eval()
-        with analog(log=["grad"]) as al:
+        with analog() as al:
             test_input, test_target = next(query_iter)
             test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
             model.zero_grad()
