@@ -56,7 +56,7 @@ from analog.analysis import InfluenceFunction
 analog.eval() # enter analysis mode
 log_loader = analog.build_log_dataloader() # return PyTorch DataLoader for log data
 
-with analog(data_id=test_input):
+with analog():
     test_out = model(test_input)
     test_loss = loss_fn(test_out, test_target, reduction="sum")
     test_loss.backward()
