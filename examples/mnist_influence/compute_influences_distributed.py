@@ -76,7 +76,7 @@ def main():
 
     analog.add_analysis({"influence": InfluenceFunction})
     query_iter = iter(query_loader)
-    with analog(log=["grad"], test=True):
+    with analog(log=["grad"]):
         test_input, test_target = next(query_iter)
         model.zero_grad()
         test_out = model(test_input)

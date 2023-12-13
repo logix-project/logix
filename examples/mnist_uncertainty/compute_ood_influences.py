@@ -85,7 +85,7 @@ analog.add_analysis({"influence": InfluenceFunction})
 print("Computing OOD self-influence scores...")
 ood_self_influence_scores = []
 for ood_test_input, ood_test_target in tqdm.tqdm(ood_query_loader):
-    with analog(log=["grad"], test=True) as al:
+    with analog(log=["grad"]) as al:
         ood_test_input = ood_input_processor(ood_test_input)
         ood_test_input, ood_test_target = (
             ood_test_input.to(DEVICE),
@@ -107,7 +107,7 @@ for ood_test_input, ood_test_target in tqdm.tqdm(ood_query_loader):
 print("Computing ID self-influence scores...")
 id_self_influence_scores = []
 for id_test_input, id_test_target in tqdm.tqdm(id_query_loader):
-    with analog(log=["grad"], test=True) as al:
+    with analog(log=["grad"]) as al:
         id_test_input, id_test_target = id_test_input.to(DEVICE), id_test_target.to(
             DEVICE
         )
