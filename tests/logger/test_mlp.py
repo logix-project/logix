@@ -66,7 +66,7 @@ class TestMLPGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        analog.update({"log" = ["grad"], "hessian" = False, "save" = False})
+        analog.update({"log": ["grad"], "hessian": False, "save": False})
         with analog(data_id=inputs):
             self.model.zero_grad()
             output = self.model(inputs)
@@ -110,7 +110,7 @@ class TestMLPGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        analog.update({"log" = ["grad"], "hessian" = False, "save" = False})
+        analog.update({"log": ["grad"], "hessian": False, "save": False})
         with analog(data_id=inputs):
             self.model.zero_grad()
             output = checkpoint_sequential(
@@ -156,7 +156,7 @@ class TestMLPGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        analog.update({"log" = ["grad"], "hessian" = False, "save" = False})
+        analog.update({"log": ["grad"], "hessian": False, "save": False})
         with analog(data_id=inputs):
             compiled_model.zero_grad()
             output = compiled_model(inputs)

@@ -62,7 +62,7 @@ class TestTransformerGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        analog.update({"log" = ["grad"], "hessian": False, "save": False})
+        analog.update({"log": ["grad"], "hessian": False, "save": False})
         with analog(data_id=input):
             self.model.zero_grad()
             output = self.model(input_ids, attention_mask).logits
@@ -115,7 +115,7 @@ class TestTransformerGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        analog.update({"log" = ["grad"], "hessian": False, "save": False})
+        analog.update({"log": ["grad"], "hessian": False, "save": False})
         with analog(data_id=input, mask=attention_mask):
             self.model.zero_grad()
             output = self.model(input_ids, attention_mask).logits
@@ -172,7 +172,7 @@ class TestTransformerGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        analog.update({"log" = ["grad"], "hessian": False, "save": False}})
+        analog.update({"log": ["grad"], "hessian": False, "save": False})
         with analog(data_id=input, mask=attention_mask):
             self.model.zero_grad()
             output = self.model(input_ids, attention_mask).logits
