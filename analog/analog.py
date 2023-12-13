@@ -198,7 +198,6 @@ class AnaLog:
         log: Optional[Iterable[str]] = None,
         hessian: Optional[bool] = None,
         save: Optional[bool] = None,
-        test: bool = None,
         mask: Optional[torch.Tensor] = None,
     ):
         """
@@ -207,7 +206,6 @@ class AnaLog:
             log (str, optional): Specifies which data to log (e.g. "gradient", "full_activations").
             hessian (bool, optional): Whether to compute the Hessian or not.
             save (bool, optional): Whether to save the logs or not.
-            test (bool, optional): Whether the logging is for the test phase or not.
 
         Returns:
             self: Returns the instance of the AnaLog object.
@@ -219,8 +217,6 @@ class AnaLog:
             logging_config["hessian"] = hessian
         if save is not None:
             logging_config["save"] = save
-        if test:
-            logging_config["test"] = test
         self.update(logging_config)
 
         self.data_id = data_id
