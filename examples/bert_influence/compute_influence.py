@@ -96,7 +96,7 @@ log_loader = analog.build_log_dataloader()
 analog.add_analysis({"influence": InfluenceFunction})
 if_scores_list = []
 for test_batch in tqdm(test_loader, desc="Computing Influence"):
-    with analog(log=["grad"], test=True) as al:
+    with analog(log=["grad"]) as al:
         test_inputs = (
             test_batch["input_ids"].to(DEVICE),
             test_batch["token_type_ids"].to(DEVICE),
