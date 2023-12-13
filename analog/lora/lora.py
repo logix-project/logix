@@ -62,31 +62,28 @@ class LoRAHandler:
         """
         Analytically computed compressed covariances using projection matrices(LoRA weights).
         """
-        for name, module in self._named_modules(
+        for name, _ in self._named_modules(
             model, type_filter, name_filter
         ):
             parent, target, target_name = _get_submodules(model, name)
-            if "lora_A" in name:
+            if "lora_A" in target_name:
                 mode = FORWARD
-            elif "lora_C" in name:
+            elif "lora_C" in target_name:
                 mode = BACKWARD
             else:
                 continue
-            projection_matrix = getattr(self, target_name).weight.data
+            projection_matrix = target.weight.data
+            if mode == BACKWARD:
+                projection_matrix = projection_matrix.t()
             hessian_state = self._state.get_hessian_state()
-            if self.init_strategy == "pca":
-                projected_cov = (
-                    projection_matrix
-                    @ hessian_state[parent][mode]
-                    @ projection_matrix.t()
-                )
-            elif self.init_strategy == "random":
-                projected_cov = (
-                    projection_matrix
-                    @ hessian_state[parent][mode]
-                    @ projection_matrix.inverse()
-                )
-            self._state.hessian_state[name][mode] = projected_cov
+            orig_name = name.replace("." + target_name, "")
+            orig_cov = hessian_state[orig_name][mode]
+            projected_cov = (
+                projection_matrix
+                @ orig_cov.to(projection_matrix.device)
+                @ projection_matrix.t()
+            ).to(orig_cov.device)
+            self._state.hessian_state[orig_name][mode] = projected_cov
 
     def add_lora(
         self,
@@ -145,4 +142,4 @@ class LoRAHandler:
             parent, target, target_name = _get_submodules(model, name)
             setattr(parent, target_name, lora_module)
 
-            self.compute_lora_hessian(model, type_filter, name_filter)
+        self.compute_lora_hessian(model, type_filter, name_filter)
