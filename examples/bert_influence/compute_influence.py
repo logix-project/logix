@@ -10,7 +10,7 @@ from analog.utils import DataIDGenerator
 from utils import construct_model, get_loaders
 
 parser = argparse.ArgumentParser("GLUE Influence Analysis")
-parser.add_argument("--data_name", type=str, default="sst2", options=["sst2", "qnli"])
+parser.add_argument("--data_name", type=str, default="sst2")
 parser.add_argument(
     "--num_train_data",
     type=int,
@@ -32,7 +32,7 @@ parser.add_argument(
     "--sample", action="store_true", help="Toggle this on to use true fisher."
 )
 parser.add_argument("--config", type=str, default="config.yaml")
-parser.add_argument("--project_name", type=str, default=None)
+parser.add_argument("--project_name", type=str, default="")
 args = parser.parse_args()
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -96,7 +96,7 @@ log_loader = analog.build_log_dataloader()
 analog.add_analysis({"influence": InfluenceFunction})
 if_scores_list = []
 for test_batch in tqdm(test_loader, desc="Computing Influence"):
-    with analog(log=["grad"]) as al:
+    with analog() as al:
         test_inputs = (
             test_batch["input_ids"].to(DEVICE),
             test_batch["token_type_ids"].to(DEVICE),
