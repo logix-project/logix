@@ -156,7 +156,7 @@ class AnaLog:
             msg = "AnaLog will clear the previous Hessian, Storage, and Logging "
             msg += "handlers after adding LoRA for gradient compression.\n"
             get_logger().info(msg)
-            self.clear()
+            self.clear(lora=True)
         if watch:
             self.watch(model, lora=True)
 
@@ -466,11 +466,12 @@ class AnaLog:
         eval_logging_config = {"hessian": False, "save": False}
         self.update(eval_logging_config)
 
-    def clear(self) -> None:
+    def clear(self, lora: bool = False) -> None:
         """
         Clear everything in AnaLog.
         """
-        self.state.clear()
+        if not lora:
+            self.state.clear()  # do not clear hessian state when using LoRA
         self.logging_handler.clear(clear_modules=True)
         self.storage_handler.clear()
         for key in self.analysis_plugins:
