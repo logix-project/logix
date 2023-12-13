@@ -195,34 +195,16 @@ class AnaLog:
     def __call__(
         self,
         data_id: Optional[Iterable[Any]] = None,
-        log: Optional[Iterable[str]] = None,
-        hessian: Optional[bool] = None,
-        save: Optional[bool] = None,
-        test: bool = None,
         mask: Optional[torch.Tensor] = None,
     ):
         """
         Args:
             data_id: A unique identifier associated with the data for the logging session.
-            log (str, optional): Specifies which data to log (e.g. "gradient", "full_activations").
-            hessian (bool, optional): Whether to compute the Hessian or not.
-            save (bool, optional): Whether to save the logs or not.
-            test (bool, optional): Whether the logging is for the test phase or not.
+            mask: A mask to be applied to the data for the logging session.
 
         Returns:
             self: Returns the instance of the AnaLog object.
         """
-        logging_config = {}
-        if log is not None:
-            logging_config["log"] = log
-        if hessian is not None:
-            logging_config["hessian"] = hessian
-        if save is not None:
-            logging_config["save"] = save
-        if test:
-            logging_config["test"] = test
-        self.update(logging_config)
-
         self.data_id = data_id
         self.mask = mask
 
