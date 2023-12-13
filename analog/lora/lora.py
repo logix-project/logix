@@ -77,13 +77,19 @@ class LoRAHandler:
                 projection_matrix = projection_matrix.t()
             hessian_state = self._state.get_hessian_state()
             orig_name = name.replace("." + target_name, "")
+            new_name = orig_name + ".analog_lora_B"  # FIXME: do this with analog.watch
             orig_cov = hessian_state[orig_name][mode]
             projected_cov = (
                 projection_matrix
                 @ orig_cov.to(projection_matrix.device)
                 @ projection_matrix.t()
-            ).to(orig_cov.device)
-            self._state.hessian_state[orig_name][mode] = projected_cov
+            ).to(orig_cov.device) / 2
+            self._state.hessian_state[new_name][mode] = projected_cov
+        keys = list(self._state.hessian_state.keys())
+        for k in keys:  # FIXME: do this with analog.clear
+            if "analog_lora_B" not in k:
+                del self._state.hessian_state[k]
+        self._state._states_to_normalize.remove(("hessian_state", "hessian_counter"))  # FIXME: do this with analog.finalize -> state.finalize
 
     def add_lora(
         self,
