@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/sangkeun00/analog/">
-    <img src="assets/logo_light.jpg" alt="" width="40%" align="top" style="border-radius: 10px; padding-left: 120px; padding-right: 120px; background-color: white;">
+    <img src="assets/logo_light.png" alt="" width="40%" align="top" style="border-radius: 10px; padding-left: 120px; padding-right: 120px; background-color: white;">
   </a>
 </p>
 
@@ -9,7 +9,7 @@
   [![Build](https://badgen.net/badge/build/check-status/green)](#build-pipeline-status)
   [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/leopard-ai/betty/blob/main/LICENSE)
   <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="code style: black"></a>
-  
+
 </div>
 
 ```bash
@@ -74,7 +74,7 @@ Please check out [Examples](/examples) for more advanced features!
 Logs from neural networks are difficult to handle due to the large size. For example,
 the size of the gradient of *each* training datapoint is about as large as the whole model. Therefore,
 we provide various systems support to efficiently scale neural network analysis to
-billion-scale models. Below are a few features that AnaLog currently supports: 
+billion-scale models. Below are a few features that AnaLog currently supports:
 
 - **Gradient compression** (compression ratio: 1,000-100,000x)
 - **Memory-map-based data IO**
