@@ -48,51 +48,52 @@ class TestMemoryMapHandler(unittest.TestCase):
         shutil.rmtree(cls.test_dir)
 
     def test_write_and_read(self):
-        handler = MemoryMapHandler(self.test_dir)
-
         data_buffer = [
             (i, {"dummy_data": arr}) for i, arr in enumerate(generate_random_arrays())
         ]
         filename = "test_data"
 
-        handler.write(data_buffer, filename)
+        MemoryMapHandler.write(self.test_dir, filename, data_buffer)
 
-        with handler.read(filename) as (mmap, metadata):
-            for item in metadata:
-                offset = item["offset"]
-                size = item["size"]
-                shape = tuple(item["shape"])
-                dtype = np.dtype(item["dtype"])
-                expected_data = data_buffer[item["data_id"]][1]["dummy_data"]
-                read_data = np.frombuffer(
-                    mmap, dtype=dtype, count=size // dtype.itemsize, offset=offset
-                ).reshape(shape)
-                # Test if expected value and read value equals
-                self.assertTrue(
-                    np.array_equal(read_data, expected_data), "Data mismatch"
-                )
+        mmap = None
+        with MemoryMapHandler.read(self.test_dir, filename) as mm:
+            mmap = mm
+        metadata = MemoryMapHandler.read_metafile(
+            self.test_dir, filename + "_metadata.json"
+        )
+
+        for item in metadata:
+            offset = item["offset"]
+            size = item["size"]
+            shape = tuple(item["shape"])
+            dtype = np.dtype(item["dtype"])
+            expected_data = data_buffer[item["data_id"]][1]["dummy_data"]
+            read_data = np.frombuffer(
+                mmap, dtype=dtype, count=size // dtype.itemsize, offset=offset
+            ).reshape(shape)
+            # Test if expected value and read value equals
+            self.assertTrue(np.array_equal(read_data, expected_data), "Data mismatch")
 
     def test_read(self):
         expected_files_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "test_mmap_data"
         )
-        handler = MemoryMapHandler(expected_files_path)
 
         filename = "test_data"
         data_buffer = [
             (i, {"dummy_data": arr}) for i, arr in enumerate(generate_static_arrays())
         ]
 
-        handler.write(data_buffer, filename)
-        mmap, metadata, expected_mmap = None, None, None
-
-        with handler.read(filename) as (mm, md):
+        MemoryMapHandler.write(expected_files_path, filename, data_buffer)
+        mmap = None
+        with MemoryMapHandler.read(expected_files_path, filename) as mm:
             mmap = mm
-            metadata = md
-
-        with handler.read("expected_data.mmap") as (em, _):
-            expected_mmap = em
-
+        metadata = MemoryMapHandler.read_metafile(
+            expected_files_path, filename + "_metadata.json"
+        )
+        expected_mmap = None
+        with MemoryMapHandler.read(expected_files_path, "expected_data.mmap") as mm:
+            expected_mmap = mm
         for item in metadata:
             offset = item["offset"]
             size = item["size"]

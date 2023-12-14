@@ -5,14 +5,15 @@ from typing import Optional, Iterable, Dict, Any, List
 import torch
 import torch.nn as nn
 
-from analog.config import Config
-from analog.constants import FORWARD, BACKWARD, GRAD, LOG_TYPES
-from analog.state import AnaLogState
-from analog.logging import LoggingHandler
-from analog.storage import DefaultStorageHandler
-from analog.hessian import RawHessianHandler, KFACHessianHandler
 from analog.analysis import AnalysisBase
+from analog.config import Config
+from analog.constants import GRAD, LOG_TYPES
+from analog.logging import LoggingHandler
+from analog.state import AnaLogState
+from analog.storage import StorageHandler
+from analog.hessian import RawHessianHandler, KFACHessianHandler
 from analog.lora import LoRAHandler
+from analog.storage.log_saver import LogSaver
 from analog.utils import get_logger, get_rank, get_world_size
 
 
@@ -257,7 +258,7 @@ class AnaLog:
 
         # Flush the storage handler if necessary
         if self.logging_config["save"]:
-            self.storage_handler.add_on_exit()
+            self.storage_handler.buffer_write_on_exit()
             self.storage_handler.flush()
 
         # Remove all hooks
@@ -270,11 +271,8 @@ class AnaLog:
         Returns:
             The initialized storage handler.
         """
-        storage_type = storage_config.get("type", "default")
-        if storage_type == "default":
-            return DefaultStorageHandler(storage_config, state)
-        else:
-            raise ValueError(f"Unknown storage type: {storage_type}")
+        log_saver = LogSaver()
+        return StorageHandler(log_saver, storage_config, state)
 
     def build_hessian_handler(self, hessian_config, state):
         """
@@ -329,12 +327,6 @@ class AnaLog:
             dict: The current log.
         """
         return self.state.log_state
-
-    def get_storage_buffer(self):
-        """
-        Returns the storage buffer from the storage handler.
-        """
-        return self.storage_handler.get_buffer()
 
     def get_hessian_state(self) -> Dict[str, Dict[str, torch.Tensor]]:
         """
