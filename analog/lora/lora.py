@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 import torch.nn as nn
 
 from analog.state import AnaLogState
-from analog.lora.modules import LoraLinear, LoraConv2d
+from analog.lora.modules import LoraLinear, LoraConv2d, LoraEmbedding
 from analog.lora.utils import find_parameter_sharing_group, _get_submodules
 from analog.utils import get_logger
 
@@ -13,7 +13,7 @@ class LoRAHandler:
     Transforms a model into a Lora model.
     """
 
-    _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d}
+    _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d, nn.Embedding}
 
     def __init__(self, config: Dict[str, Any], state: AnaLogState):
         self.config = config
@@ -72,6 +72,8 @@ class LoRAHandler:
                 raise NotImplementedError
             elif isinstance(module, nn.Conv2d):
                 lora_cls = LoraConv2d
+            elif isinstance(module, nn.Embedding):
+                lora_cls = LoraEmbedding
 
             psg = find_parameter_sharing_group(name, self.parameter_sharing_groups)
             if self.parameter_sharing and psg not in shared_modules:
