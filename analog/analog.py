@@ -232,7 +232,6 @@ class AnaLog:
         This method is automatically called when the `with` statement is used with an `AnaLog` object.
         It sets up the logging environment based on the provided parameters.
         """
-
         self.state.clear_log_state()
         self.storage_handler.set_data_id(self.data_id)
         self.logging_handler.set_mask(self.mask)
@@ -247,14 +246,13 @@ class AnaLog:
         This method is essential for ensuring that there are no lingering hooks that could
         interfere with further operations on the model or with future logging sessions.
         """
+        # Compute the Hessian if necessary
+        if self.logging_config["hessian"]:
+            self.hessian_handler.on_exit(self.get_log())
 
         # Wait for all async operations to finish
         if torch.cuda.is_available():
             torch.cuda.current_stream().synchronize()
-
-        # Compute the Hessian if necessary
-        if self.logging_config["hessian"]:
-            self.hessian_handler.on_exit(self.get_log())
 
         # Flush the storage handler if necessary
         if self.logging_config["save"]:
