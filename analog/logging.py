@@ -110,7 +110,7 @@ class LoggingHandler:
         # If KFAC is used, update the forward covariance
         if config["hessian"] and self.hessian_type == "kfac":
             self.hessian_handler.update_hessian_expand(
-                module, module_name, FORWARD, activations
+                module, module_name, FORWARD, activations.clone()
             )
 
         if FORWARD in config["log"]:
@@ -143,7 +143,7 @@ class LoggingHandler:
         # If KFAC is used, update the backward covariance
         if config["hessian"] and self.hessian_type == "kfac":
             self.hessian_handler.update_hessian_expand(
-                module, module_name, BACKWARD, grad_outputs[0]
+                module, module_name, BACKWARD, grad_outputs[0].clone()
             )
 
         if BACKWARD in config["log"]:

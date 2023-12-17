@@ -44,7 +44,7 @@ def extract_patches(
     inputs = inputs.unfold(2, kernel_size[0], stride[0])
     inputs = inputs.unfold(3, kernel_size[1], stride[1])
     inputs = inputs.transpose_(1, 2).transpose_(2, 3).contiguous()
-    inputs = inputs.view(
+    inputs = inputs.reshape(
         inputs.size(0),
         inputs.size(1),
         inputs.size(2),
@@ -71,7 +71,7 @@ def extract_forward_activations(
         reshaped_activations = extract_patches(
             activations, module.kernel_size, module.stride, module.padding
         )
-        reshaped_activations = reshaped_activations.view(
+        reshaped_activations = reshaped_activations.reshape(
             -1, reshaped_activations.size(-1)
         )
     else:
@@ -104,7 +104,7 @@ def extract_backward_activations(
     return reshaped_grads
 
 
-def extract_actvations_expand(module: nn.Module, mode: str, activations: torch.Tensor):
+def extract_activations_expand(module: nn.Module, mode: str, activations: torch.Tensor):
     """Extract activations in an expanded mode for the KFAC approximation.
 
     Args:
@@ -123,7 +123,7 @@ def extract_actvations_expand(module: nn.Module, mode: str, activations: torch.T
         raise ValueError(f"Invalid mode {mode}")
 
 
-def extract_actvations_reduce(module: nn.Module, mode: str, activations: torch.Tensor):
+def extract_activations_reduce(module: nn.Module, mode: str, activations: torch.Tensor):
     """Extract activations in an expanded mode for the KFAC approximation.
 
     Args:
