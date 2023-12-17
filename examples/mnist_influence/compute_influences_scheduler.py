@@ -46,7 +46,6 @@ al_scheduler = AnaLogScheduler(
 # Gradient & Hessian logging
 analog.watch(model)
 id_gen = DataIDGenerator()
-
 if not args.resume:
     for epoch in al_scheduler:
         sample = True if epoch < (len(al_scheduler) - 1) and args.sample else False
@@ -73,8 +72,9 @@ log_loader = analog.build_log_dataloader()
 analog.add_analysis({"influence": InfluenceFunction})
 query_iter = iter(query_loader)
 test_input, test_target = next(query_iter)
+test_id = id_gen(test_input)
 analog.eval()
-with analog(data_id=id_gen(test_input)):
+with analog(data_id=test_id):
     test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
     model.zero_grad()
     test_out = model(test_input)
@@ -85,7 +85,7 @@ with analog(data_id=id_gen(test_input)):
 test_log = analog.get_log()
 start = time.time()
 if_scores = analog.influence.compute_influence_all(
-    test_log, log_loader, damping=args.damping
+    test_log, log_loader, test_id, damping=args.damping
 )
 _, top_influential_data = torch.topk(if_scores, k=10)
 
