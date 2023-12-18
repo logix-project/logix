@@ -309,7 +309,7 @@ class AnaLog:
         """
         Constructs the log dataset from the storage handler.
         """
-        return self.storage_handler.build_log_dataset()
+        return self.storage_handler._build_log_dataset()
 
     def build_log_dataloader(self, batch_size=16, num_workers=0):
         """

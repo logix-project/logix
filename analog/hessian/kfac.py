@@ -6,7 +6,7 @@ import torch.nn as nn
 from analog.constants import FORWARD, BACKWARD
 from analog.state import AnaLogState
 from analog.hessian.base import HessianHandlerBase
-from analog.hessian.utils import extract_actvations_expand, extract_actvations_reduce
+from analog.hessian.utils import extract_activations_expand, extract_activations_reduce
 
 
 class KFACHessianHandler(HessianHandlerBase):
@@ -54,7 +54,7 @@ class KFACHessianHandler(HessianHandlerBase):
             return
 
         # extract activations
-        activations = extract_actvations_reduce(module, mode, data).detach()
+        activations = extract_activations_reduce(module, mode, data).detach()
 
         # update hessian
         self.update_hessian(module_name, mode, activations)
@@ -70,7 +70,7 @@ class KFACHessianHandler(HessianHandlerBase):
             return
 
         # extract activations
-        activations = extract_actvations_expand(module, mode, data).detach()
+        activations = extract_activations_expand(module, mode, data).detach()
 
         # update hessian
         self.update_hessian(module_name, mode, activations)

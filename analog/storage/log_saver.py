@@ -55,7 +55,7 @@ class LogSaver:
         self.flush_count += 1
         self.buffer.clear()
         self.buffer_size = 0
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self.max_worker) as executor:
             save_path = executor.submit(
                 self._flush_unsafe, log_dir, buffer_copy, flush_count_copy
             )
@@ -93,6 +93,9 @@ class LogSaver:
             self._flush_serialized(self.log_dir)
 
     def finalize(self):
+        """
+        Dump everything in the buffer to disk when `analog.finalize()` is called.
+        """
         self._flush_serialized(self.log_dir)
 
     def set_data_id(self, data_id):
@@ -109,8 +112,14 @@ class LogSaver:
         self.flush_threshold = flush_threshold
 
     def set_log_dir(self, log_dir):
+        """
+        Set the log directory.
+        """
         self.log_dir = log_dir
 
     def buffer_clear(self):
+        """
+        Clears the buffer.
+        """
         self.buffer.clear()
         self.buffer_size = 0

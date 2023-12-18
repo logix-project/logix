@@ -104,7 +104,7 @@ def extract_backward_activations(
     return reshaped_grads
 
 
-def extract_actvations_expand(module: nn.Module, mode: str, activations: torch.Tensor):
+def extract_activations_expand(module: nn.Module, mode: str, activations: torch.Tensor):
     """Extract activations in an expanded mode for the KFAC approximation.
 
     Args:
@@ -123,7 +123,7 @@ def extract_actvations_expand(module: nn.Module, mode: str, activations: torch.T
         raise ValueError(f"Invalid mode {mode}")
 
 
-def extract_actvations_reduce(module: nn.Module, mode: str, activations: torch.Tensor):
+def extract_activations_reduce(module: nn.Module, mode: str, activations: torch.Tensor):
     """Extract activations in an expanded mode for the KFAC approximation.
 
     Args:
