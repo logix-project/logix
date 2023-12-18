@@ -14,7 +14,7 @@ class RawHessianHandler(HessianHandlerBase):
 
     @torch.no_grad()
     def on_exit(self, log_state=None) -> None:
-        for module_name, module_grad in log_state:
+        for module_name, module_grad in log_state.items():
             self.update_hessian(module_name, module_grad)
 
     @torch.no_grad()
@@ -24,7 +24,7 @@ class RawHessianHandler(HessianHandlerBase):
         gradients.
         """
         hessian_state = self._state.hessian_state
-        sample_counter = self._state.sample_counter
+        sample_counter = self._state.hessian_counter
 
         flat_grad = rearrange(data, "b ... -> b (...)")
 

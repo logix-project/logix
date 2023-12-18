@@ -26,7 +26,7 @@ class KFACHessianHandler(HessianHandlerBase):
     def on_exit(self, log_state=None) -> None:
         """
         This function is called when the code is exiting the AnaLog context.
-        Given the analogy between Hessian state and traiditional optimizer
+        Given the analogy between Hessian state and traditional optimizer
         state, this function is analogous to the optimizer's step function.
 
         Args:
