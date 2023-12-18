@@ -100,3 +100,6 @@ class InfluenceFunction(AnalysisBase):
         for tgt_ids, tgt in loader:
             if_scores.append(self.compute_influence(src, tgt, src_ids=src_ids, tgt_ids=tgt_ids, preconditioned=True))
         return torch.cat(if_scores, dim=-1)
+
+    def get_influence_scores(self):
+        return self.influence_scores
