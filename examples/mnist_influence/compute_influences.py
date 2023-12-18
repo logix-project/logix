@@ -78,7 +78,7 @@ if_scores = analog.influence.compute_influence_all(
 _, top_influential_data = torch.topk(if_scores, k=10)
 
 # Save
-if_scores = if_scores.numpy().tolist()
+if_scores = if_scores.numpy().tolist()[0]
 torch.save(if_scores, "if_analog.pt")
 print("Computation time:", time.time() - start)
 print("Top influential data indices:", top_influential_data.numpy().tolist())

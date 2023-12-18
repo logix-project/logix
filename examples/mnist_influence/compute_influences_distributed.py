@@ -93,7 +93,7 @@ def main():
 
     # Save
     if_scores = if_scores.numpy().tolist()
-    torch.save(if_scores, "if_distributed.pt")
+    torch.save(if_scores, "if_distributed.pt")[0]
     print("Computation time:", time.time() - start)
     print("Top influential data indices:", top_influential_data.numpy().tolist())
 

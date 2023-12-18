@@ -136,11 +136,37 @@ class KFACHessianHandler(HessianHandlerBase):
             )
             ekfac_counter[module_name] = 0
 
-        data = data.cpu().detach()
-        rotated_grads = torch.matmul(data, hessian_eigvec_state[module_name][FORWARD])
-        for rotated_grad in rotated_grads:
-            weight = torch.matmul(
-                hessian_eigvec_state[module_name][BACKWARD].t(), rotated_grad
+        data = data.detach()
+        if data.is_cuda:
+            eigvec_fwd_gpu = hessian_eigvec_state[module_name][FORWARD].to(
+                device=data.device
             )
-            ekfac_eigval_state[module_name].add_(torch.square(weight), alpha=0.5)
+            eigvec_bwd_gpu = hessian_eigvec_state[module_name][BACKWARD].to(
+                device=data.device
+            )
+            ekfac_eigval_state_gpu = ekfac_eigval_state[module_name].to(
+                device=data.device
+            )
+            rotated_grads = torch.matmul(data, eigvec_fwd_gpu)
+            for rotated_grad in rotated_grads:
+                weight = torch.matmul(eigvec_bwd_gpu.t(), rotated_grad)
+                ekfac_eigval_state_gpu.add_(weight.square_())
+            ekfac_eigval_state[module_name] = ekfac_eigval_state_gpu.to(
+                device="cpu", non_blocking=True
+            )
+
+            # TODO: Not sure if this improves memory usage.
+            del eigvec_fwd_gpu
+            del eigvec_bwd_gpu
+            del ekfac_eigval_state_gpu
+        else:
+            rotated_grads = torch.matmul(
+                data, hessian_eigvec_state[module_name][FORWARD]
+            )
+            for rotated_grad in rotated_grads:
+                weight = torch.matmul(
+                    hessian_eigvec_state[module_name][BACKWARD].t(), rotated_grad
+                )
+                ekfac_eigval_state[module_name].add_(weight.square_())
+
         ekfac_counter[module_name] += len(data)

@@ -99,7 +99,7 @@ class LoraConv2d(nn.Conv2d):
         return result
 
     def pca_init_weight(self, projection_type, hessian):
-        """Initialize the weight of the LoraLinear layer.
+        """Initialize the weight of the LoraConv2d layer.
 
         Args:
             projection_type (str): The type of projection to use
@@ -121,3 +121,47 @@ class LoraConv2d(nn.Conv2d):
         self.analog_lora_C.weight.data.copy_(
             top_r_singular_vector_backward.view(shape_C)
         )
+
+
+class LoraEmbedding(nn.Embedding):
+    def __init__(
+        self, rank: int, embedding: nn.Embedding, shared_module: nn.Embedding = None
+    ):
+        """Transforms a linear layer into a LoraEmbedding layer.
+
+        Args:
+            rank (int): The rank of lora
+            linear (nn.Linear): The linear layer to transform
+        """
+        num_embeddings = embedding.num_embeddings
+        embedding_dim = embedding.embedding_dim
+
+        super().__init__(num_embeddings, embedding_dim)
+        self.rank = min(rank, num_embeddings, embedding_dim)
+
+        self.analog_lora_A = nn.Embedding(num_embeddings, self.rank, bias=False)
+        self.analog_lora_B = shared_module or nn.Linear(
+            self.rank, self.rank, bias=False
+        )
+        self.analog_lora_C = nn.Linear(self.rank, embedding_dim, bias=False)
+
+        nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
+        nn.init.zeros_(self.analog_lora_B.weight)
+        nn.init.kaiming_uniform_(self.analog_lora_C.weight, a=math.sqrt(5))
+
+        self._embedding = embedding
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        result = self._embedding(input)
+        result += self.analog_lora_C(self.analog_lora_B(self.analog_lora_A(input)))
+
+        return result
+
+    def pca_init_weight(self, init_strategy: str = "random", hessian=None):
+        """Initialize the weight of the LoraEmbedding layer.
+
+        Args:
+            init_strategy (str): The type of projection to use
+            hessian (dict): The forward and backward hessian of the layer
+        """
+        raise NotImplementedError
