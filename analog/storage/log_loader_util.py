@@ -1,9 +1,24 @@
 import os
+import re
 from typing import List
 from collections import OrderedDict
 from torch.utils.data import default_collate
 
 from analog.storage.utils import MemoryMapHandler
+
+
+def extract_rank_and_chunk(filename):
+    """
+    Extracts the rank and chunk index from the filename.
+
+    Args:
+        filename (str): Filename to extract rank and chunk index from.
+
+    Returns:
+        Tuple[int, int]: Tuple containing the rank and chunk index.
+    """
+    match = re.search(r"rank_(\d+)_chunk_(\d+)", filename)
+    return int(match.group(1)), int(match.group(2))
 
 
 def find_chunk_indices(path) -> List:
@@ -22,7 +37,7 @@ def find_chunk_indices(path) -> List:
             chunk_index = filename.rstrip(".mmap").strip("log_")
             chunk_indices.append(chunk_index)
 
-    return sorted(chunk_indices)
+    return sorted(chunk_indices, key=extract_rank_and_chunk)
 
 
 def get_mmap_data(path, mmap_filename, dtype="uint8") -> List:

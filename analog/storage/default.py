@@ -28,9 +28,7 @@ class StorageHandler:
         else:
             self.log_saver = log_saver
 
-        self.log_saver.set_file_prefix("log_chunk_")
-        if get_world_size() > 1:
-            self.log_saver.set_file_prefix(f"log_rank_{get_rank()}_chunk_")
+        self.log_saver.set_file_prefix(f"log_rank_{get_rank()}_chunk_")
 
         # Parse config.
         self.parse_config()
