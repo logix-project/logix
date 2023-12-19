@@ -380,6 +380,7 @@ class AnaLog:
         # Load LoRA state
         lora_dir = os.path.join(self.log_dir, "lora")
         if os.path.exists(lora_dir):
+            self.add_lora()
             lora_state = torch.load(os.path.join(lora_dir, "lora_state_dict.pt"))
             for name in lora_state:
                 assert name in self.model.state_dict(), f"{name} not in model!"
