@@ -67,7 +67,7 @@ class TestTransformerGradients(unittest.TestCase):
             output = self.model(input_ids, attention_mask).logits
             loss = F.cross_entropy(output, labels, reduction="sum")
             loss.backward()
-        analog_grads_dict = analog.get_log()
+        _, analog_grads_dict = analog.get_log()
 
         for module_name in analog_grads_dict:
             analog_grad = analog_grads_dict[module_name]
@@ -121,7 +121,7 @@ class TestTransformerGradients(unittest.TestCase):
             output = self.model(input_ids, attention_mask).logits
             loss = F.cross_entropy(output, labels, reduction="sum")
             loss.backward()
-        analog_grads_dict = analog.get_log()
+        _, analog_grads_dict = analog.get_log()
 
         for module_name in analog_grads_dict:
             analog_grad = analog_grads_dict[module_name]
@@ -179,7 +179,7 @@ class TestTransformerGradients(unittest.TestCase):
             output = self.model(input_ids, attention_mask).logits
             loss = F.cross_entropy(output, labels, reduction="sum")
             loss.backward()
-        analog_grads_dict = analog.get_log()
+        _, analog_grads_dict = analog.get_log()
 
         for module_name in analog_grads_dict:
             analog_grad = analog_grads_dict[module_name]

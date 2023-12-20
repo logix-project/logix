@@ -85,7 +85,7 @@ with analog(data_id=test_id):
 test_log = analog.get_log()
 start = time.time()
 if_scores = analog.influence.compute_influence_all(
-    test_log, log_loader, test_id, damping=args.damping
+    test_log, log_loader, damping=args.damping
 )
 _, top_influential_data = torch.topk(if_scores, k=10)
 

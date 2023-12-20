@@ -96,7 +96,8 @@ class InfluenceFunction(AnalysisBase):
 
         return total_influence
 
-    def compute_self_influence(self, src, damping=None):
+    def compute_self_influence(self, src_log, damping=None):
+        src_ids, src = src_log
         src_pc = self.precondition(src, damping)
         total_influence = 0.0
         for module_name in src_pc.keys():
@@ -105,8 +106,9 @@ class InfluenceFunction(AnalysisBase):
             total_influence += module_influence.squeeze()
         return total_influence
 
-    def compute_influence_all(self, src, loader, src_ids=None, damping=None):
+    def compute_influence_all(self, src_log, loader, damping=None):
         if_scores = []
+        src_ids, src = src_log
         src = self.precondition(src, damping)
         for tgt_ids, tgt in loader:
             if_scores.append(
