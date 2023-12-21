@@ -324,7 +324,7 @@ class AnaLog:
         Returns:
             dict: The current log.
         """
-        return (self.data_id, self.state.log_state)
+        return self.data_id, self.state.log_state
 
     def get_hessian_state(self) -> Dict[str, Dict[str, torch.Tensor]]:
         """
