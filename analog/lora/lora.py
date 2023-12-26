@@ -2,9 +2,10 @@ from typing import List, Dict, Any
 
 import torch.nn as nn
 
+from analog.constants import FORWARD, BACKWARD
 from analog.state import AnaLogState
 from analog.lora.modules import LoraLinear, LoraConv2d, LoraEmbedding
-from analog.lora.utils import find_parameter_sharing_group, _get_submodules
+from analog.lora.utils import find_parameter_sharing_group, _get_submodules, find_rank_pca_covariance
 from analog.utils import get_logger
 
 
@@ -24,6 +25,7 @@ class LoRAHandler:
     def parse_config(self):
         self.init_strategy = self.config.get("init", "random")
         self.rank = self.config.get("rank", 64)
+        self.adaptive_threshold = self.config.get("adaptive_threshold", None)
         self.parameter_sharing = self.config.get("parameter_sharing", False)
         self.parameter_sharing_groups = self.config.get(
             "parameter_sharing_groups", None
@@ -76,20 +78,28 @@ class LoRAHandler:
                 lora_cls = LoraEmbedding
 
             psg = find_parameter_sharing_group(name, self.parameter_sharing_groups)
+
+            rank = self.rank
+            if self.adaptive_threshold is not None:
+                rank_forward = find_rank_pca_covariance(hessian_state[name][FORWARD], self.adaptive_threshold)
+                rank_backward = find_rank_pca_covariance(hessian_state[name][BACKWARD], self.adaptive_threshold)
+                rank = max(rank_forward, rank_backward)
+                get_logger().info(f"using adaptive r = {rank} for {name}\n")
+
             if self.parameter_sharing and psg not in shared_modules:
                 if isinstance(module, nn.Linear):
-                    shared_module = nn.Linear(self.rank, self.rank, bias=False)
+                    shared_module = nn.Linear(rank, rank, bias=False)
                 elif isinstance(module, nn.Conv1d):
                     shared_module = nn.Conv1d(
-                        self.rank, self.rank, kernel_size=1, bias=False
+                        rank, rank, kernel_size=1, bias=False
                     )
                 elif isinstance(module, nn.Conv2d):
                     shared_module = nn.Conv2d(
-                        self.rank, self.rank, kernel_size=1, bias=False
+                        rank, rank, kernel_size=1, bias=False
                     )
                 shared_modules[psg] = shared_module
 
-            lora_module = lora_cls(self.rank, module, shared_modules.get(psg, None))
+            lora_module = lora_cls(rank, module, shared_modules.get(psg, None))
             if self.init_strategy == "pca":
                 lora_module.pca_init_weight(self.init_strategy, hessian_state[name])
             lora_module.to(device)
