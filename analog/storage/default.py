@@ -3,7 +3,7 @@ from typing import Dict
 
 from torch.utils.data import DataLoader
 
-from analog.state import AnaLogState
+from analog.batch_info import BatchInfo
 from analog.storage.log_loader import DefaultLogDataset
 from analog.storage.log_loader_util import collate_nested_dicts
 from analog.storage.log_saver import LogSaver
@@ -15,12 +15,12 @@ class StorageHandler:
         self,
         log_saver: LogSaver = None,
         config: Dict = None,
-        state: AnaLogState = None,
+        binfo: BatchInfo = None,
     ):
         self.log_dir = ""
 
         self.config = config
-        self.state = state
+        self.binfo = binfo
 
         # Init buffer.
         if log_saver is None:
@@ -60,14 +60,14 @@ class StorageHandler:
         """
         self.log_saver.buffer_clear()
 
-    def set_data_id(self, data_id):
+    def set_data_id(self):
         """
         Set the data ID for logging.
 
         Args:
             data_id: The ID associated with the data.
         """
-        self.log_saver.set_data_id(data_id)
+        self.log_saver.set_data_id(self.binfo.data_id)
 
     def get_buffer(self):
         """
@@ -82,7 +82,7 @@ class StorageHandler:
         """
         Add log state on exit.
         """
-        self.log_saver.buffer_write_on_exit(self.state.log_state)
+        self.log_saver.buffer_write_on_exit(self.binfo.log)
 
     def flush(self) -> None:
         """

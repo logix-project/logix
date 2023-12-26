@@ -6,14 +6,12 @@ import torch
 import torch.nn as nn
 
 from analog.analysis import AnalysisBase
+from analog.batch_info import BatchInfo
 from analog.config import Config
-from analog.constants import GRAD, LOG_TYPES
-from analog.logging import LoggingHandler
-from analog.state import AnaLogState
-from analog.storage import StorageHandler
-from analog.hessian import RawHessianHandler, KFACHessianHandler
+from analog.logger import HookLogger
 from analog.lora import LoRAHandler
-from analog.storage.log_saver import LogSaver
+from analog.statistic import StatisticState
+from analog.storage import StorageHandler
 from analog.utils import get_logger, get_rank, get_world_size
 
 
@@ -42,31 +40,19 @@ class AnaLog:
 
         # Config
         self.config = Config(config_file=config, project_name=project)
-        self.logging_config = self.config.get_logging_config()
-        self.hessian_config = self.config.get_hessian_config()
-        self.storage_config = self.config.get_storage_config()
-        self.lora_config = self.config.get_lora_config()
-        self.log_dir = self.config.get_log_dir()
+        self.storage_config = self.config.storage_config
+        self.lora_config = self.config.lora_config
+        self.log_dir = self.config.log_dir
 
         # AnaLog state
-        self.state = AnaLogState()
+        self.state = StatisticState()
+        self.binfo = BatchInfo()
 
         # Initialize storage, hessian, and logging handlers from config as well as
         # inject dependencies between handlers.
-        self.storage_handler = self.build_storage_handler(
-            storage_config=self.storage_config, state=self.state
-        )
-        self.hessian_handler = self.build_hessian_handler(
-            hessian_config=self.hessian_config, state=self.state
-        )
-        self.logging_handler = self.build_logging_handler(
-            logging_config=self.logging_config,
-            state=self.state,
-            hessian_handler=self.hessian_handler,
-        )
-        self.lora_handler = self.build_lora_handler(
-            lora_config=self.lora_config, state=self.state
-        )
+        self.storage_handler = StorageHandler(self.storage_config, self.binfo)
+        self.logging_handler = HookLogger(self.state, self.binfo)
+        self.lora_handler = LoRAHandler(self.lora_config, self.state)
 
         # Analysis plugins
         self.analysis_plugins = {}
@@ -174,7 +160,7 @@ class AnaLog:
             setattr(
                 self,
                 analysis_name,
-                analysis_cls(self.config.get_analysis_config(), self.state),
+                analysis_cls(self.config.analysis_config(), self.state),
             )
             self.analysis_plugins[analysis_name] = getattr(self, analysis_name)
 
@@ -196,9 +182,6 @@ class AnaLog:
     def __call__(
         self,
         data_id: Optional[Iterable[Any]] = None,
-        log: Optional[Iterable[str]] = None,
-        hessian: Optional[bool] = None,
-        save: Optional[bool] = None,
         mask: Optional[torch.Tensor] = None,
     ):
         """
@@ -211,17 +194,8 @@ class AnaLog:
         Returns:
             self: Returns the instance of the AnaLog object.
         """
-        logging_config = {}
-        if log is not None:
-            logging_config["log"] = log
-        if hessian is not None:
-            logging_config["hessian"] = hessian
-        if save is not None:
-            logging_config["save"] = save
-        self.update(logging_config)
-
-        self.data_id = data_id
-        self.mask = mask
+        self.binfo.data_id = data_id
+        self.binfo.mask = mask
 
         return self
 
@@ -246,10 +220,8 @@ class AnaLog:
         This method is essential for ensuring that there are no lingering hooks that could
         interfere with further operations on the model or with future logging sessions.
         """
-        # Compute the Hessian if necessary
-        if self.logging_config["hessian"]:
-            self.hessian_handler.on_exit(self.get_log())
-
+        self.logging_handler.on_exit()
+        
         # Wait for all async operations to finish
         if torch.cuda.is_available():
             torch.cuda.current_stream().synchronize()
@@ -258,52 +230,6 @@ class AnaLog:
         if self.logging_config["save"]:
             self.storage_handler.buffer_write_on_exit()
             self.storage_handler.flush()
-
-        # Remove all hooks
-        self.logging_handler.clear()
-
-    def build_storage_handler(self, storage_config, state) -> None:
-        """
-        Initialize a storage handler from the configuration.
-
-        Returns:
-            The initialized storage handler.
-        """
-        log_saver = LogSaver()
-        return StorageHandler(log_saver, storage_config, state)
-
-    def build_hessian_handler(self, hessian_config, state):
-        """
-        Initialize a Hessian handler from the configuration.
-
-        Returns:
-            The initialized Hessian handler.
-        """
-        hessian_type = hessian_config.get("type", "kfac")
-        if hessian_type == "kfac":
-            return KFACHessianHandler(hessian_config, state)
-        elif hessian_type == "raw":
-            return RawHessianHandler(hessian_config, state)
-        else:
-            raise ValueError(f"Unknown Hessian type: {hessian_type}")
-
-    def build_logging_handler(self, logging_config, state, hessian_handler):
-        """
-        Initialize a Logging handler from the configuration.
-
-        Returns:
-            The initialized Hessian handler.
-        """
-        return LoggingHandler(logging_config, state, hessian_handler)
-
-    def build_lora_handler(self, lora_config, state):
-        """
-        Initialize a Logging handler from the configuration.
-
-        Returns:
-            The initialized Hessian handler.
-        """
-        return LoRAHandler(lora_config, state)
 
     def build_log_dataset(self):
         """
@@ -324,19 +250,19 @@ class AnaLog:
         Returns:
             dict: The current log.
         """
-        return self.state.log_state
+        return self.binfo.log
 
-    def get_hessian_state(self) -> Dict[str, Dict[str, torch.Tensor]]:
+    def get_covariance_state(self) -> Dict[str, Dict[str, torch.Tensor]]:
         """
-        Returns the Hessian state from the Hessian handler.
+        Returns the covariance state from the Hessian handler.
         """
-        return self.state.get_hessian_state()
+        return self.state.get_covariance_state()
 
-    def get_hessian_svd_state(self) -> Dict[str, Dict[str, torch.Tensor]]:
+    def get_covariance_svd_state(self) -> Dict[str, Dict[str, torch.Tensor]]:
         """
-        Returns the SVD of the Hessian from the Hessian handler.
+        Returns the SVD of the covariance from the Hessian handler.
         """
-        return self.state.get_hessian_svd_state()
+        return self.state.get_covariance_svd_state()
 
     def save_config(self) -> None:
         """
@@ -418,23 +344,6 @@ class AnaLog:
         if GRAD in config["log"] and len(config["log"]) > 1:
             raise ValueError("Cannot log 'grad' with other log types.")
 
-    def ekfac(self, on: bool = True) -> None:
-        """
-        Compute the EKFAC approximation of the Hessian.
-        """
-        assert self.hessian_handler.config.get("type", "kfac") == "kfac"
-        if on:
-            get_logger().info("Enabling EKFAC approximation for the Hessian.\n")
-            self.state.hessian_svd()
-            self.state.register_state("ekfac_eigval_state", synchronize=True, save=True)
-            self.state.register_state("ekfac_counter", synchronize=True, save=False)
-            self.state.register_normalize_pair("ekfac_eigval_state", "ekfac_counter")
-
-            self.hessian_handler.ekfac = True
-        else:
-            get_logger().info("Disabling EKFAC approximation for the Hessian.\n")
-            self.hessian_handler.ekfac = False
-
     def update(self, logging_config_kwargs: Dict[str, Any]) -> None:
         """
         Set the state of AnaLog.
@@ -457,7 +366,7 @@ class AnaLog:
         Clear everything in AnaLog.
         """
         self.state.clear()
-        self.logging_handler.clear(clear_modules=True)
+        self.logging_handler.clear()
         self.storage_handler.clear()
         for key in self.analysis_plugins:
             self.remove_analysis(key)
