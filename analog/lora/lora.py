@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 
 import torch.nn as nn
 
-from analog.state import AnaLogState
+from analog.state import StatisticState
 from analog.lora.modules import LoraLinear, LoraConv2d, LoraEmbedding
 from analog.lora.utils import find_parameter_sharing_group, _get_submodules
 from analog.utils import get_logger
@@ -15,7 +15,7 @@ class LoRAHandler:
 
     _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d}
 
-    def __init__(self, config: Dict[str, Any], state: AnaLogState):
+    def __init__(self, config: Dict[str, Any], state: StatisticState):
         self.config = config
         self._state = state
 
@@ -38,8 +38,8 @@ class LoRAHandler:
         """
         Add LoRA modules to a model.
         """
-        hessian_state = self._state.get_hessian_state()
-        if self.init_strategy == "pca" and len(hessian_state) == 0:
+        covariance_state = self._state.get_covariance_state()
+        if self.init_strategy == "pca" and len(covariance_state) == 0:
             get_logger().warning(
                 "Hessian state not provided. Using random initialization instead."
             )
@@ -91,7 +91,7 @@ class LoRAHandler:
 
             lora_module = lora_cls(self.rank, module, shared_modules.get(psg, None))
             if self.init_strategy == "pca":
-                lora_module.pca_init_weight(self.init_strategy, hessian_state[name])
+                lora_module.pca_init_weight(self.init_strategy, covariance_state[name])
             lora_module.to(device)
 
             parent, target, target_name = _get_submodules(model, name)

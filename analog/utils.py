@@ -1,5 +1,5 @@
 import sys
-import logging
+import logging as default_logging
 from typing import Any, List
 from collections import defaultdict
 
@@ -14,7 +14,7 @@ from einops import rearrange
 _logger = None
 
 
-class DistributedRankFilter(logging.Filter):
+class DistributedRankFilter(default_logging.Filter):
     """
     This is a logging filter which will filter out logs from all ranks
     in distributed training except for rank 0.
@@ -24,22 +24,22 @@ class DistributedRankFilter(logging.Filter):
         return get_rank() == 0
 
 
-def get_logger() -> logging.Logger:
+def get_logger() -> default_logging.Logger:
     """
     Get global logger.
     """
     global _logger
     if _logger:
         return _logger
-    logger = logging.getLogger("AnaLog")
-    log_format = logging.Formatter(
+    logger = default_logging.getLogger("AnaLog")
+    log_format = default_logging.Formatter(
         "[%(asctime)s] [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S"
     )
 
     logger.propagate = False
-    logger.setLevel(logging.INFO)
-    ch = logging.StreamHandler(stream=sys.stdout)
-    ch.setLevel(logging.INFO)
+    logger.setLevel(default_logging.INFO)
+    ch = default_logging.StreamHandler(stream=sys.stdout)
+    ch.setLevel(default_logging.INFO)
     ch.setFormatter(log_format)
 
     # Apply the rank filter to the handler
@@ -89,6 +89,18 @@ def get_rank(group=None) -> int:
         return dist.get_rank(group)
     else:
         return 0
+
+
+def print_tracked_modules(named_modules) -> None:
+    """
+    Print the tracked modules.
+    """
+    get_logger().info("Tracking the following modules:")
+    repr_dim = 0
+    for k, v in named_modules.items():
+        get_logger().info(f"{v}: {k}")
+        repr_dim += k.weight.data.numel()
+    get_logger().info(f"Total number of parameters: {repr_dim:,}\n")
 
 
 def nested_dict():

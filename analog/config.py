@@ -16,7 +16,7 @@ class Config:
     # Default values for each configuration
     _DEFAULTS = {
         "root_dir": "./analog",
-        "storage": {},
+        "logging": {"flush_threshold": -1},
         "analysis": {},
         "lora": {"init": "random", "rank": 64},
     }
@@ -37,7 +37,7 @@ class Config:
             )
             self.data = {}
 
-        self._storage_config = self.data.get("storage", self._DEFAULTS["storage"])
+        self._logging_config = self.data.get("logging", self._DEFAULTS["logging"])
         self._analysis_config = self.data.get("analysis", self._DEFAULTS["analysis"])
         self._lora_config = self.data.get("lora", self._DEFAULTS["lora"])
 
@@ -45,13 +45,13 @@ class Config:
         self._configure_log_dir(self.data.get("root_dir", self._DEFAULTS["root_dir"]))
 
     @property
-    def storage_config(self) -> Dict[str, Any]:
+    def logging_config(self) -> Dict[str, Any]:
         """
-        Retrieve storage configuration.
+        Retrieve logging configuration.
 
-        :return: Dictionary containing storage configurations.
+        :return: Dictionary containing logging configurations.
         """
-        return self._storage_config
+        return self._logging_config
 
     @property
     def analysis_config(self) -> Dict[str, Any]:
@@ -89,7 +89,7 @@ class Config:
         if not os.path.exists(self._log_dir) and get_rank() == 0:
             os.makedirs(self._log_dir)
 
-        self._storage_config["log_dir"] = self._log_dir
+        self._logging_config["log_dir"] = self._log_dir
 
     def load_config(self, config_path: str) -> None:
         """
@@ -99,7 +99,7 @@ class Config:
             config_path: Path to the saved YAML file.
         """
         config = torch.load(config_path)
-        self._storage_config.update(config.storage_config)
+        self._logging_config.update(config.logging_config)
         self._analysis_config.update(config.analysis_config)
         self._lora_config.update(config.lora_config)
         self._log_dir = config.log_dir

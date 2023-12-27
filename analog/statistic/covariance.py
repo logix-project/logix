@@ -4,14 +4,13 @@ import torch
 import torch.nn as nn
 
 from analog.batch_info import BatchInfo
-from analog.statistic import StatisticState
-from analog.statistic.base import StatisticComputerBase
+from analog.state import StatisticState
 from analog.statistic.utils import make_2d
 
 
-class Covariance(StatisticComputerBase):
+class Covariance:
+    @staticmethod
     def update(
-        self,
         state: StatisticState,
         binfo: BatchInfo,
         module: nn.Module,
@@ -22,14 +21,13 @@ class Covariance(StatisticComputerBase):
         """
         Update the covariance state.
         """
-        covariance_state = state.covariance_state[module_name][log_type]
-        covariance_counter = state.covariance_counter[module_name][log_type]
+        covariance_state = state.covariance_state
+        covariance_counter = state.covariance_counter
         if data is None:
             data = binfo.log[module_name][log_type]
 
-        # initialize mean state if necessary
-        if not isinstance(covariance_state, torch.Tensor):
-            assert isinstance(covariance_state, dict)
+        # initialize covariance state if necessary
+        if log_type not in covariance_state[module_name]:
             covariance_state[module_name][log_type] = torch.zeros(
                 data.shape[-1], data.shape[-1]
             )
@@ -48,14 +46,14 @@ class Covariance(StatisticComputerBase):
                 device=data.device
             )
             covariance_state_gpu.addmm_(data.t(), data)
-            covariance_state[module_name] = covariance_state_gpu.to(
+            covariance_state[module_name][log_type] = covariance_state_gpu.to(
                 device="cpu", non_blocking=True
             )
         else:
-            covariance_state[module_name] += data
+            covariance_state[module_name][log_type].addmm_(data.t(), data)
 
         # update mean counter
         if binfo.mask is None:
-            covariance_counter[module_name] += len(data)
+            covariance_counter[module_name][log_type] += len(data)
         else:
-            covariance_counter[module_name] += binfo.mask.sum().item()
+            covariance_counter[module_name][log_type] += binfo.mask.sum().item()

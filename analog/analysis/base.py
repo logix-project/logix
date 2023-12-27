@@ -1,14 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 
-from analog.state import AnaLogState
+from analog.state import StatisticState
 
 
 class AnalysisBase(ABC):
     def __init__(
         self,
         config: Dict[str, Any],
-        state: AnaLogState,
+        state: StatisticState,
     ):
         self.config = config
         self._state = state

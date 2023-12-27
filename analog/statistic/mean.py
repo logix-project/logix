@@ -4,14 +4,13 @@ import torch
 import torch.nn as nn
 
 from analog.batch_info import BatchInfo
-from analog.statistic import StatisticState
-from analog.statistic.base import StatisticComputerBase
+from analog.state import StatisticState
 from analog.statistic.utils import make_2d
 
 
-class Mean(StatisticComputerBase):
+class Mean:
+    @staticmethod
     def update(
-        self,
         state: StatisticState,
         binfo: BatchInfo,
         module: nn.Module,
@@ -22,14 +21,13 @@ class Mean(StatisticComputerBase):
         """
         Update the mean state.
         """
-        mean_state = state.mean_state[module_name][log_type]
-        mean_counter = state.mean_counter[module_name][log_type]
+        mean_state = state.mean_state
+        mean_counter = state.mean_counter
         if data is None:
             data = binfo.log[module_name][log_type]
 
         # initialize mean state if necessary
-        if not isinstance(mean_state, torch.Tensor):
-            assert isinstance(mean_state, dict)
+        if log_type not in mean_state[module_name]:
             mean_state[module_name][log_type] = torch.zeros(data.shape[-1])
             mean_counter[module_name][log_type] = 0
 
@@ -44,12 +42,14 @@ class Mean(StatisticComputerBase):
             # move it back to the CPU asynchrously.
             mean_state_gpu = mean_state[module_name][log_type].to(device=data.device)
             mean_state_gpu.add_(data.sum(dim=0))
-            mean_state[module_name] = mean_state_gpu.to(device="cpu", non_blocking=True)
+            mean_state[module_name][log_type] = mean_state_gpu.to(
+                device="cpu", non_blocking=True
+            )
         else:
-            mean_state[module_name] += data
+            mean_state[module_name][log_type].add_(data.sum(dim=0))
 
         # update mean counter
         if binfo.mask is None:
-            mean_counter[module_name] += len(data)
+            mean_counter[module_name][log_type] += len(data)
         else:
-            mean_counter[module_name] += binfo.mask.sum().item()
+            mean_counter[module_name][log_type] += binfo.mask.sum().item()

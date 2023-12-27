@@ -4,7 +4,7 @@ from analog.statistic import Covariance, CorrectedEigval
 from analog.utils import get_logger
 
 
-class LoggingConfig:
+class LogOption:
     def __init__(self):
         self._log = {}
         self._save = {}
@@ -12,7 +12,7 @@ class LoggingConfig:
 
         self.clear()
 
-    def update(self, log: Any = None, save: Any = None, statistic: Any = None):
+    def setup(self, log_option_kwargs):
         """
         Update logging configurations.
 
@@ -21,11 +21,17 @@ class LoggingConfig:
             save: Saving configurations.
             statistic: Statistic configurations.
         """
+        log = log_option_kwargs.get("log", None)
+        save = log_option_kwargs.get("save", None)
+        statistic = log_option_kwargs.get("statistic", None)
+        self.clear()
+
         if log is not None:
             if isinstance(log, str):
-                self._log = {log: True}
+                self._log[log] = True
             elif isinstance(log, list):
-                self._log = {l: True for l in log}
+                for l in log:
+                    self._log[l] = True
             elif isinstance(log, dict):
                 self._log = log
             else:
@@ -33,9 +39,10 @@ class LoggingConfig:
 
         if save is not None:
             if isinstance(save, str):
-                self._save = {save: True}
+                self._save[save] = True
             elif isinstance(save, list):
-                self._save = {s: True for s in save}
+                for s in save:
+                    self._save[s] = True
             elif isinstance(save, dict):
                 self._save = save
             else:
@@ -111,11 +118,11 @@ class LoggingConfig:
     @property
     def log(self):
         return self._log
-    
+
     @property
     def save(self):
         return self._save
-    
+
     @property
     def statistic(self):
         return self._statistic

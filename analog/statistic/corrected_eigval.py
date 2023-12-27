@@ -4,13 +4,12 @@ import torch
 import torch.nn as nn
 
 from analog.batch_info import BatchInfo
-from analog.statistic import StatisticState
-from analog.statistic.base import StatisticComputerBase
+from analog.state import StatisticState
 
 
-class CorrectedEigval(StatisticComputerBase):
+class CorrectedEigval:
+    @staticmethod
     def update(
-        self,
         state: StatisticState,
         binfo: BatchInfo,
         module: nn.Module,
@@ -21,8 +20,13 @@ class CorrectedEigval(StatisticComputerBase):
         """
         Update the mean state.
         """
-        covariance_eigvec_state = state.hessian_eigvec_state
-        covariance_eigval_state = state.hessian_eigval_state
+        if not hasattr(state, "covariance_eigvec_state"):
+            state.covariance_svd()
+            state.register_state("ekfac_eigval_state", synchronize=True, save=True)
+            state.register_state("ekfac_counter", synchronize=True, save=False)
+            state.register_normalize_pair("ekfac_eigval_state", "ekfac_counter")
+        covariance_eigvec_state = state.covariance_eigvec_state
+        covariance_eigval_state = state.covariance_eigval_state
         ekfac_eigval_state = state.ekfac_eigval_state
         ekfac_counter = state.ekfac_counter
 

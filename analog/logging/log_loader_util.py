@@ -4,7 +4,7 @@ from typing import List
 from collections import OrderedDict
 from torch.utils.data import default_collate
 
-from analog.storage.utils import MemoryMapHandler
+from analog.logging.mmap import MemoryMapHandler
 
 
 def extract_rank_and_chunk(filename):

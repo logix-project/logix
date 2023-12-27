@@ -47,7 +47,7 @@ def main():
     analog = AnaLog(project="test", config="config.yaml")
 
     analog.watch(model)
-    analog.update({"log": ["grad"], "hessian": True, "save": False})
+    analog.setup({"log": "grad", "statistic": "kfac"})
     id_gen = DataIDGenerator()
 
     if not args.resume:
@@ -65,18 +65,19 @@ def main():
                     loss.backward()
             analog.finalize()
             if epoch == 0:
-                analog.update({"save": True})
+                analog.setup({"save": "grad", "log": "grad", "statistic": "kfac"})
                 analog.add_lora()
     else:
         analog.add_lora()
         analog.initialize_from_log()
+    print(analog.get_covariance_state())
 
     log_loader = analog.build_log_dataloader()
     analog.eval()
 
     analog.add_analysis({"influence": InfluenceFunction})
     query_iter = iter(query_loader)
-    with analog(log=["grad"]):
+    with analog(data_id=["test"]):
         test_input, test_target = next(query_iter)
         model.zero_grad()
         test_out = model(test_input)
