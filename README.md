@@ -16,6 +16,7 @@
   [![Build](https://badgen.net/badge/build/check-status/green)](#build-pipeline-status)
   [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/leopard-ai/betty/blob/main/LICENSE)
   <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="code style: black"></a>
+  <a href="https://discord.gg/3vTgFnFX"><img alt="Discord" src="https://img.shields.io/discord/1159141589738868796?logo=discord&label=Discord&color=white&link=https%3A%2F%2Fdiscord.gg%2F3vTgFnFX"></a>
 
 </div>
 

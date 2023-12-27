@@ -139,7 +139,7 @@ class LoraEmbedding(nn.Embedding):
         super().__init__(num_embeddings, embedding_dim)
         self.rank = min(rank, num_embeddings, embedding_dim)
 
-        self.analog_lora_A = nn.Embedding(num_embeddings, self.rank, bias=False)
+        self.analog_lora_A = nn.Embedding(num_embeddings, self.rank)
         self.analog_lora_B = shared_module or nn.Linear(
             self.rank, self.rank, bias=False
         )

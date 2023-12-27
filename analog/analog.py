@@ -300,16 +300,18 @@ class AnaLog:
         config_path = os.path.join(self.log_dir, "config.pt")
         self.config.load_config(config_path)
 
-        # Load state
-        self.state.load_state(self.log_dir)
-
         # Load LoRA state
         lora_dir = os.path.join(self.log_dir, "lora")
         if os.path.exists(lora_dir):
+            if not any("analog_lora_A" in name for name in self.model.state_dict()):
+                self.add_lora()
             lora_state = torch.load(os.path.join(lora_dir, "lora_state_dict.pt"))
             for name in lora_state:
                 assert name in self.model.state_dict(), f"{name} not in model!"
             self.model.load_state_dict(lora_state, strict=False)
+
+        # Load state
+        self.state.load_state(self.log_dir)
 
     def finalize(
         self,

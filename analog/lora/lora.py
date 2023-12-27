@@ -13,7 +13,7 @@ class LoRAHandler:
     Transforms a model into a Lora model.
     """
 
-    _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d, nn.Embedding}
+    _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d}
 
     def __init__(self, config: Dict[str, Any], state: AnaLogState):
         self.config = config

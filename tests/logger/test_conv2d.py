@@ -81,7 +81,7 @@ class Test2DCNNGradients(unittest.TestCase):
             output = self.model(inputs)
             loss = F.cross_entropy(output, labels, reduction="sum")
             loss.backward()
-        analog_grads_dict = analog.get_log()
+        _, analog_grads_dict = analog.get_log()
 
         for module_name in analog_grads_dict:
             analog_grad = analog_grads_dict[module_name]
