@@ -144,7 +144,7 @@ class AnaLog:
             name_filter=self.name_filter,
         )
 
-        # Clear hessian, storage, and logging handlers
+        # Clear state and logger
         if clear:
             msg = "AnaLog will clear the previous Hessian, Storage, and Logging "
             msg += "handlers after adding LoRA for gradient compression.\n"
@@ -206,9 +206,7 @@ class AnaLog:
         """
         Args:
             data_id: A unique identifier associated with the data for the logging session.
-            log (str, optional): Specifies which data to log (e.g. "gradient", "full_activations").
-            hessian (bool, optional): Whether to compute the Hessian or not.
-            save (bool, optional): Whether to save the logs or not.
+            mask (torch.Tensor, optional): Mask for the data.
 
         Returns:
             self: Returns the instance of the AnaLog object.
