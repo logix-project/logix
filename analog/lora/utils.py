@@ -3,11 +3,12 @@ from typing import List
 import torch
 
 
-def find_rank_pca_covariance(hessian, threshold):
+def find_rank_pca_covariance(matrix, threshold):
     """
-    compute the least pca rank needed for threshold covariance in hessian_state
+    Calculate the minimum principal component analysis (PCA) rank required
+    to explain at least the specified percentage (threshold) of the total covariance.
     """
-    U, S, Vh = torch.linalg.svd(hessian)
+    U, S, Vh = torch.linalg.svd(matrix)
     rank = 0
     cur, total = 0, sum(S)
     while rank < len(S) and (cur / total) < threshold:
