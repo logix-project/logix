@@ -2,6 +2,7 @@ from typing import List
 
 import torch
 
+
 def find_rank_pca_covariance(hessian, threshold):
     """
     compute the least pca rank needed for threshold covariance in hessian_state
@@ -14,6 +15,7 @@ def find_rank_pca_covariance(hessian, threshold):
         rank += 1
 
     return rank
+
 
 def compute_top_k_singular_vectors(matrix, k):
     """

@@ -5,7 +5,11 @@ import torch.nn as nn
 from analog.constants import FORWARD, BACKWARD
 from analog.state import AnaLogState
 from analog.lora.modules import LoraLinear, LoraConv2d, LoraEmbedding
-from analog.lora.utils import find_parameter_sharing_group, _get_submodules, find_rank_pca_covariance
+from analog.lora.utils import (
+    find_parameter_sharing_group,
+    _get_submodules,
+    find_rank_pca_covariance,
+)
 from analog.utils import get_logger
 
 
@@ -81,8 +85,12 @@ class LoRAHandler:
 
             rank = self.rank
             if self.adaptive_threshold is not None:
-                rank_forward = find_rank_pca_covariance(hessian_state[name][FORWARD], self.adaptive_threshold)
-                rank_backward = find_rank_pca_covariance(hessian_state[name][BACKWARD], self.adaptive_threshold)
+                rank_forward = find_rank_pca_covariance(
+                    hessian_state[name][FORWARD], self.adaptive_threshold
+                )
+                rank_backward = find_rank_pca_covariance(
+                    hessian_state[name][BACKWARD], self.adaptive_threshold
+                )
                 rank = max(rank_forward, rank_backward)
                 get_logger().info(f"using adaptive r = {rank} for {name}\n")
 
@@ -90,13 +98,9 @@ class LoRAHandler:
                 if isinstance(module, nn.Linear):
                     shared_module = nn.Linear(rank, rank, bias=False)
                 elif isinstance(module, nn.Conv1d):
-                    shared_module = nn.Conv1d(
-                        rank, rank, kernel_size=1, bias=False
-                    )
+                    shared_module = nn.Conv1d(rank, rank, kernel_size=1, bias=False)
                 elif isinstance(module, nn.Conv2d):
-                    shared_module = nn.Conv2d(
-                        rank, rank, kernel_size=1, bias=False
-                    )
+                    shared_module = nn.Conv2d(rank, rank, kernel_size=1, bias=False)
                 shared_modules[psg] = shared_module
 
             lora_module = lora_cls(rank, module, shared_modules.get(psg, None))
