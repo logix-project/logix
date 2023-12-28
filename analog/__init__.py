@@ -19,8 +19,8 @@ def init(project: str, config: str = "./config.yaml"):
 
     if _ANALOG_INSTANCE is not None:
         get_logger().warning(
-            "AnaLog is already initialized. If you want to initialize " +
-            "additional AnaLog instances, please use analog.AnaLog instead."
+            "AnaLog is already initialized. If you want to initialize "
+            + "additional AnaLog instances, please use analog.AnaLog instead."
         )
         return
 
