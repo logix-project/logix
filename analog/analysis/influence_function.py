@@ -121,6 +121,6 @@ class InfluenceFunction(AnalysisBase):
     def get_influence_scores(self):
         return self.influence_scores
 
-    def save_influence_scores(self, filename):
+    def save_influence_scores(self, filename="influence_scores.csv"):
         self.influence_scores.to_csv(filename, index=True, header=True)
         get_logger().info(f"Influence scores saved to {filename}")

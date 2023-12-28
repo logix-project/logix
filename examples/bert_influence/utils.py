@@ -86,10 +86,13 @@ class SequenceClassificationModel(nn.Module):
 
 def construct_model(data_name: str, ckpt_path: Union[None, str] = None) -> nn.Module:
     model = SequenceClassificationModel(data_name)
+    tokenizer = AutoTokenizer.from_pretrained(
+        "bert-base-cased", use_fast=True, trust_remote_code=True
+    )
     if ckpt_path is not None:
         model.load_state_dict(torch.load(ckpt_path, map_location="cpu"))
         print(f"Loaded model from {ckpt_path}.")
-    return model
+    return model, tokenizer
 
 
 def get_loaders(
