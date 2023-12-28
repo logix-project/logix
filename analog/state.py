@@ -131,6 +131,7 @@ class StatisticState:
                     state_gpu = state_dict[key].cuda()
                     dist.all_reduce(state_gpu, op=dist.ReduceOp.SUM)
                     state_dict[key].copy_(state_gpu.cpu())
+
                     torch.cuda.synchronize()
 
         for state_name in self._states_to_synchronize:

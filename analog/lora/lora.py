@@ -91,7 +91,7 @@ class LoRAHandler:
 
             lora_module = lora_cls(self.rank, module, shared_modules.get(psg, None))
             if self.init_strategy == "pca":
-                lora_module.pca_init_weight(self.init_strategy, covariance_state[name])
+                lora_module.pca_init_weight(covariance_state[name])
             lora_module.to(device)
 
             parent, target, target_name = _get_submodules(model, name)

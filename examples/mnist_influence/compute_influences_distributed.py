@@ -70,7 +70,6 @@ def main():
     else:
         analog.add_lora()
         analog.initialize_from_log()
-    print(analog.get_covariance_state())
 
     log_loader = analog.build_log_dataloader()
     analog.eval()
@@ -93,8 +92,8 @@ def main():
     _, top_influential_data = torch.topk(if_scores, k=10)
 
     # Save
-    if_scores = if_scores.numpy().tolist()
-    torch.save(if_scores, "if_distributed.pt")[0]
+    if_scores = if_scores.numpy().tolist()[0]
+    torch.save(if_scores, f"if_distributed_rank_{get_rank()}.pt")
     print("Computation time:", time.time() - start)
     print("Top influential data indices:", top_influential_data.numpy().tolist())
 
