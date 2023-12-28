@@ -33,7 +33,7 @@ class Mean:
             mean_counter[module_name][log_type] = 0
 
         # extract and reshape data to 2d tensor for mean computation
-        data = make_2d(data, module, log_type)
+        data = make_2d(data, module, log_type).detach()
 
         # update mean state
         if data.is_cuda:

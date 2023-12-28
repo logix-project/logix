@@ -1,4 +1,2 @@
-storage:
-  type: default
 lora:
   init: pca
