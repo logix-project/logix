@@ -25,3 +25,4 @@ python extract_log.py
 
 ```bash
 python compute_influence.py
+```

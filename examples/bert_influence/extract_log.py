@@ -34,7 +34,6 @@ def main():
     scheduler = analog.AnaLogScheduler(run, lora=True)
 
     analog.watch(model)
-    analog.setup({"statistic": "kfac"})
     for _ in scheduler:
         for batch in tqdm(train_loader, desc="Hessian logging"):
             data_id = tokenizer.batch_decode(batch["input_ids"])
