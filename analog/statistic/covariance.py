@@ -10,6 +10,7 @@ from analog.statistic.utils import make_2d
 
 class Covariance:
     @staticmethod
+    @torch.no_grad()
     def update(
         state: StatisticState,
         binfo: BatchInfo,
@@ -34,7 +35,7 @@ class Covariance:
             covariance_counter[module_name][log_type] = 0
 
         # extract and reshape data to 2d tensor for mean computation
-        data = make_2d(data, module, log_type)
+        data = make_2d(data, module, log_type).detach()
 
         # update mean state
         if data.is_cuda:

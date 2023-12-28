@@ -9,6 +9,7 @@ from analog.state import StatisticState
 
 class CorrectedEigval:
     @staticmethod
+    @torch.no_grad()
     def update(
         state: StatisticState,
         binfo: BatchInfo,

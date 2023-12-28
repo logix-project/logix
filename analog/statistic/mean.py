@@ -10,6 +10,7 @@ from analog.statistic.utils import make_2d
 
 class Mean:
     @staticmethod
+    @torch.no_grad()
     def update(
         state: StatisticState,
         binfo: BatchInfo,
