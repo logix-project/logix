@@ -55,9 +55,9 @@ class HookLogger:
 
     def update(self):
         # Update statistics
-        for stat_plugin in self.opt.statistic["grad"]:
+        for stat in self.opt.statistic["grad"]:
             for module_name, _ in self.binfo.log.items():
-                stat_plugin.update(
+                stat.update(
                     state=self.state,
                     binfo=self.binfo,
                     module=None,
@@ -110,8 +110,8 @@ class HookLogger:
             else:
                 log["forward"] += activations
 
-        for stat_plugin in self.opt.statistic["forward"]:
-            stat_plugin.update(
+        for stat in self.opt.statistic["forward"]:
+            stat.update(
                 state=self.state,
                 binfo=self.binfo,
                 module=module,
@@ -146,8 +146,8 @@ class HookLogger:
             else:
                 log["backward"] += grad_outputs[0]
 
-        for stat_plugin in self.opt.statistic["backward"]:
-            stat_plugin.update(
+        for stat in self.opt.statistic["backward"]:
+            stat.update(
                 state=self.state,
                 binfo=self.binfo,
                 module=module,
@@ -206,8 +206,8 @@ class HookLogger:
         log = self.binfo.log[tensor_name]
         log["forward"] = tensor
 
-        for stat_plugin in self.opt.statistic["forward"]:
-            stat_plugin.update(
+        for stat in self.opt.statistic["forward"]:
+            stat.update(
                 state=self.state,
                 binfo=self.binfo,
                 module=None,
@@ -230,8 +230,8 @@ class HookLogger:
         log = self.binfo.log[tensor_name]
         log["backward"] = grad
 
-        for stat_plugin in self.opt.statistic["backward"]:
-            stat_plugin.update(
+        for stat in self.opt.statistic["backward"]:
+            stat.update(
                 state=self.state,
                 binfo=self.binfo,
                 module=None,

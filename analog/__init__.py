@@ -1,10 +1,11 @@
 from analog.analog import AnaLog
 from analog.scheduler import AnaLogScheduler
+from analog.utils import get_logger
 
 
 __version__ = "0.1.0"
 
-_ANALOG_INSTANCES = {}
+_ANALOG_INSTANCE = None
 
 
 def init(project: str, config: str = "./config.yaml"):
@@ -14,47 +15,30 @@ def init(project: str, config: str = "./config.yaml"):
         project (str): The name of the project.
         config (dict): The configuration dictionary.
     """
+    global _ANALOG_INSTANCE
+
+    if _ANALOG_INSTANCE is not None:
+        get_logger().warning(
+            "AnaLog is already initialized. If you want to initialize " +
+            "additional AnaLog instances, please use analog.AnaLog instead."
+        )
+        return
+
     run = AnaLog(project, config)
 
-    global _analog_instances
-    _ANALOG_INSTANCES[project] = run
+    _ANALOG_INSTANCE = run
 
     return run
 
 
-def is_initialized_single():
-    """Check if AnaLog is initialized.
-
-    Returns:
-        bool: True if AnaLog is initialized, False otherwise.
-    """
-    return len(_ANALOG_INSTANCES) == 1
-
-
-def watch(model, type_filter=None, name_filter=None):
-    """Watch a model.
-
-    Args:
-        model (torch.nn.Module): The model to be watched.
-        type_filter (list, optional): The types of modules to be watched. Defaults to None.
-        name_filter (list, optional): The names of modules to be watched. Defaults to None.
-    """
-    if is_initialized_single():
-        for run in _ANALOG_INSTANCES.values():
-            run.watch(model, type_filter, name_filter)
-    else:
-        raise RuntimeError("Multiple AnaLog instances are not supported.")
-
-
-def log(data_id, mask=None):
-    """Log data.
-
-    Args:
-        data_id (str): The id of the data.
-        mask (dict, optional): The mask of the data. Defaults to None.
-    """
-    if is_initialized_single():
-        for run in _ANALOG_INSTANCES.values():
-            run.log(data_id, mask)
-    else:
-        raise RuntimeError("Multiple AnaLog instances are not supported.")
+if _ANALOG_INSTANCE is not None:
+    add_analysis = _ANALOG_INSTANCE.add_analysis
+    add_lora = _ANALOG_INSTANCE.add_lora
+    build_log_dataloader = _ANALOG_INSTANCE.build_log_dataloader
+    clear = _ANALOG_INSTANCE.clear
+    eval = _ANALOG_INSTANCE.eval
+    finalize = _ANALOG_INSTANCE.finalize
+    log = _ANALOG_INSTANCE.log
+    setup = _ANALOG_INSTANCE.setup
+    watch = _ANALOG_INSTANCE.watch
+    watch_activation = _ANALOG_INSTANCE.watch_activation
