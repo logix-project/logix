@@ -14,10 +14,10 @@ class StatisticState:
     """
 
     def __init__(self) -> None:
-        self._states = set()
-        self._states_to_synchronize = set()
-        self._states_to_save = set()
-        self._states_to_normalize = set()
+        self._states = []
+        self._states_to_synchronize = []
+        self._states_to_save = []
+        self._states_to_normalize = []
 
         self.register_state("mean_state", synchronize=True, save=True)
         self.register_state("mean_counter", synchronize=True, save=False)
@@ -38,20 +38,20 @@ class StatisticState:
 
         assert state_name not in self._states
         setattr(self, state_name, nested_dict())
-        self._states.add(state_name)
+        self._states.append(state_name)
         if synchronize:
-            self._states_to_synchronize.add(state_name)
+            self._states_to_synchronize.append(state_name)
         if save:
-            self._states_to_save.add(state_name)
+            self._states_to_save.append(state_name)
 
     def register_normalize_pair(self, state_name: str, counter_name: str):
         """
-        Add a normalization to the state.
+        Add a normalization pair to the state.
         """
         if (state_name, counter_name) in self._states_to_normalize:
             return
 
-        self._states_to_normalize.add((state_name, counter_name))
+        self._states_to_normalize.append((state_name, counter_name))
 
     @torch.no_grad()
     def covariance_svd(self) -> None:
