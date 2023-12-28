@@ -79,6 +79,22 @@ def finalize(*args, **kwargs):
     return _ANALOG_INSTANCE.finalize(*args, **kwargs)
 
 
+def get_log(*args, **kwargs):
+    if _ANALOG_INSTANCE is None:
+        raise RuntimeError(
+            "AnaLog is not initialized. You must call analog.init() first."
+        )
+    return _ANALOG_INSTANCE.get_log(*args, **kwargs)
+
+
+def initialize_from_log(*args, **kwargs):
+    if _ANALOG_INSTANCE is None:
+        raise RuntimeError(
+            "AnaLog is not initialized. You must call analog.init() first."
+        )
+    return _ANALOG_INSTANCE.initialize_from_log(*args, **kwargs)
+
+
 def log(*args, **kwargs):
     if _ANALOG_INSTANCE is None:
         raise RuntimeError(
