@@ -50,7 +50,7 @@ for n, m in model.named_modules():
         modules_to_watch.append(n)
 
 analog.watch(model, name_filter=modules_to_watch)
-analog.update({"log": [], "hessian": True, "save": False})
+analog.setup({"statistic": "kfac"})
 id_gen = DataIDGenerator(mode="index")
 for epoch in range(2):
     for batch in tqdm(eval_train_loader, desc="Hessian logging"):
@@ -75,8 +75,8 @@ for epoch in range(2):
             loss.backward()
     analog.finalize()
     if epoch == 0:
-        analog.update({"save": True, "log": ["grad"]})
         analog.add_lora(model)
+        analog.update({"log": "grad", "save": "grad", "statistic": "kfac"})
 
 # Compute influence
 analog.eval()
@@ -89,7 +89,7 @@ with analog(data_id=id_gen(test_batch["input_ids"]), mask=test_batch["attention_
         test_batch["input_ids"],
         test_batch["attention_mask"],
     )
-    test_targets = test_batch["labels"].to(DEVICE)
+    test_targets = test_batch["labels"]
     model.zero_grad()
     test_logits = model(*test_inputs)
 
@@ -103,7 +103,7 @@ with analog(data_id=id_gen(test_batch["input_ids"]), mask=test_batch["attention_
     )
     test_loss.backward()
 
-    test_log = al.get_log()
+test_log = analog.get_log()
 
 start = time.time()
 if_scores = analog.influence.compute_influence_all(test_log, log_loader)
