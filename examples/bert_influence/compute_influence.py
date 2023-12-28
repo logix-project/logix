@@ -37,7 +37,7 @@ analog = AnaLog(project="test", config="config.yaml")
 
 # Hessian logging
 analog.watch(model)
-analog_kwargs = {"log": [], "hessian": True, "save": False}
+analog.setup({"statistic": "kfac"})
 id_gen = DataIDGenerator(mode="index")
 for epoch in range(2):
     for batch in tqdm(eval_train_loader, desc="Hessian logging"):
@@ -47,7 +47,7 @@ for epoch in range(2):
             batch["token_type_ids"].to(DEVICE),
             batch["attention_mask"].to(DEVICE),
         )
-        with analog(data_id=data_id, mask=inputs[-1], **analog_kwargs):
+        with analog(data_id=data_id, mask=inputs[-1]):
             model.zero_grad()
             outputs = model(*inputs)
 
@@ -57,8 +57,8 @@ for epoch in range(2):
             loss.backward()
     analog.finalize()
     if epoch == 0:
-        analog_kwargs.update({"save": True, "log": ["grad"]})
         analog.add_lora(model)
+        analog.update({"log": "grad", "save": "grad", "statistic": "kfac"})
 
 # Compute influence
 log_loader = analog.build_log_dataloader()

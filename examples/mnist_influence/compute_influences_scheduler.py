@@ -38,7 +38,7 @@ query_loader = dataloader_fn(
     batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs
 )
 
-analog = AnaLog(project="test", config="./examples/mnist_influence/config.yaml")
+analog = AnaLog(project="test", config="./config.yaml")
 al_scheduler = AnaLogScheduler(
     analog, ekfac=args.ekfac, lora=args.lora, sample=args.sample
 )

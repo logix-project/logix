@@ -3,14 +3,14 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from analog.storage.log_loader_util import (
+from analog.logging.log_loader_util import (
     get_mmap_data,
     get_mmap_metadata,
     find_chunk_indices,
 )
 
 
-class DefaultLogDataset(Dataset):
+class LogDataset(Dataset):
     def __init__(self, log_dir):
         self.chunk_indices = None
         self.memmaps = []

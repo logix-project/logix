@@ -1,26 +1,25 @@
 from concurrent.futures import ThreadPoolExecutor
 import torch
 
-from analog.utils import nested_dict, to_numpy
-from analog.storage.utils import MemoryMapHandler
+from analog.utils import nested_dict, to_numpy, get_rank
+from analog.logging.mmap import MemoryMapHandler
 
 
 class LogSaver:
-    def __init__(self):
-        self.log_dir = ""
-        self.max_worker = 0
-        self.allow_async = False
+    def __init__(self, config):
+        self.log_dir = config.get("log_dir")
+        self.file_prefix = f"log_rank_{get_rank()}_chunk_"
+
+        self.max_worker = config.get("num_workers", 1)
+        self.allow_async = True if self.max_worker > 1 else False
+
+        self.flush_threshold = config.get("flush_threshold", -1)
+        self.flush_count = 0
 
         self.buffer = nested_dict()
         self.buffer_size = 0
 
-        self.flush_count = 0
-        self.flush_threshold = 0
-
-        self.data_id = None
-        self.file_prefix = ""
-
-    def buffer_write_on_exit(self, log_state):
+    def buffer_write(self, data_id, log):
         """
         Add log state on exit.
         """
@@ -34,8 +33,8 @@ class LogSaver:
                     continue
                 _add(value, buffer[key], idx)
 
-        for idx, data_id in enumerate(self.data_id):
-            _add(log_state, self.buffer[data_id], idx)
+        for idx, did in enumerate(data_id):
+            _add(log, self.buffer[did], idx)
 
     def _flush_unsafe(self, log_dir, buffer, flush_count) -> str:
         """
@@ -53,8 +52,7 @@ class LogSaver:
         buffer_copy = self.buffer.copy()
         flush_count_copy = self.flush_count
         self.flush_count += 1
-        self.buffer.clear()
-        self.buffer_size = 0
+        self.buffer_clear()
         with ThreadPoolExecutor(max_workers=self.max_worker) as executor:
             save_path = executor.submit(
                 self._flush_unsafe, log_dir, buffer_copy, flush_count_copy
@@ -97,25 +95,6 @@ class LogSaver:
         Dump everything in the buffer to disk when `analog.finalize()` is called.
         """
         self._flush_serialized(self.log_dir)
-
-    def set_data_id(self, data_id):
-        self.data_id = data_id
-
-    def set_max_worker(self, max_worker):
-        self.max_worker = max_worker
-        self.allow_async = True if self.max_worker > 1 else False
-
-    def set_file_prefix(self, file_prefix):
-        self.file_prefix = file_prefix
-
-    def set_flush_threshold(self, flush_threshold):
-        self.flush_threshold = flush_threshold
-
-    def set_log_dir(self, log_dir):
-        """
-        Set the log directory.
-        """
-        self.log_dir = log_dir
 
     def buffer_clear(self):
         """

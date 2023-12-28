@@ -66,7 +66,8 @@ class TestMLPGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        with analog(data_id=inputs, log=["grad"], hessian=False, save=False):
+        analog.setup({"log": "grad"})
+        with analog(data_id=inputs):
             self.model.zero_grad()
             output = self.model(inputs)
             loss = F.cross_entropy(output, labels, reduction="sum")
@@ -74,7 +75,7 @@ class TestMLPGradients(unittest.TestCase):
         _, analog_grads_dict = analog.get_log()
 
         for module_name in analog_grads_dict:
-            analog_grad = analog_grads_dict[module_name]
+            analog_grad = analog_grads_dict[module_name]["grad"]
             func_grad = grads_dict[module_name + ".weight"]
             self.assertTrue(torch.allclose(analog_grad, func_grad, atol=1e-6))
 
@@ -109,7 +110,8 @@ class TestMLPGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        with analog(data_id=inputs, log=["grad"], hessian=False, save=False):
+        analog.setup({"log": "grad"})
+        with analog(data_id=inputs):
             self.model.zero_grad()
             output = checkpoint_sequential(
                 self.model, segments=2, input=inputs, use_reentrant=False
@@ -119,7 +121,7 @@ class TestMLPGradients(unittest.TestCase):
         _, analog_grads_dict = analog.get_log()
 
         for module_name in analog_grads_dict:
-            analog_grad = analog_grads_dict[module_name]
+            analog_grad = analog_grads_dict[module_name]["grad"]
             func_grad = grads_dict[module_name + ".weight"]
             self.assertTrue(torch.allclose(analog_grad, func_grad, atol=1e-6))
 
@@ -154,7 +156,8 @@ class TestMLPGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        with analog(data_id=inputs, log=["grad"], hessian=False, save=False):
+        analog.setup({"log": "grad"})
+        with analog(data_id=inputs):
             compiled_model.zero_grad()
             output = compiled_model(inputs)
             loss = F.cross_entropy(output, labels, reduction="sum")
@@ -162,7 +165,7 @@ class TestMLPGradients(unittest.TestCase):
         _, analog_grads_dict = analog.get_log()
 
         for module_name in analog_grads_dict:
-            analog_grad = analog_grads_dict[module_name]
+            analog_grad = analog_grads_dict[module_name]["grad"]
             func_grad = grads_dict[module_name + ".weight"]
             self.assertTrue(torch.allclose(analog_grad, func_grad, atol=1e-6))
 

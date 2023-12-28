@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser("MNIST Influence Analysis")
 parser.add_argument("--data", type=str, default="mnist", help="mnist or fmnist")
 parser.add_argument("--eval-idxs", type=int, nargs="+", default=[0])
 parser.add_argument("--damping", type=float, default=1e-5)
+parser.add_argument("--resume", action="store_true")
 args = parser.parse_args()
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -35,31 +36,35 @@ query_loader = dataloader_fn(
 )
 
 analog = AnaLog(project="test")
-analog.update({"log": ["grad"], "hessian": True, "save": True})
+analog.setup({"log": "grad", "statistic": "kfac"})
 
 # Gradient & Hessian logging
 analog.watch(model)
 id_gen = DataIDGenerator()
-for epoch in range(2):
-    if epoch == 1:
-        analog.ekfac()
-        analog.update({"save": False})
-    for inputs, targets in train_loader:
-        data_id = id_gen(inputs)
-        with analog(data_id=data_id):
-            inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
-            model.zero_grad()
-            outs = model(inputs)
-            loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
-            loss.backward()
-    analog.finalize()
+if not args.resume:
+    for epoch in range(2):
+        if epoch == 1:
+            analog.setup({"log": "grad", "statistic": "ekfac", "save": "grad"})
+        for inputs, targets in train_loader:
+            data_id = id_gen(inputs)
+            with analog(data_id=data_id):
+                inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
+                model.zero_grad()
+                outs = model(inputs)
+                loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
+                loss.backward()
+        analog.finalize()
+else:
+    analog.initialize_from_log()
 
 # Influence Analysis
 log_loader = analog.build_log_dataloader()
 
 analog.add_analysis({"influence": InfluenceFunction})
 query_iter = iter(query_loader)
-with analog(log=["grad"]) as al:
+analog.setup({"log": "grad"})
+analog.eval()
+with analog(data_id=["test"]) as al:
     test_input, test_target = next(query_iter)
     test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
     model.zero_grad()

@@ -39,8 +39,9 @@ analog = AnaLog(project="test")
 
 # Gradient & Hessian logging
 analog.watch(model)
-analog.update({"log": ["grad"], "hessian": True, "save": True})
+analog.setup({"log": "grad", "save": "grad", "statistic": "kfac"})
 
+start = time.time()
 if not args.resume:
     id_gen = DataIDGenerator()
     for inputs, targets in train_loader:
@@ -54,6 +55,7 @@ if not args.resume:
     analog.finalize()
 else:
     analog.initialize_from_log()
+print("logging time:", time.time() - start)
 
 # Influence Analysis
 log_loader = analog.build_log_dataloader()
@@ -61,7 +63,7 @@ log_loader = analog.build_log_dataloader()
 analog.add_analysis({"influence": InfluenceFunction})
 query_iter = iter(query_loader)
 analog.eval()
-with analog(log=["grad"]):
+with analog(data_id=["test"]):
     test_input, test_target = next(query_iter)
     test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
     model.zero_grad()

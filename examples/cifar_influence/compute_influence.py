@@ -40,7 +40,7 @@ analog = AnaLog(project="test", config="./config.yaml")
 
 # Gradient & Hessian logging
 analog.watch(model)
-analog.update({"log": ["grad"], "hessian": True, "save": True})
+analog.setup({"log": "grad", "save": "grad", "statistic": "kfac"})
 
 if not args.resume:
     id_gen = DataIDGenerator()

@@ -39,21 +39,21 @@ class LoraLinear(nn.Linear):
 
         return result
 
-    def pca_init_weight(self, init_strategy: str = "random", hessian=None):
+    def pca_init_weight(self, covariance=None):
         """Initialize the weight of the LoraLinear layer.
 
         Args:
             init_strategy (str): The type of projection to use
-            hessian (dict): The forward and backward hessian of the layer
+            covariance (dict): The forward and backward covariance of the layer
         """
         (
             top_r_singular_vector_forward,
             top_r_singular_value_forward,
-        ) = compute_top_k_singular_vectors(hessian[FORWARD], self.rank)
+        ) = compute_top_k_singular_vectors(covariance[FORWARD], self.rank)
         (
             top_r_singular_vector_backward,
             top_r_singular_value_backward,
-        ) = compute_top_k_singular_vectors(hessian[BACKWARD], self.rank)
+        ) = compute_top_k_singular_vectors(covariance[BACKWARD], self.rank)
         self.analog_lora_A.weight.data.copy_(top_r_singular_vector_forward.T)
         self.analog_lora_C.weight.data.copy_(top_r_singular_vector_backward)
 
@@ -98,21 +98,21 @@ class LoraConv2d(nn.Conv2d):
 
         return result
 
-    def pca_init_weight(self, projection_type, hessian):
+    def pca_init_weight(self, covariance):
         """Initialize the weight of the LoraConv2d layer.
 
         Args:
             projection_type (str): The type of projection to use
-            hessian (dict): The forward and backward hessian of the layer
+            covariance (dict): The forward and backward covariance of the layer
         """
         (
             top_r_singular_vector_forward,
             top_r_singular_value_forward,
-        ) = compute_top_k_singular_vectors(hessian[FORWARD], self.rank)
+        ) = compute_top_k_singular_vectors(covariance[FORWARD], self.rank)
         (
             top_r_singular_vector_backward,
             top_r_singular_value_backward,
-        ) = compute_top_k_singular_vectors(hessian[BACKWARD], self.rank)
+        ) = compute_top_k_singular_vectors(covariance[BACKWARD], self.rank)
         shape_A = self.analog_lora_A.weight.shape
         shape_C = self.analog_lora_C.weight.shape
         self.analog_lora_A.weight.data.copy_(
@@ -157,11 +157,11 @@ class LoraEmbedding(nn.Embedding):
 
         return result
 
-    def pca_init_weight(self, init_strategy: str = "random", hessian=None):
+    def pca_init_weight(self, covariance=None):
         """Initialize the weight of the LoraEmbedding layer.
 
         Args:
             init_strategy (str): The type of projection to use
-            hessian (dict): The forward and backward hessian of the layer
+            covariance (dict): The forward and backward covariance of the layer
         """
         raise NotImplementedError
