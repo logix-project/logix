@@ -49,7 +49,7 @@ class LogDataset(Dataset):
             shape = tuple(entry["shape"])
             dtype = np.dtype(entry["dtype"])
             array = np.ndarray(shape, dtype, buffer=mmap, offset=offset, order="C")
-            tensor = torch.Tensor(array)
+            tensor = torch.from_numpy(array)
 
             # Place the tensor in the correct location within the nested dictionary
             current_level = nested_dict
