@@ -5,7 +5,7 @@ import torch.nn as nn
 from analog.state import StatisticState
 from analog.lora.modules import LoraLinear, LoraConv2d, LoraEmbedding
 from analog.lora.utils import find_parameter_sharing_group, _get_submodules
-from analog.utils import get_logger
+from analog.utils import get_logger, module_check
 
 
 class LoRAHandler:
@@ -48,19 +48,12 @@ class LoRAHandler:
         shared_modules = {}
         device = next(model.parameters()).device
         for name, module in model.named_modules():
-            if len(list(module.children())) > 0:
-                continue
-            if not any(
-                isinstance(module, module_type)
-                for module_type in self._SUPPORTED_MODULES
-            ):
-                continue
-            if type_filter is not None and not any(
-                isinstance(module, module_type) for module_type in type_filter
-            ):
-                continue
-            if name_filter is not None and not any(
-                keyword in name for keyword in name_filter
+            if not module_check(
+                module=module,
+                module_name=name,
+                supported_modules=self._SUPPORTED_MODULES,
+                type_filter=type_filter,
+                name_filter=name_filter,
             ):
                 continue
 

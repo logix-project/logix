@@ -12,8 +12,15 @@ from analog.logging import HookLogger
 from analog.logging.log_loader import LogDataset
 from analog.logging.log_loader_util import collate_nested_dicts
 from analog.lora import LoRAHandler
+from analog.lora.utils import is_lora
 from analog.state import StatisticState
-from analog.utils import get_logger, get_rank, get_world_size, print_tracked_modules
+from analog.utils import (
+    get_logger,
+    get_rank,
+    get_world_size,
+    print_tracked_modules,
+    module_check,
+)
 
 
 class AnaLog:
@@ -65,7 +72,6 @@ class AnaLog:
         model: nn.Module,
         type_filter: List[nn.Module] = None,
         name_filter: List[str] = None,
-        lora: bool = False,
     ) -> None:
         """
         Sets up modules in the model to be watched.
@@ -82,26 +88,18 @@ class AnaLog:
         self.type_filter = type_filter or self.type_filter
         self.name_filter = name_filter or self.name_filter
 
+        _is_lora = is_lora(self.model)
+
         for name, module in self.model.named_modules():
-            # only consider the leaf module
-            if len(list(module.children())) > 0:
-                continue
-            if not any(
-                isinstance(module, module_type)
-                for module_type in self._SUPPORTED_MODULES
+            if module_check(
+                module=module,
+                module_name=name,
+                supported_modules=self._SUPPORTED_MODULES,
+                type_filter=self.type_filter,
+                name_filter=self.name_filter,
+                is_lora=_is_lora,
             ):
-                continue
-            if type_filter is not None and not any(
-                isinstance(module, module_type) for module_type in self.type_filter
-            ):
-                continue
-            if name_filter is not None and not any(
-                keyword in name for keyword in self.name_filter
-            ):
-                continue
-            if lora and "analog_lora_B" not in name:
-                continue
-            self.logger.add_module(name, module)
+                self.logger.add_module(name, module)
         print_tracked_modules(self.logger.modules_to_name)
 
         self.logger.register_all_module_hooks()
@@ -151,7 +149,7 @@ class AnaLog:
             get_logger().info(msg)
             self.clear()
         if watch:
-            self.watch(model, lora=True)
+            self.watch(model)
 
     def add_analysis(self, analysis_dict: Dict[str, AnalysisBase]) -> None:
         """
@@ -321,7 +319,7 @@ class AnaLog:
         # Load LoRA state
         lora_dir = os.path.join(self.log_dir, "lora")
         if os.path.exists(lora_dir):
-            if not any("analog_lora_A" in name for name in self.model.state_dict()):
+            if not is_lora(self.model):
                 self.add_lora()
             lora_state = torch.load(os.path.join(lora_dir, "lora_state_dict.pt"))
             for name in lora_state:

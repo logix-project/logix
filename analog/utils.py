@@ -1,14 +1,14 @@
 import sys
 import logging as default_logging
-from typing import Any, List
+from typing import Any, List, Optional
 from collections import defaultdict
 
 import hashlib
 
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.distributed as dist
-from einops import rearrange
 
 
 _logger = None
@@ -101,6 +101,41 @@ def print_tracked_modules(named_modules) -> None:
         get_logger().info(f"{v}: {k}")
         repr_dim += k.weight.data.numel()
     get_logger().info(f"Total number of parameters: {repr_dim:,}\n")
+
+
+def module_check(
+    module: nn.Module,
+    module_name: str,
+    supported_modules: Optional[List[nn.Module]] = None,
+    type_filter: Optional[List[nn.Module]] = None,
+    name_filter: Optional[List[str]] = None,
+    is_lora: bool = False,
+) -> bool:
+    """
+    Check if the module is supported for logging.
+
+    Args:
+        module (nn.Module): The module to check.
+        module_name (str): Name of the module.
+        supported_modules (Optional[List[nn.Module]]): List of supported module types.
+        type_filter (Optional[List[nn.Module]]): List of module types to filter.
+        name_filter (Optional[List[str]]): List of keywords to filter module names.
+        is_lora (bool): Flag to check for specific 'analog_lora_B' in module names.
+
+    Returns:
+        bool: True if module is supported, False otherwise.
+    """
+    if list(module.children()):
+        return False
+    if supported_modules and not isinstance(module, tuple(supported_modules)):
+        return False
+    if type_filter and not isinstance(module, tuple(type_filter)):
+        return False
+    if name_filter and not any(keyword in module_name for keyword in name_filter):
+        return False
+    if is_lora and "analog_lora_B" not in module_name:
+        return False
+    return True
 
 
 def nested_dict():
