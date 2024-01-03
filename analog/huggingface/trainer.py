@@ -14,11 +14,11 @@ logger = logging.get_logger(__name__)
 class AnalogCallback(TrainerCallback):
     def __init__(self, run, scheduler=None):
         self.run = run
-        self.scheduler = scheduler
+        self.scheduler = iter(scheduler) if scheduler is not None else None
 
     def on_epoch_begin(self, args, state, control, **kwargs):
         if self.scheduler is not None:
-            next(iter(self.scheduler))
+            next(self.scheduler)
 
     def on_epoch_end(self, args, state, control, **kwargs):
         self.run.finalize()
