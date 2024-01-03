@@ -111,6 +111,8 @@ class AnaLogTrainer(Trainer):
 
             if self.args.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu parallel training
+
+            loss = loss * inputs["attention_mask"].sum()  # sum loss over all non-padded tokens instead of mean
             if self.do_grad_scaling:
                 self.scaler.scale(loss).backward()
             elif self.use_apex:
