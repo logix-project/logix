@@ -1,14 +1,13 @@
 import argparse
 
-from tqdm import tqdm
-import analog
-from analog import AnaLogTrainer
 import torch.nn.functional as F
 from accelerate import Accelerator
+from tqdm import tqdm
 from transformers import default_data_collator
 
+import analog
+from analog import AnaLogTrainer
 from utils import construct_model, get_datasets, set_seed
-
 
 
 def main():
@@ -31,7 +30,6 @@ def main():
     # AnaLog
     run = analog.init(args.project, config=args.config_path)
     scheduler = analog.AnaLogScheduler(run, lora=True)
-    analog.watch(model)
 
     trainer = AnaLogTrainer(
         run,
@@ -42,21 +40,6 @@ def main():
         data_collator=default_data_collator,
     )
     trainer.train()
-    # for _ in scheduler:
-    #     for batch in tqdm(train_loader, desc="Hessian logging"):
-    #         data_id = tokenizer.batch_decode(batch["input_ids"])
-    #         labels = batch.pop("labels").view(-1)
-    #         _ = batch.pop("idx")
-    #         with run(data_id=data_id, mask=batch["attention_mask"]):
-    #             model.zero_grad()
-    #             outputs = model(**batch)
-    #             logits = outputs.view(-1, outputs.shape[-1])
-    #             loss = F.cross_entropy(
-    #                 logits, labels, reduction="sum", ignore_index=-100
-    #             )
-    #             accelerator.backward(loss)
-    #     analog.finalize()
-
 
 if __name__ == "__main__":
     main()
