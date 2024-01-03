@@ -12,7 +12,8 @@ logger = logging.get_logger(__name__)
 
 
 class AnalogCallback(TrainerCallback):
-    def __init__(self, scheduler=None):
+    def __init__(self, run, scheduler=None):
+        self.run = run
         self.scheduler = scheduler
 
     def on_epoch_begin(self, args, state, control, **kwargs):
@@ -20,7 +21,11 @@ class AnalogCallback(TrainerCallback):
             next(iter(self.scheduler))
 
     def on_epoch_end(self, args, state, control, **kwargs):
-        analog.finalize()
+        self.run.finalize()
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        model = kwargs["model"]
+        self.run.watch(model)
 
 
 class AnaLogTrainer(Trainer):
@@ -45,7 +50,6 @@ class AnaLogTrainer(Trainer):
             Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
         ] = None,
     ):
-        analog.watch(model)
         self.run = run
         self.scheduler = scheduler
         args = TrainingArguments(
@@ -56,7 +60,7 @@ class AnaLogTrainer(Trainer):
             num_train_epochs=len(self.scheduler),
             report_to="none",
         )
-        analog_callback = AnalogCallback(scheduler)
+        analog_callback = AnalogCallback(run, scheduler)
         super().__init__(
             model,
             args,
@@ -127,8 +131,8 @@ class AnaLogTrainer(Trainer):
                 loss = loss.mean()  # mean() to average on multi-gpu parallel training
 
             loss = (
-                loss * inputs["attention_mask"].sum()
-            )  # sum loss over all non-padded tokens instead of mean
+                loss * inputs["labels"].numel()
+            )  # loss reduction with mean instead of sum
             if self.do_grad_scaling:
                 self.scaler.scale(loss).backward()
             elif self.use_apex:
