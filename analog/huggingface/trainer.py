@@ -20,7 +20,7 @@ class AnalogCallback(TrainerCallback):
         if self.scheduler is not None:
             next(iter(self.scheduler))
 
-    def on_step_end(self, args, state, control, **kwargs):
+    def on_epoch_end(self, args, state, control, **kwargs):
         analog.finalize()
 
 
