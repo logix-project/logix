@@ -25,7 +25,7 @@ def main():
         args.data_name, ckpt_path=f"files/checkpoints/0/{args.data_name}_epoch_3.pt"
     )
     model.eval()
-    train_dataset = get_datasets(args.data_name, train_indices=list(range(256)))[1]
+    train_dataset = get_datasets(args.data_name)[1]
 
     # AnaLog
     run = analog.init(args.project, config=args.config_path)

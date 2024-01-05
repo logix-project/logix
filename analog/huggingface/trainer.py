@@ -1,14 +1,8 @@
-import math
-import sys
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from transformers.trainer import *
 
-import analog
 from analog import AnaLog, AnaLogScheduler
-
-# FIXME: use analog's logger
-logger = logging.get_logger(__name__)
 
 
 class AnalogCallback(TrainerCallback):
@@ -109,14 +103,15 @@ class AnaLogTrainer(Trainer):
         self.lr_scheduler = DummyScheduler()
         return self.lr_scheduler
 
-    # FIXME: scale loss
     def training_step(
         self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]
     ) -> torch.Tensor:
         model.eval()
         inputs = self._prepare_inputs(inputs)
 
-        data_id = self.tokenizer.batch_decode(inputs["input_ids"])
+        data_id = self.tokenizer.batch_decode(
+            inputs["input_ids"], skip_special_tokens=True
+        )
         with self.run(data_id=data_id, mask=inputs["attention_mask"]):
             if is_sagemaker_mp_enabled():
                 loss_mb = smp_forward_backward(

@@ -39,18 +39,19 @@ def main():
     analog.setup({"log": "grad"})
     analog.eval()
     for batch in test_loader:
-        data_id = tokenizer.batch_decode(batch["input_ids"])
+        data_id = tokenizer.batch_decode(
+            batch["input_ids"], skip_special_tokens=True
+        )
         labels = batch.pop("labels").view(-1)
         _ = batch.pop("idx")
         with run(data_id=data_id, mask=batch["attention_mask"]):
             model.zero_grad()
-            outputs = model(**batch)
+            outputs = model(**batch).logits
             logits = outputs.view(-1, outputs.shape[-1])
             loss = F.cross_entropy(logits, labels, reduction="sum", ignore_index=-100)
             accelerator.backward(loss)
 
         test_log = run.get_log()
-        if_computer.compute_influence_all(test_log, log_loader, args.damping)
         break
 
     if_computer.save_influence_scores()
