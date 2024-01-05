@@ -1,95 +1,60 @@
-import time
 import argparse
-
-from tqdm import tqdm
 
 import torch
 import torch.nn.functional as F
-from analog import AnaLog
+from accelerate import Accelerator
+import analog
 from analog.analysis import InfluenceFunction
-from analog.utils import DataIDGenerator
-from tqdm import tqdm
 
-from utils import construct_model, get_loaders, set_seed
+from utils import construct_model, get_loaders
 
-parser = argparse.ArgumentParser("GLUE Influence Analysis")
-parser.add_argument("--data_name", type=str, default="sst2")
-parser.add_argument("--eval-idxs", type=int, nargs="+", default=[0])
-parser.add_argument("--damping", type=float, default=1e-5)
-args = parser.parse_args()
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-set_seed(0)
+def main():
+    parser = argparse.ArgumentParser("GLUE Influence Analysis")
+    parser.add_argument("--project", type=str, default="sst2")
+    parser.add_argument("--config_path", type=str, default="./config.yaml")
+    parser.add_argument("--data_name", type=str, default="sst2")
+    parser.add_argument("--damping", type=float, default=1e-5)
+    args = parser.parse_args()
 
-# model
-model = construct_model(args.data_name)
-model.load_state_dict(
-    torch.load(f"files/checkpoints/0/{args.data_name}_epoch_3.pt", map_location="cpu")
-)
-model.to(DEVICE)
-model.eval()
+    # prepare model & data loader
+    model, tokenizer = construct_model(
+        args.data_name, ckpt_path=f"files/checkpoints/0/{args.data_name}_epoch_3.pt"
+    )
+    model.eval()
+    test_loader = get_loaders(data_name=args.data_name)[-1]
 
-# data
-_, eval_train_loader, test_loader = get_loaders(data_name=args.data_name)
+    accelerator = Accelerator()
+    model, test_loader = accelerator.prepare(model, test_loader)
 
-# Set-up
-analog = AnaLog(project="test", config="config.yaml")
+    # Set-up AnaLog
+    run = analog.init(args.project, config=args.config_path)
 
-# Hessian logging
-analog.watch(model)
-analog_kwargs = {"log": [], "hessian": True, "save": False}
-id_gen = DataIDGenerator(mode="index")
-for epoch in range(2):
-    for batch in tqdm(eval_train_loader, desc="Hessian logging"):
-        data_id = id_gen(batch["input_ids"])
-        inputs = (
-            batch["input_ids"].to(DEVICE),
-            batch["token_type_ids"].to(DEVICE),
-            batch["attention_mask"].to(DEVICE),
-        )
-        with analog(data_id=data_id, mask=inputs[-1], **analog_kwargs):
+    analog.watch(model)
+    analog.initialize_from_log()
+    log_loader = analog.build_log_dataloader()
+    if_computer = analog.add_analysis({"influence": InfluenceFunction})
+
+    # influence analysis
+    analog.setup({"log": "grad"})
+    analog.eval()
+    for batch in test_loader:
+        data_id = tokenizer.batch_decode(batch["input_ids"])
+        labels = batch.pop("labels").view(-1)
+        _ = batch.pop("idx")
+        with run(data_id=data_id, mask=batch["attention_mask"]):
             model.zero_grad()
-            outputs = model(*inputs)
-
+            outputs = model(**batch)
             logits = outputs.view(-1, outputs.shape[-1])
-            labels = batch["labels"].view(-1).to(DEVICE)
             loss = F.cross_entropy(logits, labels, reduction="sum", ignore_index=-100)
-            loss.backward()
-    analog.finalize()
-    if epoch == 0:
-        analog_kwargs.update({"save": True, "log": ["grad"]})
-        analog.add_lora(model)
+            accelerator.backward(loss)
 
-# Compute influence
-log_loader = analog.build_log_dataloader()
-analog.add_analysis({"influence": InfluenceFunction})
-test_iter = iter(test_loader)
-with analog(log=["grad"]) as al:
-    test_batch = next(test_iter)
-    test_inputs = (
-        test_batch["input_ids"].to(DEVICE),
-        test_batch["token_type_ids"].to(DEVICE),
-        test_batch["attention_mask"].to(DEVICE),
-    )
-    test_target = test_batch["labels"].to(DEVICE)
-    model.zero_grad()
-    test_outputs = model(*test_inputs)
+        test_log = run.get_log()
+        if_computer.compute_influence_all(test_log, log_loader, args.damping)
+        break
 
-    test_logits = test_outputs.view(-1, test_outputs.shape[-1])
-    test_labels = test_batch["labels"].view(-1).to(DEVICE)
-    test_loss = F.cross_entropy(
-        test_logits,
-        test_labels,
-        reduction="sum",
-        ignore_index=-100,
-    )
-    test_loss.backward()
+    if_computer.save_influence_scores()
 
-    test_log = al.get_log()
 
-start = time.time()
-if_scores = analog.influence.compute_influence_all(test_log, log_loader)
-print("Computation time:", time.time() - start)
-
-# Save
-torch.save(if_scores, "if_analog.pt")
+if __name__ == "__main__":
+    main()

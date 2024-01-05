@@ -47,7 +47,7 @@ def main():
     analog = AnaLog(project="test", config="config.yaml")
 
     analog.watch(model)
-    analog.update({"log": ["grad"], "hessian": True, "save": False})
+    analog.setup({"log": "grad", "statistic": "kfac"})
     id_gen = DataIDGenerator()
 
     if not args.resume:
@@ -65,7 +65,7 @@ def main():
                     loss.backward()
             analog.finalize()
             if epoch == 0:
-                analog.update({"save": True})
+                analog.setup({"save": "grad", "log": "grad", "statistic": "kfac"})
                 analog.add_lora()
     else:
         analog.add_lora()
@@ -76,7 +76,7 @@ def main():
 
     analog.add_analysis({"influence": InfluenceFunction})
     query_iter = iter(query_loader)
-    with analog(log=["grad"]):
+    with analog(data_id=["test"]):
         test_input, test_target = next(query_iter)
         model.zero_grad()
         test_out = model(test_input)
@@ -92,8 +92,8 @@ def main():
     _, top_influential_data = torch.topk(if_scores, k=10)
 
     # Save
-    if_scores = if_scores.numpy().tolist()
-    torch.save(if_scores, "if_distributed.pt")[0]
+    if_scores = if_scores.numpy().tolist()[0]
+    torch.save(if_scores, f"if_distributed_rank_{get_rank()}.pt")
     print("Computation time:", time.time() - start)
     print("Top influential data indices:", top_influential_data.numpy().tolist())
 

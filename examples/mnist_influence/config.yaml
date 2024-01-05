@@ -1,5 +1,3 @@
-storage:
-  type: default
 lora:
   init: pca
-  adaptive_threshold: 0.8
+  # compression_ratio_by_covariance: 0.8

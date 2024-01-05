@@ -63,8 +63,19 @@ class LanguageModel(nn.Module):
         ).logits
 
 
-def construct_model() -> nn.Module:
-    return LanguageModel()
+def construct_model(resume=False) -> nn.Module:
+    model = LanguageModel()
+    if resume:
+        model.load_state_dict(
+            torch.load(
+                "files/checkpoints/0/wiki_epoch_3.pt",
+                map_location="cpu",
+            )
+        )
+    tokenizer = AutoTokenizer.from_pretrained(
+        "gpt2", use_fast=True, trust_remote_code=True
+    )
+    return model, tokenizer
 
 
 def get_loaders(

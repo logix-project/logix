@@ -6,7 +6,7 @@ import torch.distributed as dist
 from analog.utils import nested_dict, get_world_size, get_rank
 
 
-class AnaLogState:
+class StatisticState:
     """
     AnaLogState stores all these relevant log states that are used for
     communication between different handlers. All states in AnaLogState
@@ -14,17 +14,18 @@ class AnaLogState:
     """
 
     def __init__(self) -> None:
-        self._states = set()
-        self._states_to_synchronize = set()
-        self._states_to_save = set()
-        self._states_to_normalize = set()
+        self._states = []
+        self._states_to_synchronize = []
+        self._states_to_save = []
+        self._states_to_normalize = []
 
-        self.register_state("log_state")
+        self.register_state("mean_state", synchronize=True, save=True)
+        self.register_state("mean_counter", synchronize=True, save=False)
+        self.register_state("covariance_state", synchronize=True, save=True)
+        self.register_state("covariance_counter", synchronize=True, save=False)
 
-        self.register_state("hessian_state", synchronize=True, save=True)
-        self.register_state("hessian_counter", synchronize=True, save=False)
-
-        self.register_normalize_pair("hessian_state", "hessian_counter")
+        self.register_normalize_pair("mean_state", "mean_counter")
+        self.register_normalize_pair("covariance_state", "covariance_counter")
 
     def register_state(
         self, state_name: str, synchronize: bool = False, save: bool = False
@@ -37,45 +38,45 @@ class AnaLogState:
 
         assert state_name not in self._states
         setattr(self, state_name, nested_dict())
-        self._states.add(state_name)
+        self._states.append(state_name)
         if synchronize:
-            self._states_to_synchronize.add(state_name)
+            self._states_to_synchronize.append(state_name)
         if save:
-            self._states_to_save.add(state_name)
+            self._states_to_save.append(state_name)
 
     def register_normalize_pair(self, state_name: str, counter_name: str):
         """
-        Add a normalization to the state.
+        Add a normalization pair to the state.
         """
         if (state_name, counter_name) in self._states_to_normalize:
             return
 
-        self._states_to_normalize.add((state_name, counter_name))
+        self._states_to_normalize.append((state_name, counter_name))
 
     @torch.no_grad()
-    def hessian_svd(self) -> None:
+    def covariance_svd(self) -> None:
         """
         Compute the SVD of the covariance.
         """
-        self.register_state("hessian_eigval_state", save=True)
-        self.register_state("hessian_eigvec_state", save=True)
+        self.register_state("covariance_eigval_state", save=True)
+        self.register_state("covariance_eigvec_state", save=True)
 
-        for module_name, module_state in self.hessian_state.items():
+        for module_name, module_state in self.covariance_state.items():
             for mode, covariance in module_state.items():
                 eigvals, eigvecs = torch.linalg.eigh(covariance)
-                self.hessian_eigval_state[module_name][mode] = eigvals
-                self.hessian_eigvec_state[module_name][mode] = eigvecs
+                self.covariance_eigval_state[module_name][mode] = eigvals
+                self.covariance_eigvec_state[module_name][mode] = eigvecs
 
     @torch.no_grad()
-    def hessian_inverse(self, set_attr: bool = False) -> None:
+    def covariance_inverse(self, set_attr: bool = False) -> None:
         """
         Compute the inverse of the covariance.
         """
-        self.register_state("hessian_inverse_state", save=True)
+        self.register_state("covariance_inverse_state", save=True)
 
-        for module_name, module_state in self.hessian_state.items():
+        for module_name, module_state in self.covariance_state.items():
             for mode, covariance in module_state.items():
-                self.hessian_inverse_state[module_name][mode] = torch.inverse(
+                self.covariance_inverse_state[module_name][mode] = torch.inverse(
                     covariance
                     + 0.01
                     * torch.trace(covariance)
@@ -83,37 +84,37 @@ class AnaLogState:
                     / covariance.shape[0]
                 )
 
-    def get_hessian_state(self):
+    def get_covariance_state(self):
         """
-        Return the Hessian state.
+        Return the covariance state.
         """
-        return self.hessian_state
+        return self.covariance_state
 
-    def get_hessian_inverse_state(self):
+    def get_covariance_inverse_state(self):
         """
-        Return the Hessian inverse state. If the state is not computed, compute
+        Return the covariance inverse state. If the state is not computed, compute
         it first.
         """
-        if not hasattr(self, "hessian_inverse_state"):
-            self.hessian_inverse()
-        return self.hessian_inverse_state
+        if not hasattr(self, "covariance_inverse_state"):
+            self.covariance_inverse()
+        return self.covariance_inverse_state
 
-    def get_hessian_svd_state(self):
+    def get_covariance_svd_state(self):
         """
-        Return the Hessian SVD state. If the state is not computed, compute
+        Return the covariance SVD state. If the state is not computed, compute
         it first.
         """
-        if not hasattr(self, "hessian_eigval_state") or not hasattr(
-            self, "hessian_eigvec_state"
+        if not hasattr(self, "covariance_eigval_state") or not hasattr(
+            self, "covariance_eigvec_state"
         ):
-            self.hessian_svd()
+            self.covariance_svd()
         if hasattr(self, "ekfac_eigval_state"):
-            return self.ekfac_eigval_state, self.hessian_eigvec_state
-        return self.hessian_eigval_state, self.hessian_eigvec_state
+            return self.ekfac_eigval_state, self.covariance_eigvec_state
+        return self.covariance_eigval_state, self.covariance_eigvec_state
 
     def synchronize(self) -> None:
         """
-        Synchronize the Hessian state across processes.
+        Synchronize all synchronizable states across processes.
         """
 
         # synchronize helper function
@@ -130,6 +131,7 @@ class AnaLogState:
                     state_gpu = state_dict[key].cuda()
                     dist.all_reduce(state_gpu, op=dist.ReduceOp.SUM)
                     state_dict[key].copy_(state_gpu.cpu())
+
                     torch.cuda.synchronize()
 
         for state_name in self._states_to_synchronize:
@@ -164,7 +166,7 @@ class AnaLogState:
 
     def save_state(self, log_dir: str) -> None:
         """
-        Save Hessian state to disk.
+        Save state to disk.
         """
         state_log_dir = os.path.join(log_dir, "state")
         if not os.path.exists(state_log_dir) and get_rank() == 0:
@@ -183,7 +185,7 @@ class AnaLogState:
 
     def load_state(self, log_dir: str) -> None:
         """
-        Load Hessian state from disk.
+        Load state from disk.
         """
         state_log_dir = os.path.join(log_dir, "state")
 

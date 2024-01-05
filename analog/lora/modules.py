@@ -8,7 +8,13 @@ from analog.lora.utils import compute_top_k_singular_vectors
 
 
 class LoraLinear(nn.Linear):
-    def __init__(self, rank: int, linear: nn.Linear, shared_module: nn.Linear = None):
+    def __init__(
+        self,
+        rank_forward: int,
+        rank_backward: int,
+        linear: nn.Linear,
+        shared_module: nn.Linear = None,
+    ):
         """Transforms a linear layer into a LoraLinear layer.
 
         Args:
@@ -19,13 +25,14 @@ class LoraLinear(nn.Linear):
         out_features = linear.out_features
 
         super().__init__(in_features, out_features)
-        self.rank = min(rank, in_features, out_features)
+        self.rank_forward = min(rank_forward, in_features)
+        self.rank_backward = min(rank_backward, out_features)
 
-        self.analog_lora_A = nn.Linear(in_features, self.rank, bias=False)
+        self.analog_lora_A = nn.Linear(in_features, self.rank_forward, bias=False)
         self.analog_lora_B = shared_module or nn.Linear(
-            self.rank, self.rank, bias=False
+            self.rank_forward, self.rank_backward, bias=False
         )
-        self.analog_lora_C = nn.Linear(self.rank, out_features, bias=False)
+        self.analog_lora_C = nn.Linear(self.rank_backward, out_features, bias=False)
 
         nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
         nn.init.zeros_(self.analog_lora_B.weight)
@@ -39,27 +46,33 @@ class LoraLinear(nn.Linear):
 
         return result
 
-    def pca_init_weight(self, init_strategy: str = "random", hessian=None):
+    def pca_init_weight(self, covariance=None):
         """Initialize the weight of the LoraLinear layer.
 
         Args:
             init_strategy (str): The type of projection to use
-            hessian (dict): The forward and backward hessian of the layer
+            covariance (dict): The forward and backward covariance of the layer
         """
         (
             top_r_singular_vector_forward,
             top_r_singular_value_forward,
-        ) = compute_top_k_singular_vectors(hessian[FORWARD], self.rank)
+        ) = compute_top_k_singular_vectors(covariance[FORWARD], self.rank_forward)
         (
             top_r_singular_vector_backward,
             top_r_singular_value_backward,
-        ) = compute_top_k_singular_vectors(hessian[BACKWARD], self.rank)
+        ) = compute_top_k_singular_vectors(covariance[BACKWARD], self.rank_backward)
         self.analog_lora_A.weight.data.copy_(top_r_singular_vector_forward.T)
         self.analog_lora_C.weight.data.copy_(top_r_singular_vector_backward)
 
 
 class LoraConv2d(nn.Conv2d):
-    def __init__(self, rank: int, conv: nn.Conv2d, shared_module: nn.Conv2d = None):
+    def __init__(
+        self,
+        rank_forward: int,
+        rank_backward: int,
+        conv: nn.Conv2d,
+        shared_module: nn.Conv2d = None,
+    ):
         """Transforms a conv2d layer into a LoraConv2d layer.
 
         Args:
@@ -76,15 +89,23 @@ class LoraConv2d(nn.Conv2d):
             in_channels, out_channels, kernel_size, stride, padding, bias=False
         )
 
-        self.rank = min(rank, self.in_channels, self.out_channels)
+        self.rank_forward = min(rank_forward, in_channels)
+        self.rank_backward = min(rank_backward, out_channels)
 
         self.analog_lora_A = nn.Conv2d(
-            self.in_channels, self.rank, kernel_size, stride, padding, bias=False
+            self.in_channels,
+            self.rank_forward,
+            kernel_size,
+            stride,
+            padding,
+            bias=False,
         )
         self.analog_lora_B = shared_module or nn.Conv2d(
-            self.rank, self.rank, 1, bias=False
+            self.rank_forward, self.rank_backward, 1, bias=False
         )
-        self.analog_lora_C = nn.Conv2d(self.rank, self.out_channels, 1, bias=False)
+        self.analog_lora_C = nn.Conv2d(
+            self.rank_backward, self.out_channels, 1, bias=False
+        )
 
         nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
         nn.init.zeros_(self.analog_lora_B.weight)
@@ -98,21 +119,21 @@ class LoraConv2d(nn.Conv2d):
 
         return result
 
-    def pca_init_weight(self, projection_type, hessian):
+    def pca_init_weight(self, covariance):
         """Initialize the weight of the LoraConv2d layer.
 
         Args:
             projection_type (str): The type of projection to use
-            hessian (dict): The forward and backward hessian of the layer
+            covariance (dict): The forward and backward covariance of the layer
         """
         (
             top_r_singular_vector_forward,
             top_r_singular_value_forward,
-        ) = compute_top_k_singular_vectors(hessian[FORWARD], self.rank)
+        ) = compute_top_k_singular_vectors(covariance[FORWARD], self.rank_forward)
         (
             top_r_singular_vector_backward,
             top_r_singular_value_backward,
-        ) = compute_top_k_singular_vectors(hessian[BACKWARD], self.rank)
+        ) = compute_top_k_singular_vectors(covariance[BACKWARD], self.rank_backward)
         shape_A = self.analog_lora_A.weight.shape
         shape_C = self.analog_lora_C.weight.shape
         self.analog_lora_A.weight.data.copy_(
@@ -137,13 +158,14 @@ class LoraEmbedding(nn.Embedding):
         embedding_dim = embedding.embedding_dim
 
         super().__init__(num_embeddings, embedding_dim)
-        self.rank = min(rank, num_embeddings, embedding_dim)
+        self.rank_forward = min(rank, num_embeddings)
+        self.rank_backward = min(rank, embedding_dim)
 
-        self.analog_lora_A = nn.Embedding(num_embeddings, self.rank)
+        self.analog_lora_A = nn.Embedding(num_embeddings, self.rank_forward)
         self.analog_lora_B = shared_module or nn.Linear(
-            self.rank, self.rank, bias=False
+            self.rank_forward, self.rank_backward, bias=False
         )
-        self.analog_lora_C = nn.Linear(self.rank, embedding_dim, bias=False)
+        self.analog_lora_C = nn.Linear(self.rank_backward, embedding_dim, bias=False)
 
         nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
         nn.init.zeros_(self.analog_lora_B.weight)
@@ -157,11 +179,11 @@ class LoraEmbedding(nn.Embedding):
 
         return result
 
-    def pca_init_weight(self, init_strategy: str = "random", hessian=None):
+    def pca_init_weight(self, covariance=None):
         """Initialize the weight of the LoraEmbedding layer.
 
         Args:
             init_strategy (str): The type of projection to use
-            hessian (dict): The forward and backward hessian of the layer
+            covariance (dict): The forward and backward covariance of the layer
         """
         raise NotImplementedError

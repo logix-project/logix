@@ -3,14 +3,14 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from analog.storage.log_loader_util import (
+from analog.logging.log_loader_util import (
     get_mmap_data,
     get_mmap_metadata,
     find_chunk_indices,
 )
 
 
-class DefaultLogDataset(Dataset):
+class LogDataset(Dataset):
     def __init__(self, log_dir):
         self.chunk_indices = None
         self.memmaps = []
@@ -49,7 +49,7 @@ class DefaultLogDataset(Dataset):
             shape = tuple(entry["shape"])
             dtype = np.dtype(entry["dtype"])
             array = np.ndarray(shape, dtype, buffer=mmap, offset=offset, order="C")
-            tensor = torch.Tensor(array)
+            tensor = torch.from_numpy(array)
 
             # Place the tensor in the correct location within the nested dictionary
             current_level = nested_dict

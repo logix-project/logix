@@ -19,21 +19,21 @@ class InfluenceFunction(AnalysisBase):
     def precondition(self, src, damping=None):
         preconditioned = {}
         (
-            hessian_eigval,
-            hessian_eigvec,
-        ) = self._state.get_hessian_svd_state()
+            covariance_eigval,
+            covariance_eigvec,
+        ) = self._state.get_covariance_svd_state()
         is_ekfac = hasattr(self._state, "ekfac_eigval_state")
         for module_name in src.keys():
             # if hessian_eigvec is empty, then return src
-            if module_name not in hessian_eigvec:
+            if module_name not in covariance_eigvec:
                 get_logger().warning(
                     "Hessian has not been computed. No preconditioning applied.\n"
                 )
                 return src
 
-            src_log = src[module_name].to("cpu")
-            module_eigval = hessian_eigval[module_name]
-            module_eigvec = hessian_eigvec[module_name]
+            src_log = src[module_name]["grad"].to("cpu")
+            module_eigval = covariance_eigval[module_name]
+            module_eigvec = covariance_eigvec[module_name]
             rotated_grad = einsum(
                 module_eigvec["backward"].t(),
                 src_log,
@@ -65,7 +65,7 @@ class InfluenceFunction(AnalysisBase):
 
         total_influence = 0.0
         for module_name in src.keys():
-            src_log, tgt_log = src[module_name], tgt[module_name]
+            src_log, tgt_log = src[module_name], tgt[module_name]["grad"]
             assert src_log.shape[1:] == tgt_log.shape[1:]
             src_log_expanded = rearrange(src_log, "n ... -> n 1 ...")
             tgt_log_expanded = rearrange(tgt_log, "m ... -> 1 m ...")
@@ -121,6 +121,6 @@ class InfluenceFunction(AnalysisBase):
     def get_influence_scores(self):
         return self.influence_scores
 
-    def save_influence_scores(self, filename):
+    def save_influence_scores(self, filename="influence_scores.csv"):
         self.influence_scores.to_csv(filename, index=True, header=True)
         get_logger().info(f"Influence scores saved to {filename}")

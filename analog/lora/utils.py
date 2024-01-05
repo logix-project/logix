@@ -1,6 +1,7 @@
 from typing import List
 
 import torch
+import torch.nn as nn
 
 
 def find_rank_pca_covariance(matrix, threshold):
@@ -16,6 +17,18 @@ def find_rank_pca_covariance(matrix, threshold):
         rank += 1
 
     return rank
+
+
+def pca_rank_by_weight_shape(shape, module):
+    if isinstance(module, nn.Linear):
+        assert len(shape) == 2
+        return shape[1], shape[0]
+    elif isinstance(module, nn.Conv2d):
+        assert len(shape) == 4
+        return shape[1], shape[0]
+    elif isinstance(module, nn.Embedding):
+        assert len(shape) == 2
+        return shape[1], shape[0]
 
 
 def compute_top_k_singular_vectors(matrix, k):

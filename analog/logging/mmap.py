@@ -71,7 +71,7 @@ class MemoryMapHandler:
         if file_ext == "":
             filename += ".mmap"
 
-        mmap = np.memmap(os.path.join(path, filename), dtype=dtype, mode="r")
+        mmap = np.memmap(os.path.join(path, filename), dtype=dtype, mode="r+")
         try:
             yield mmap
         finally:

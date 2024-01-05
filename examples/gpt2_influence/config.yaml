@@ -1,5 +1,6 @@
-storage:
-  type: default
+root_dir: /data/tir/projects/tir6/general/sangkeuc/gpt/
+logging:
   flush_threshold: 1000000000
 lora:
-  rank: 32
+  init: pca
+  rank: 64

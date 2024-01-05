@@ -5,14 +5,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def try_contiguous(x):
-    if not x.is_contiguous():
-        x = x.contiguous()
-    return x
-
-
 class InvalidModuleError(Exception):
-    # Raised when the provided module is invalid.
+    """
+    Raised when the provided module is invalid.
+    """
+
     pass
 
 
@@ -37,10 +34,7 @@ def extract_patches(
             Padding dimensions applied in the convolutional layer.
     """
     if padding[0] + padding[1] > 0:
-        inputs = torch.nn.functional.pad(
-            inputs,
-            (padding[1], padding[1], padding[0], padding[0]),
-        ).data
+        inputs = F.pad(inputs, (padding[1], padding[1], padding[0], padding[0])).data
     inputs = inputs.unfold(2, kernel_size[0], stride[0])
     inputs = inputs.unfold(3, kernel_size[1], stride[1])
     inputs = inputs.transpose_(1, 2).transpose_(2, 3).contiguous()
@@ -53,8 +47,8 @@ def extract_patches(
     return inputs
 
 
-def extract_forward_activations(
-    activations: torch.Tensor,
+def make_forward_2d(
+    data: torch.Tensor,
     module: nn.Module,
 ) -> torch.Tensor:
     """Extract and reshape activations into valid shapes for covariance computations.
@@ -66,21 +60,19 @@ def extract_forward_activations(
             The module where the activations are applied.
     """
     if isinstance(module, nn.Linear):
-        reshaped_activations = activations.reshape(-1, activations.shape[-1])
+        reshaped_data = data.reshape(-1, data.shape[-1])
     elif isinstance(module, nn.Conv2d):
-        reshaped_activations = extract_patches(
-            activations, module.kernel_size, module.stride, module.padding
+        reshaped_data = extract_patches(
+            data, module.kernel_size, module.stride, module.padding
         )
-        reshaped_activations = reshaped_activations.view(
-            -1, reshaped_activations.size(-1)
-        )
+        reshaped_data = reshaped_data.view(-1, reshaped_data.size(-1))
     else:
         raise InvalidModuleError()
-    return reshaped_activations
+    return reshaped_data
 
 
-def extract_backward_activations(
-    gradients: torch.Tensor,
+def make_backward_2d(
+    data: torch.Tensor,
     module: nn.Module,
 ) -> torch.Tensor:
     """Extract and reshape gradients into valid shapes for covariance computations.
@@ -93,19 +85,18 @@ def extract_backward_activations(
     """
     if isinstance(module, nn.Linear):
         del module
-        reshaped_grads = gradients.reshape(-1, gradients.shape[-1])
-        return reshaped_grads
+        reshaped_data = data.reshape(-1, data.shape[-1])
     elif isinstance(module, nn.Conv2d):
         del module
-        reshaped_grads = gradients.permute(0, 2, 3, 1)
-        reshaped_grads = reshaped_grads.reshape(-1, reshaped_grads.size(-1))
+        reshaped_data = data.permute(0, 2, 3, 1)
+        reshaped_data = reshaped_data.reshape(-1, reshaped_data.size(-1))
     else:
         raise InvalidModuleError()
-    return reshaped_grads
+    return reshaped_data
 
 
-def extract_activations_expand(module: nn.Module, mode: str, activations: torch.Tensor):
-    """Extract activations in an expanded mode for the KFAC approximation.
+def make_2d(data: torch.Tensor, module: nn.Module, log_type: str) -> torch.Tensor:
+    """Extract and reshape data into 2d for computing statistic.
 
     Args:
         module (nn.Module):
@@ -115,23 +106,11 @@ def extract_activations_expand(module: nn.Module, mode: str, activations: torch.
         data (torch.Tensor):
             Activations corresponding to the module.
     """
-    if mode == "forward":
-        return extract_forward_activations(activations, module)
-    elif mode == "backward":
-        return extract_backward_activations(activations, module)
+    if module is None:
+        return data.reshape(data.shape[0], -1)
+    elif log_type == "forward":
+        return make_forward_2d(data, module)
+    elif log_type == "backward":
+        return make_backward_2d(data, module)
     else:
-        raise ValueError(f"Invalid mode {mode}")
-
-
-def extract_activations_reduce(module: nn.Module, mode: str, activations: torch.Tensor):
-    """Extract activations in an expanded mode for the KFAC approximation.
-
-    Args:
-        module (nn.Module):
-            The module where the activations are applied.
-        mode (str):
-            Forward or backward.
-        data (torch.Tensor):
-            Activations corresponding to the module.
-    """
-    raise NotImplementedError()
+        raise ValueError(f"Invalid mode {log_type}")

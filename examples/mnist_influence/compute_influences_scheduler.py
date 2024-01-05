@@ -38,7 +38,7 @@ query_loader = dataloader_fn(
     batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs
 )
 
-analog = AnaLog(project="test", config="./examples/mnist_influence/config.yaml")
+analog = AnaLog(project="test", config="examples/mnist_influence/config.yaml")
 al_scheduler = AnaLogScheduler(
     analog, ekfac=args.ekfac, lora=args.lora, sample=args.sample
 )
@@ -62,8 +62,6 @@ if not args.resume:
                 loss.backward()
         analog.finalize()
 else:
-    if args.lora:
-        analog.add_lora()
     analog.initialize_from_log()
 
 # Influence Analysis

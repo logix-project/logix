@@ -16,9 +16,7 @@ class Config:
     # Default values for each configuration
     _DEFAULTS = {
         "root_dir": "./analog",
-        "logging": {"log": [], "hessian": False, "save": False},
-        "storage": {},
-        "hessian": {"type": "kfac", "damping": 1e-2},
+        "logging": {"flush_threshold": -1},
         "analysis": {},
         "lora": {"init": "random", "rank": 64},
     }
@@ -40,15 +38,14 @@ class Config:
             self.data = {}
 
         self._logging_config = self.data.get("logging", self._DEFAULTS["logging"])
-        self._storage_config = self.data.get("storage", self._DEFAULTS["storage"])
-        self._hessian_config = self.data.get("hessian", self._DEFAULTS["hessian"])
         self._analysis_config = self.data.get("analysis", self._DEFAULTS["analysis"])
         self._lora_config = self.data.get("lora", self._DEFAULTS["lora"])
 
         self._log_dir = None
-        self._set_log_dir(self.data.get("root_dir", self._DEFAULTS["root_dir"]))
+        self._configure_log_dir(self.data.get("root_dir", self._DEFAULTS["root_dir"]))
 
-    def get_logging_config(self) -> Dict[str, Any]:
+    @property
+    def logging_config(self) -> Dict[str, Any]:
         """
         Retrieve logging configuration.
 
@@ -56,23 +53,8 @@ class Config:
         """
         return self._logging_config
 
-    def get_storage_config(self) -> Dict[str, Any]:
-        """
-        Retrieve storage configuration.
-
-        :return: Dictionary containing storage configurations.
-        """
-        return self._storage_config
-
-    def get_hessian_config(self) -> Dict[str, Any]:
-        """
-        Retrieve Hessian configuration.
-
-        :return: Dictionary containing Hessian configurations.
-        """
-        return self._hessian_config
-
-    def get_analysis_config(self) -> Dict[str, Any]:
+    @property
+    def analysis_config(self) -> Dict[str, Any]:
         """
         Retrieve analysis configuration.
 
@@ -80,7 +62,8 @@ class Config:
         """
         return self._analysis_config
 
-    def get_lora_config(self) -> Dict[str, Any]:
+    @property
+    def lora_config(self) -> Dict[str, Any]:
         """
         Retrieve LoRA configuration.
 
@@ -88,7 +71,8 @@ class Config:
         """
         return self._lora_config
 
-    def get_log_dir(self) -> str:
+    @property
+    def log_dir(self) -> str:
         """
         Retrieve logging directory.
 
@@ -96,7 +80,7 @@ class Config:
         """
         return self._log_dir
 
-    def _set_log_dir(self, root_dir) -> None:
+    def _configure_log_dir(self, root_dir) -> None:
         """
         Set single logging directory for all components.
         """
@@ -105,13 +89,17 @@ class Config:
         if not os.path.exists(self._log_dir) and get_rank() == 0:
             os.makedirs(self._log_dir)
 
-        self._storage_config["log_dir"] = self._log_dir
+        self._logging_config["log_dir"] = self._log_dir
 
     def load_config(self, config_path: str) -> None:
+        """
+        Load configuration from the saved YAML file.
+
+        Args:
+            config_path: Path to the saved YAML file.
+        """
         config = torch.load(config_path)
-        self._logging_config.update(config._logging_config)
-        self._storage_config.update(config._storage_config)
-        self._hessian_config.update(config._hessian_config)
-        self._analysis_config.update(config._analysis_config)
-        self._lora_config.update(config._lora_config)
-        self._log_dir = config._log_dir
+        self._logging_config.update(config.logging_config)
+        self._analysis_config.update(config.analysis_config)
+        self._lora_config.update(config.lora_config)
+        self._log_dir = config.log_dir

@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import os
 import shutil
-from analog.storage.utils import MemoryMapHandler
+from analog.logging.mmap import MemoryMapHandler
 
 
 def generate_random_arrays(size=10):
