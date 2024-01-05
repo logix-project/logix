@@ -39,9 +39,7 @@ def main():
     analog.setup({"log": "grad"})
     analog.eval()
     for batch in test_loader:
-        data_id = tokenizer.batch_decode(
-            batch["input_ids"], skip_special_tokens=True
-        )
+        data_id = tokenizer.batch_decode(batch["input_ids"], skip_special_tokens=True)
         labels = batch.pop("labels").view(-1)
         _ = batch.pop("idx")
         with run(data_id=data_id, mask=batch["attention_mask"]):
