@@ -89,6 +89,6 @@ _, top_influential_data = torch.topk(if_scores, k=10)
 
 # Save
 if_scores = if_scores.numpy().tolist()[0]
-torch.save(if_scores, "if_analog_scheduler.pt")
+torch.save(if_scores, "if_analog_scheduler_init_from_log_0.8.pt")
 print("Computation time:", time.time() - start)
 print("Top influential data indices:", top_influential_data.numpy().tolist())

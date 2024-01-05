@@ -27,15 +27,15 @@ class Covariance:
         if data is None:
             data = binfo.log[module_name][log_type]
 
+        # extract and reshape data to 2d tensor for mean computation
+        data = make_2d(data, module, log_type).detach()
+
         # initialize covariance state if necessary
         if log_type not in covariance_state[module_name]:
             covariance_state[module_name][log_type] = torch.zeros(
                 data.shape[-1], data.shape[-1]
             )
             covariance_counter[module_name][log_type] = 0
-
-        # extract and reshape data to 2d tensor for mean computation
-        data = make_2d(data, module, log_type).detach()
 
         # update mean state
         if data.is_cuda:
@@ -54,7 +54,7 @@ class Covariance:
             covariance_state[module_name][log_type].addmm_(data.t(), data)
 
         # update mean counter
-        if binfo.mask is None:
+        if binfo.mask is None or log_type == "grad":
             covariance_counter[module_name][log_type] += len(data)
         else:
             covariance_counter[module_name][log_type] += binfo.mask.sum().item()

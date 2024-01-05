@@ -38,14 +38,14 @@ training code. AnaLog automatically extracts user-specified logs using PyTorch h
 saves it to disk using a memory-mapped file.
 
 ```python
-from analog import AnaLog
+import analog
 
-analog = AnaLog(project="my_project") # initialze AnaLog
-analog.update({"log": ["grad"], "hessian": True, "save": True}) # set logging config
+run = analog.init(project="my_project") # initialze AnaLog
+analog.setup({"log": "grad", "save": "grad", "statistic": "kfac"}) # set logging config
 analog.watch(model) # add your model to log
 
 for input, target in data_loader:
-    with analog(data_id=input): # set data_id for the log from the current batch
+    with run(data_id=input): # set data_id for the log from the current batch
         out = model(input)
         loss = loss_fn(out, target, reduction="sum")
         loss.backward()

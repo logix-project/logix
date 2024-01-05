@@ -27,13 +27,13 @@ class Mean:
         if data is None:
             data = binfo.log[module_name][log_type]
 
+        # extract and reshape data to 2d tensor for mean computation
+        data = make_2d(data, module, log_type).detach()
+
         # initialize mean state if necessary
         if log_type not in mean_state[module_name]:
             mean_state[module_name][log_type] = torch.zeros(data.shape[-1])
             mean_counter[module_name][log_type] = 0
-
-        # extract and reshape data to 2d tensor for mean computation
-        data = make_2d(data, module, log_type).detach()
 
         # update mean state
         if data.is_cuda:
@@ -50,7 +50,7 @@ class Mean:
             mean_state[module_name][log_type].add_(data.sum(dim=0))
 
         # update mean counter
-        if binfo.mask is None:
+        if binfo.mask is None or log_type == "grad":
             mean_counter[module_name][log_type] += len(data)
         else:
             mean_counter[module_name][log_type] += binfo.mask.sum().item()
