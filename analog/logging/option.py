@@ -97,11 +97,16 @@ class LogOption:
             )
             self._log["grad"] = True
 
-    def eval(self):
+    def eval(self, log="grad"):
         """
         Enable the evaluation mode. This will turn of saving and updating
         statistic.
         """
+        if isinstance(log, str):
+            self._log[log] = True
+        else:
+            raise ValueError(f"Unsupported log type for eval: {type(log)}")
+
         self.clear(log=False, save=True, statistic=True)
 
     def clear(self, log=True, save=True, statistic=True):
