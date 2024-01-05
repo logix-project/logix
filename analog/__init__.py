@@ -1,7 +1,6 @@
 from analog.analog import AnaLog
 from analog.scheduler import AnaLogScheduler
 from analog.utils import get_logger
-from analog.huggingface import AnaLogTrainer
 
 
 __version__ = "0.1.0"

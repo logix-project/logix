@@ -6,7 +6,7 @@ from tqdm import tqdm
 from transformers import default_data_collator
 
 import analog
-from analog import AnaLogTrainer
+from analog.huggingface import AnaLogTrainer
 from utils import construct_model, get_datasets, set_seed
 
 
