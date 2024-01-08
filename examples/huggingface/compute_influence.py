@@ -50,6 +50,7 @@ def main():
             accelerator.backward(loss)
 
         test_log = run.get_log()
+        if_computer.compute_influence_all(test_log, log_loader, args.damping)
         break
 
     if_computer.save_influence_scores()
