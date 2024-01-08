@@ -79,7 +79,8 @@ class InfluenceFunction(AnalysisBase):
             assert total_influence.shape[1] == len(tgt_ids)
             # Ensure src_ids and tgt_ids are in the DataFrame's index and columns, respectively
             self.influence_scores = self.influence_scores.reindex(
-                index=src_ids, columns=tgt_ids
+                index=self.influence_scores.index.union(src_ids),
+                columns=self.influence_scores.columns.union(tgt_ids),
             )
 
             # Assign total_influence values to the corresponding locations in influence_scores
