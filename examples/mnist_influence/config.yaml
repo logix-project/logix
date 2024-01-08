@@ -1,3 +1,3 @@
 lora:
   init: pca
-  compression_ratio_by_covariance: 0.8
+  compression_ratio_by_memory: 0.1

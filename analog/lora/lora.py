@@ -8,6 +8,7 @@ from analog.lora.modules import LoraLinear, LoraConv2d, LoraEmbedding
 from analog.lora.utils import (
     find_parameter_sharing_group,
     _get_submodules,
+    find_rank_pca_compression,
     find_rank_pca_covariance,
     pca_rank_by_weight_shape,
 )
@@ -34,10 +35,14 @@ class LoRAHandler:
         self.compression_ratio_by_covariance = self.config.get(
             "compression_ratio_by_covariance", None
         )
+        self.compression_ratio_by_memory = self.config.get(
+            "compression_ratio_by_memory", None
+        )
         self.parameter_sharing = self.config.get("parameter_sharing", False)
         self.parameter_sharing_groups = self.config.get(
             "parameter_sharing_groups", None
         )
+        self._sanity_check()
 
     def add_lora(
         self,
@@ -82,6 +87,7 @@ class LoRAHandler:
             psg = find_parameter_sharing_group(name, self.parameter_sharing_groups)
 
             rank_forward = rank_backward = self.rank_default  # default rank
+
             if lora_state is not None:  # add lora matching the rank of the lora_state
                 rank_forward, rank_backward = pca_rank_by_weight_shape(
                     lora_state[name + ".analog_lora_B.weight"].shape, module
@@ -97,6 +103,17 @@ class LoRAHandler:
                 rank_backward = find_rank_pca_covariance(
                     covariance_state[name][BACKWARD],
                     self.compression_ratio_by_covariance,
+                )
+                get_logger().info(
+                    f"using adaptive rank_forward = {rank_forward}, rank_backward = {rank_backward} for {name}\n"
+                )
+            elif (
+                self.init_strategy == "pca"
+                and self.compression_ratio_by_memory is not None
+            ):
+                rank_forward = rank_backward = find_rank_pca_compression(
+                    module,
+                    self.compression_ratio_by_memory,
                 )
                 get_logger().info(
                     f"using adaptive rank_forward = {rank_forward}, rank_backward = {rank_backward} for {name}\n"
@@ -124,3 +141,14 @@ class LoRAHandler:
 
             parent, target, target_name = _get_submodules(model, name)
             setattr(parent, target_name, lora_module)
+
+    def _sanity_check(self):
+        if (
+            self.init_strategy == "pca"
+            and self.compression_ratio_by_covariance is not None
+            and self.compression_ratio_by_memory is not None
+        ):
+            get_logger().warning(
+                "compression_ratio_by_covariance and compression_ratio_by_memory are both set. "
+                + "compression_ratio_by_covariance will be used."
+            )
