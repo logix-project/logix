@@ -1,0 +1,6 @@
+root_dir: ./analog
+logging:
+  flush_threshold: 1000000000
+lora:
+  init: random
+  rank: 64

@@ -14,7 +14,7 @@ from torch.nn import CrossEntropyLoss
 from utils import clear_gpu_cache, set_seed, construct_model, get_loaders
 
 
-parser = argparse.ArgumentParser("MNIST Influence Analysis")
+parser = argparse.ArgumentParser("SST2 Influence Analysis")
 parser.add_argument("--data_name", type=str, default="sst2")
 parser.add_argument("--num_train", type=int, default=1)
 args = parser.parse_args()
