@@ -92,10 +92,7 @@ class LoRAHandler:
                 rank_forward, rank_backward = pca_rank_by_weight_shape(
                     lora_state[name + ".analog_lora_B.weight"].shape, module
                 )
-            elif (
-                self.init_strategy == "pca"
-                and self.compression_ratio_by_covariance is not None
-            ):
+            elif self.compression_ratio_by_covariance is not None:
                 rank_forward = find_rank_pca_covariance(
                     covariance_state[name][FORWARD],
                     self.compression_ratio_by_covariance,
@@ -107,10 +104,7 @@ class LoRAHandler:
                 get_logger().info(
                     f"using adaptive rank_forward = {rank_forward}, rank_backward = {rank_backward} for {name}\n"
                 )
-            elif (
-                self.init_strategy == "pca"
-                and self.compression_ratio_by_memory is not None
-            ):
+            elif self.compression_ratio_by_memory is not None:
                 rank_forward = rank_backward = find_rank_pca_compression(
                     module,
                     self.compression_ratio_by_memory,
