@@ -41,7 +41,7 @@ class TestAddLora(unittest.TestCase):
             config=f"{os.path.dirname(os.path.abspath(__file__))}/configs/lora.yaml",
         )
         # Gradient & Hessian logging
-        al_scheduler = AnaLogScheduler(analog, ekfac=False, lora=False, sample=False)
+        al_scheduler = AnaLogScheduler(analog, ekfac=False, lora=True, sample=False)
         analog.watch(model)
         id_gen = DataIDGenerator()
         for epoch in al_scheduler:
@@ -80,7 +80,7 @@ class TestAddLora(unittest.TestCase):
         # Save
         if_scores = if_scores[0]
         print(if_scores)
-        # torch.save(if_scores, f"{os.path.dirname(os.path.abspath(__file__))}/if_analog_lora.pt")
+        # torch.save(if_scores, f"{os.path.dirname(os.path.abspath(__file__))}/data/if_analog_lora.pt")
         if_score_saved = torch.load(
             f"{os.path.dirname(os.path.abspath(__file__))}/data/if_analog_lora.pt"
         )
