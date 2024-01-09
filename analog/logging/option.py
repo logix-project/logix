@@ -103,7 +103,9 @@ class LogOption:
         statistic.
         """
         if log is None:
-            get_logger().warning("we automatically set 'log' to 'grad'. if this is not a desired behavior, please explicitly set your 'log' value.")
+            get_logger().warning(
+                "we automatically set 'log' to 'grad'. if this is not a desired behavior, please explicitly set your 'log' value."
+            )
             log = "grad"
         if isinstance(log, str):
             self._log[log] = True

@@ -82,7 +82,7 @@ class TestAddLora(unittest.TestCase):
         print(if_scores)
         # torch.save(if_scores, f"{os.path.dirname(os.path.abspath(__file__))}/if_analog_lora.pt")
         if_score_saved = torch.load(
-            f"{os.path.dirname(os.path.abspath(__file__))}/if_analog_lora.pt"
+            f"{os.path.dirname(os.path.abspath(__file__))}/data/if_analog_lora.pt"
         )
         self.assertTrue(torch.allclose(if_score_saved, if_scores))
 
