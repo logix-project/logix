@@ -28,6 +28,7 @@ class Mean:
             data = binfo.log[module_name][log_type]
 
         # extract and reshape data to 2d tensor for mean computation
+        batch_size = data.size(0)
         data = make_2d(data, module, log_type).detach()
 
         # initialize mean state if necessary
@@ -51,6 +52,6 @@ class Mean:
 
         # update mean counter
         if binfo.mask is None or log_type == "grad":
-            mean_counter[module_name][log_type] += len(data)
+            mean_counter[module_name][log_type] += batch_size
         else:
             mean_counter[module_name][log_type] += binfo.mask.sum().item()
