@@ -118,6 +118,7 @@ class AnaLog:
         model: Optional[nn.Module] = None,
         watch: bool = True,
         clear: bool = True,
+        lora_state: Dict[str, Any] = None,
     ) -> None:
         """
         Adds LoRA for gradient compression.
@@ -140,6 +141,7 @@ class AnaLog:
             model=model,
             type_filter=self.type_filter,
             name_filter=self.name_filter,
+            lora_state=lora_state,
         )
 
         # Clear state and logger
@@ -319,9 +321,9 @@ class AnaLog:
         # Load LoRA state
         lora_dir = os.path.join(self.log_dir, "lora")
         if os.path.exists(lora_dir):
-            if not is_lora(self.model):
-                self.add_lora()
             lora_state = torch.load(os.path.join(lora_dir, "lora_state_dict.pt"))
+            if not is_lora(self.model):
+                self.add_lora(lora_state=lora_state)
             for name in lora_state:
                 assert name in self.model.state_dict(), f"{name} not in model!"
             self.model.load_state_dict(lora_state, strict=False)

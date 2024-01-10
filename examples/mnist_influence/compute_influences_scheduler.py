@@ -38,7 +38,7 @@ query_loader = dataloader_fn(
     batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs
 )
 
-analog = AnaLog(project="test", config="./config.yaml")
+analog = AnaLog(project="test", config="config.yaml")
 al_scheduler = AnaLogScheduler(
     analog, ekfac=args.ekfac, lora=args.lora, sample=args.sample
 )
@@ -62,8 +62,6 @@ if not args.resume:
                 loss.backward()
         analog.finalize()
 else:
-    if args.lora:
-        analog.add_lora()
     analog.initialize_from_log()
 
 # Influence Analysis
@@ -91,6 +89,6 @@ _, top_influential_data = torch.topk(if_scores, k=10)
 
 # Save
 if_scores = if_scores.numpy().tolist()[0]
-torch.save(if_scores, "if_analog_scheduler.pt")
+torch.save(if_scores, f"if_analog_scheduler.pt")
 print("Computation time:", time.time() - start)
 print("Top influential data indices:", top_influential_data.numpy().tolist())

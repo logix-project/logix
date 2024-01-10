@@ -1,6 +1,62 @@
 from typing import List
 
+import math
 import torch
+import torch.nn as nn
+
+
+def find_rank_pca_covariance(matrix, threshold):
+    """
+    Calculate the minimum principal component analysis (PCA) rank required
+    to explain at least the specified percentage (threshold) of the total covariance.
+    """
+    U, S, Vh = torch.linalg.svd(matrix)
+    rank = 0
+    cur, total = 0, sum(S)
+    while rank < len(S) and (cur / total) < threshold:
+        cur += S[rank]
+        rank += 1
+
+    return rank
+
+
+def find_rank_pca_compression(module, ratio):
+    """
+    Calculate the minimum principal component analysis (PCA) rank required
+    to reach threshold compression ratio.
+    """
+    weight = module.weight.detach().cpu().numpy()
+    if isinstance(module, nn.Linear):
+        # r * r = m * n * ratio
+        in_features, out_features = weight.shape
+        rank = math.ceil(math.sqrt(in_features * out_features * ratio))
+    elif isinstance(module, nn.Conv2d):
+        # r * r * 1 * 1 = in_channels * out_channels * kernel_size[0] * kernel_size[1] * ratio
+        in_channels, out_channels, kernel_size0, kernel_size1 = weight.shape
+        rank = math.ceil(
+            math.sqrt(in_channels * out_channels * kernel_size0 * kernel_size1 * ratio)
+        )
+        return rank
+    elif isinstance(module, nn.Embedding):
+        # r * r = m * n * ratio
+        num_embeddings, embedding_dim = weight.shape
+        rank = math.ceil(math.sqrt(num_embeddings * embedding_dim * ratio))
+    else:
+        raise NotImplementedError
+
+    return rank
+
+
+def pca_rank_by_weight_shape(shape, module):
+    if isinstance(module, nn.Linear):
+        assert len(shape) == 2
+        return shape[1], shape[0]
+    elif isinstance(module, nn.Conv2d):
+        assert len(shape) == 4
+        return shape[1], shape[0]
+    elif isinstance(module, nn.Embedding):
+        assert len(shape) == 2
+        return shape[1], shape[0]
 
 
 def is_lora(model):
