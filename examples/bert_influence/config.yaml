@@ -1,6 +1,7 @@
-root_dir: /data/tir/projects/tir6/general/sangkeuc/bert
+root_dir: ./analog
 logging:
   flush_threshold: 1000000000
+  cpu_offload: true
 lora:
   init: pca
   rank: 64

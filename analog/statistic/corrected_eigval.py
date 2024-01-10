@@ -17,6 +17,7 @@ class CorrectedEigval:
         module_name: str,
         log_type: str,
         data: Optional[torch.Tensor] = None,
+        cpu_offload: Optional[bool] = False,
     ):
         """
         Update the mean state.
@@ -35,13 +36,14 @@ class CorrectedEigval:
         data = binfo.log[module_name]["grad"]
 
         if module_name not in ekfac_eigval_state:
+            device = data.device if not cpu_offload else "cpu"
             ekfac_eigval_state[module_name] = torch.zeros(
-                data.shape[-2], data.shape[-1]
+                data.shape[-2], data.shape[-1], device=device
             )
             ekfac_counter[module_name] = 0
 
         data = data.detach()
-        if data.is_cuda:
+        if cpu_offload:
             eigvec_fwd_gpu = covariance_eigvec_state[module_name]["forward"].to(
                 device=data.device
             )
