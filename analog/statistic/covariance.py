@@ -18,6 +18,7 @@ class Covariance:
         module_name: str,
         log_type: str,
         data: Optional[torch.Tensor] = None,
+        cpu_offload: Optional[bool] = False,
     ):
         """
         Update the covariance state.
@@ -33,13 +34,14 @@ class Covariance:
 
         # initialize covariance state if necessary
         if log_type not in covariance_state[module_name]:
+            device = data.device if not cpu_offload else "cpu"
             covariance_state[module_name][log_type] = torch.zeros(
-                data.shape[-1], data.shape[-1]
+                data.shape[-1], data.shape[-1], device=device
             )
             covariance_counter[module_name][log_type] = 0
 
         # update mean state
-        if data.is_cuda:
+        if cpu_offload:
             # By default, all states are stored on the CPU, and therefore
             # computing updates for states on CPU is slow. For efficiency,
             # we move states to the GPU if data is on the GPU, and then

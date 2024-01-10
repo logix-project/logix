@@ -24,6 +24,7 @@ class HookLogger:
         self.state = state
         self.binfo = binfo
         self.opt = LogOption()
+        self.cpu_offload = config.get("cpu_offload", False)
 
         # log saver
         self.log_saver = LogSaver(config=config)
@@ -64,6 +65,7 @@ class HookLogger:
                     module_name=module_name,
                     log_type="grad",
                     data=None,
+                    cpu_offload=self.cpu_offload,
                 )
 
         # Wait for all asynchronous CUDA operations to finish
@@ -118,6 +120,7 @@ class HookLogger:
                 module_name=module_name,
                 log_type="forward",
                 data=activations,
+                cpu_offload=self.cpu_offload,
             )
 
     def _backward_hook_fn(
@@ -154,6 +157,7 @@ class HookLogger:
                 module_name=module_name,
                 log_type="backward",
                 data=grad_outputs[0],
+                cpu_offload=self.cpu_offload,
             )
 
     def _grad_hook_fn(
@@ -214,6 +218,7 @@ class HookLogger:
                 module_name=tensor_name,
                 log_type="forward",
                 data=tensor,
+                cpu_offload=self.cpu_offload,
             )
 
     def _tensor_backward_hook_fn(self, grad: torch.Tensor, tensor_name: str) -> None:
@@ -238,6 +243,7 @@ class HookLogger:
                 module_name=tensor_name,
                 log_type="backward",
                 data=grad,
+                cpu_offload=self.cpu_offload,
             )
 
     def register_all_module_hooks(self) -> None:

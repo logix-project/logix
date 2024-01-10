@@ -8,7 +8,7 @@ from analog.state import StatisticState
 from analog.statistic.utils import make_2d
 
 
-class Mean:
+class Variance:
     @staticmethod
     @torch.no_grad()
     def update(
@@ -21,41 +21,43 @@ class Mean:
         cpu_offload: Optional[bool] = False,
     ):
         """
-        Update the mean state.
+        Update the variance state.
         """
-        mean_state = state.mean_state
-        mean_counter = state.mean_counter
+        variance_state = state.variance_state
+        variance_counter = state.variance_counter
         if data is None:
             data = binfo.log[module_name][log_type]
 
-        # extract and reshape data to 2d tensor for mean computation
+        # extract and reshape data to 2d tensor for variance computation
         batch_size = data.size(0)
         data = make_2d(data, module, log_type).detach()
 
-        # initialize mean state if necessary
-        if log_type not in mean_state[module_name]:
+        # initialize variance state if necessary
+        if log_type not in variance_state[module_name]:
             device = data.device if not cpu_offload else "cpu"
-            mean_state[module_name][log_type] = torch.zeros(
+            variance_state[module_name][log_type] = torch.zeros(
                 data.shape[-1], device=device
             )
-            mean_counter[module_name][log_type] = 0
+            variance_counter[module_name][log_type] = 0
 
-        # update mean state
+        # update variance state
         if cpu_offload:
             # By default, all states are stored on the CPU, and therefore
             # computing updates for states on CPU is slow. For efficiency,
             # we move states to the GPU if data is on the GPU, and then
             # move it back to the CPU asynchrously.
-            mean_state_gpu = mean_state[module_name][log_type].to(device=data.device)
-            mean_state_gpu.add_(data.sum(dim=0))
-            mean_state[module_name][log_type] = mean_state_gpu.to(
+            variance_state_gpu = variance_state[module_name][log_type].to(
+                device=data.device
+            )
+            variance_state_gpu.add_(data.sum(dim=0))
+            variance_state[module_name][log_type] = variance_state_gpu.to(
                 device="cpu", non_blocking=True
             )
         else:
-            mean_state[module_name][log_type].add_(data.sum(dim=0))
+            variance_state[module_name][log_type].add_(data.sum(dim=0))
 
-        # update mean counter
+        # update variance counter
         if binfo.mask is None or log_type == "grad":
-            mean_counter[module_name][log_type] += batch_size
+            variance_counter[module_name][log_type] += batch_size
         else:
-            mean_counter[module_name][log_type] += binfo.mask.sum().item()
+            variance_counter[module_name][log_type] += binfo.mask.sum().item()

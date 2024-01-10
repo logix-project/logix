@@ -1,4 +1,4 @@
-root_dir: /data/tir/projects/tir6/general/sangkeuc/gpt/
+root_dir: ./analog
 logging:
   flush_threshold: 1000000000
 lora:
