@@ -16,7 +16,8 @@ class InfluenceFunction(AnalysisBase):
         return
 
     @torch.no_grad()
-    def precondition(self, src, damping=None):
+    def precondition(self, src_log, damping=None):
+        src_ids, src = src_log
         preconditioned = {}
         (
             covariance_eigval,
@@ -29,93 +30,102 @@ class InfluenceFunction(AnalysisBase):
                 get_logger().warning(
                     "Hessian has not been computed. No preconditioning applied.\n"
                 )
-                return src
+                return src_log
 
-            src_log = src[module_name]["grad"].to("cpu")
+            src_module = src[module_name]["grad"]
+            device = src_module.device
             module_eigval = covariance_eigval[module_name]
             module_eigvec = covariance_eigvec[module_name]
             rotated_grad = einsum(
-                module_eigvec["backward"].t(),
-                src_log,
-                module_eigvec["forward"],
+                module_eigvec["backward"].to(device=device).t(),
+                src_module,
+                module_eigvec["forward"].to(device=device),
                 "a b, batch b c, c d -> batch a d",
             )
             scale = (
                 module_eigval
                 if is_ekfac
                 else torch.outer(module_eigval["backward"], module_eigval["forward"])
-            )
+            ).to(device=device)
             if damping is None:
                 damping = 0.1 * torch.mean(scale)
             prec_rotated_grad = rotated_grad / (scale + damping)
             preconditioned[module_name] = einsum(
-                module_eigvec["backward"],
+                module_eigvec["backward"].to(device=device),
                 prec_rotated_grad,
-                module_eigvec["forward"].t(),
+                module_eigvec["forward"].to(device=device).t(),
                 "a b, batch b c, c d -> batch a d",
             )
-        return preconditioned
+        return (src_ids, preconditioned)
 
     @torch.no_grad()
-    def compute_influence(
-        self, src, tgt, src_ids=None, tgt_ids=None, preconditioned=False, damping=None
-    ):
-        if not preconditioned:
-            src = self.precondition(src, damping)
+    def compute_influence(self, src_log, tgt_log, precondition=True, damping=None):
+        if precondition:
+            src_log = self.precondition(src_log, damping)
+        src_ids, src = src_log
+        tgt_ids, tgt = tgt_log
 
+        # Compute influence scores
         total_influence = 0.0
         for module_name in src.keys():
-            src_log, tgt_log = src[module_name], tgt[module_name]["grad"]
-            assert src_log.shape[1:] == tgt_log.shape[1:]
-            src_log_expanded = rearrange(src_log, "n ... -> n 1 ...")
-            tgt_log_expanded = rearrange(tgt_log, "m ... -> 1 m ...")
+            src_module, tgt_module = src[module_name], tgt[module_name]["grad"]
+            tgt_module = tgt_module.to(device=src_module.device)
+            assert src_module.shape[1:] == tgt_module.shape[1:]
+            src_module_expanded = rearrange(src_module, "n ... -> n 1 ...")
+            tgt_module_expanded = rearrange(tgt_module, "m ... -> 1 m ...")
             module_influence = reduce(
-                src_log_expanded * tgt_log_expanded, "n m a b -> n m", "sum"
+                src_module_expanded * tgt_module_expanded,
+                "n m a b -> n m",
+                "sum",
             )
             total_influence += module_influence
 
-        if src_ids is not None and tgt_ids is not None:
-            assert total_influence.shape[0] == len(src_ids)
-            assert total_influence.shape[1] == len(tgt_ids)
-            # Ensure src_ids and tgt_ids are in the DataFrame's index and columns, respectively
-            self.influence_scores = self.influence_scores.reindex(
-                index=self.influence_scores.index.union(src_ids),
-                columns=self.influence_scores.columns.union(tgt_ids),
-            )
+        # Log influence scores to pd.DataFrame
+        assert total_influence.shape[0] == len(src_ids)
+        assert total_influence.shape[1] == len(tgt_ids)
+        # Ensure src_ids and tgt_ids are in the DataFrame's index and columns, respectively
+        self.influence_scores = self.influence_scores.reindex(
+            index=self.influence_scores.index.union(src_ids),
+            columns=self.influence_scores.columns.union(tgt_ids),
+        )
 
-            # Assign total_influence values to the corresponding locations in influence_scores
-            src_indices = [
-                self.influence_scores.index.get_loc(src_id) for src_id in src_ids
-            ]
-            tgt_indices = [
-                self.influence_scores.columns.get_loc(tgt_id) for tgt_id in tgt_ids
-            ]
+        # Assign total_influence values to the corresponding locations in influence_scores
+        src_indices = [
+            self.influence_scores.index.get_loc(src_id) for src_id in src_ids
+        ]
+        tgt_indices = [
+            self.influence_scores.columns.get_loc(tgt_id) for tgt_id in tgt_ids
+        ]
 
-            self.influence_scores.iloc[
-                src_indices, tgt_indices
-            ] = total_influence.numpy()
+        self.influence_scores.iloc[
+            src_indices, tgt_indices
+        ] = total_influence.cpu().numpy()
 
         return total_influence
 
-    def compute_self_influence(self, src_log, damping=None):
-        src_ids, src = src_log
-        src_pc = self.precondition(src, damping)
+    @torch.no_grad()
+    def compute_self_influence(self, src_log, precondition=True, damping=None):
+        if precondition:
+            pc_src_log = self.precondition(src_log, damping)
+        pc_src, src = pc_src_log[1], src_log[1]
+
+        # Compute self-influence scores
         total_influence = 0.0
-        for module_name in src_pc.keys():
-            src_pc_log, src_log = src_pc[module_name], src[module_name]
-            module_influence = reduce(src_pc_log * src_log, "n a b -> n", "sum")
+        for module_name in pc_src.keys():
+            pc_src_module = pc_src[module_name]["grad"]
+            src_module = src[module_name]["grad"]
+            module_influence = reduce(pc_src_module * src_module, "n a b -> n", "sum")
             total_influence += module_influence.squeeze()
         return total_influence
 
-    def compute_influence_all(self, src_log, loader, damping=None):
+    def compute_influence_all(self, src_log, loader, precondition=True, damping=None):
+        if precondition:
+            src_log = self.precondition(src_log, damping)
+
         if_scores = []
-        src_ids, src = src_log
-        src = self.precondition(src, damping)
-        for tgt_ids, tgt in loader:
+        for tgt_log in loader:
             if_scores.append(
-                self.compute_influence(
-                    src, tgt, src_ids=src_ids, tgt_ids=tgt_ids, preconditioned=True
-                )
+                self.compute_influence(src_log, tgt_log, precondition=False)
             )
         return torch.cat(if_scores, dim=-1)
 

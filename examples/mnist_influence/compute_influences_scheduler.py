@@ -67,12 +67,13 @@ else:
     analog.initialize_from_log()
 
 # Influence Analysis
-log_loader = analog.build_log_dataloader()
+log_loader = analog.build_log_dataloader(batch_size=64, num_workers=4)
 
 analog.add_analysis({"influence": InfluenceFunction})
 query_iter = iter(query_loader)
 test_input, test_target = next(query_iter)
 test_id = id_gen(test_input)
+analog.setup({"log": "grad"})
 analog.eval()
 with analog(data_id=test_id):
     test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
@@ -90,7 +91,7 @@ if_scores = analog.influence.compute_influence_all(
 _, top_influential_data = torch.topk(if_scores, k=10)
 
 # Save
-if_scores = if_scores.numpy().tolist()[0]
+if_scores = if_scores.cpu().numpy().tolist()[0]
 torch.save(if_scores, "if_analog_scheduler.pt")
 print("Computation time:", time.time() - start)
-print("Top influential data indices:", top_influential_data.numpy().tolist())
+print("Top influential data indices:", top_influential_data.cpu().numpy().tolist())
