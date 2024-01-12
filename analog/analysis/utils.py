@@ -1,24 +1,22 @@
+from typing import Dict, Optional
 import torch
-from einops import einsum
 
 
-def reconstruct_grad(log):
+def synchronize_device(
+    src: Dict[str, Dict[str, torch.Tensor]],
+    tgt: Dict[str, Dict[str, torch.Tensor]],
+    device: Optional[torch.device] = None,
+):
     """
-    Reconstructs the gradient from forward & backward activations via outer product.
+    Synchronize the device of two tensor dicts.
 
     Args:
-        log (dict): The activation log.
-    Returns:
-        torch.Tensor: The batch of gradient.
+        src (torch.Tensor): Source tensor
+        tgt (torch.Tensor): Target tensor
+        device (Optional[torch.device]): Device to synchronize to
     """
-    fwd = log["forward"]
-    bwd = log["backward"]
-    return torch.bmm(bwd.unsqueeze(2), fwd.unsqueeze(1))
-
-
-def do_decompose(src_log, tgt_log):
-    return True
-
-
-def rescaled_dot_product(src, tgt, scale):
-    return einsum(src, scale, tgt, "a b, b c, a c -> a")
+    for module_name, module_dict in tgt.items():
+        for log in module_dict.keys():
+            if device is None:
+                device = src[module_name][log].device
+            tgt[module_name][log] = tgt[module_name][log].to(device=device)
