@@ -1,6 +1,7 @@
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from transformers.trainer import *
+from analog.utils import DataIDGenerator
 
 from analog import AnaLog, AnaLogScheduler
 
@@ -44,16 +45,12 @@ class AnaLogTrainer(Trainer):
             Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
         ] = None,
     ):
+        args.num_train_epochs = len(scheduler)
+        args.report_to = []
+
         self.run = run
         self.scheduler = scheduler
-        args = TrainingArguments(
-            output_dir="analog",
-            gradient_accumulation_steps=1,
-            per_device_train_batch_size=32,
-            per_device_eval_batch_size=32,
-            num_train_epochs=len(self.scheduler),
-            report_to="none",
-        )
+        self.data_id_generator = DataIDGenerator()
         analog_callback = AnalogCallback(run, scheduler)
         super().__init__(
             model,
@@ -100,6 +97,9 @@ class AnaLogTrainer(Trainer):
             def step(self):
                 pass
 
+            def get_last_lr(self):
+                return [0]
+
         self.lr_scheduler = DummyScheduler()
         return self.lr_scheduler
 
@@ -109,10 +109,14 @@ class AnaLogTrainer(Trainer):
         model.eval()
         inputs = self._prepare_inputs(inputs)
 
-        data_id = self.tokenizer.batch_decode(
-            inputs["input_ids"], skip_special_tokens=True
-        )
-        with self.run(data_id=data_id, mask=inputs["attention_mask"]):
+        if self.tokenizer is not None:
+            data_id = self.tokenizer.batch_decode(
+                inputs["input_ids"], skip_special_tokens=True
+            )
+        else:
+            data_id = self.data_id_generator(inputs["input_ids"])
+        mask = inputs.get("attention_mask", None)
+        with self.run(data_id=data_id, mask=mask):
             if is_sagemaker_mp_enabled():
                 loss_mb = smp_forward_backward(
                     model, inputs, self.args.gradient_accumulation_steps
@@ -128,9 +132,7 @@ class AnaLogTrainer(Trainer):
             loss = (
                 loss * inputs["labels"].numel()
             )  # loss reduction with mean instead of sum
-            if self.do_grad_scaling:
-                self.scaler.scale(loss).backward()
-            elif self.use_apex:
+            if self.use_apex:
                 with amp.scale_loss(loss, self.optimizer) as scaled_loss:
                     scaled_loss.backward()
             else:
