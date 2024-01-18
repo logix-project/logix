@@ -17,6 +17,9 @@ parser = argparse.ArgumentParser("CIFAR Influence Analysis")
 parser.add_argument("--data", type=str, default="cifar10", help="cifar10/100")
 parser.add_argument("--eval-idxs", type=int, nargs="+", default=[0])
 parser.add_argument("--damping", type=float, default=1e-5)
+parser.add_argument("--ekfac", action="store_true")
+parser.add_argument("--lora", action="store_true")
+parser.add_argument("--sample", action="store_true")
 parser.add_argument("--resume", action="store_true")
 args = parser.parse_args()
 
@@ -49,13 +52,12 @@ for model_id in range(10):
     )
 
     analog = AnaLog(project="test", config="./config.yaml")
-    analog_scheduler = AnaLogScheduler(analog, lora=True)
+    analog_scheduler = AnaLogScheduler(analog, lora=args.lora)
 
     # Gradient & Hessian logging
     analog.watch(model)
-
+    id_gen = DataIDGenerator()
     if not args.resume:
-        id_gen = DataIDGenerator()
         for epoch in analog_scheduler:
             for inputs, targets in train_loader:
                 data_id = id_gen(inputs)
@@ -67,30 +69,27 @@ for model_id in range(10):
                     loss.backward()
             analog.finalize()
     else:
-        analog.add_lora()
         analog.initialize_from_log()
 
-    # Influence Analysis
-    log_loader = analog.build_log_dataloader()
+        # Influence Analysis
+        log_loader = analog.build_log_dataloader()
 
-    analog.eval()
     analog.add_analysis({"influence": InfluenceFunction})
     query_iter = iter(query_loader)
-    with analog(log=["grad"]) as al:
-        test_input, test_target = next(query_iter)
+    test_input, test_target = next(query_iter)
+    test_id = id_gen(test_input)
+    analog.eval()
+    with analog(data_id=test_id) as al:
         test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
         model.zero_grad()
         test_out = model(test_input)
         test_loss = torch.nn.functional.cross_entropy(
             test_out, test_target, reduction="sum"
         )
-        test_loss.backward()
-        test_log = al.get_log()
     start = time.time()
     if_scores = analog.influence.compute_influence_all(
         test_log, log_loader, damping=args.damping
     )
-
     # Save
     if_scores = if_scores.numpy().tolist()
     torch.save(if_scores, "if_analog_pca.pt")
