@@ -1,0 +1,225 @@
+import os.path
+from typing import List, Optional
+
+import numpy as np
+import torch
+import torch.nn as nn
+
+from train import (
+    get_cifar10_dataloader,
+    construct_rn9,
+    train,
+)
+
+from examples.utils import save_tensor, set_seed
+
+BASE_PATH = "../files/brittleness_results"
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"DEVICE: {DEVICE}")
+
+
+def get_accuracy(model: nn.Module, loader: torch.utils.data.DataLoader) -> torch.Tensor:
+    model.eval()
+    with torch.no_grad():
+        acc_lst = []
+        for images, labels in loader:
+            images, labels = images.to(device=DEVICE), labels.to(device=DEVICE)
+            outputs = model(images)
+            accs = (outputs.argmax(-1) == labels).float().cpu()
+            acc_lst.append(accs)
+        all_accs = torch.cat(acc_lst)
+    return all_accs
+
+
+def train_with_indices(
+    data_name: str, model_id: int, idxs_to_keep: Optional[List[int]] = None
+) -> nn.Module:
+    lr = 0.4
+    wd = 0.001
+    epochs = 24
+
+    if idxs_to_keep is None:
+        train_loader = get_cifar10_dataloader(
+            batch_size=512, split="train", shuffle=True
+        )
+    else:
+        train_loader = get_cifar10_dataloader(
+            batch_size=512,
+            split="train",
+            shuffle=True,
+            indices=idxs_to_keep,
+        )
+    set_seed(model_id + 1234)
+    model = construct_rn9().to(device=DEVICE)
+    model = train(
+        model=model, loader=train_loader, lr=lr, weight_decay=wd, epochs=epochs
+    )
+    return model
+
+
+def train_with_configurations(
+    data_name: str,
+    num_train: int,
+    mask: torch.Tensor,
+    top_idxs: List[int],
+    valid_loader: torch.utils.data.DataLoader,
+    intervals: List[int],
+    seed_ids: List[int],
+):
+    assert len(top_idxs) == num_train
+    mean_lst = []
+    std_lst = []
+    valid_total_raw_acc_lst = []
+    for ri in intervals:
+        idxs_to_remove = top_idxs[:ri]
+        idxs_to_keep = list(set(range(num_train)) - set(idxs_to_remove))
+        assert len(idxs_to_keep) + len(idxs_to_remove) == num_train
+
+        valid_acc_lst = []
+        raw_valid_acc_lst = []
+        for seed in seed_ids:
+            model = train_with_indices(
+                data_name=data_name, idxs_to_keep=idxs_to_keep, model_id=seed
+            )
+            valid_results = get_accuracy(model, valid_loader)
+            valid_acc_lst.append(valid_results[mask].sum())
+            raw_valid_acc_lst.append(valid_results)
+
+        mean_lst.append(torch.mean(torch.stack(valid_acc_lst)).item())
+        std_lst.append(torch.std(torch.stack(valid_acc_lst)).item())
+        valid_total_raw_acc_lst.append(raw_valid_acc_lst)
+
+    results_dict = {
+        "intervals": intervals,
+        "mean": mean_lst,
+        "std": std_lst,
+        "raw_lst": valid_total_raw_acc_lst,
+    }
+    return results_dict
+
+
+def get_file_name(expt_name: str, data_name: str) -> str:
+    return f"{BASE_PATH}/data_{data_name}/{expt_name}.pt"
+
+
+def main(data_name: str, algo_name_lst: List[str], model_id: int) -> None:
+    os.makedirs(BASE_PATH, exist_ok=True)
+    os.makedirs(f"{BASE_PATH}/data_{data_name.lower()}/", exist_ok=True)
+
+    valid_target_num = 100
+    valid_loader = get_cifar10_dataloader(
+        batch_size=valid_target_num, split="valid", shuffle=False
+    )
+    num_train = 50000
+
+    seed_ids = list(range(3))
+    remove_intervals = [200, 400, 600, 800, 1000, 1200]
+    expt_name = "base"
+    file_name = get_file_name(expt_name=expt_name, data_name=data_name.lower())
+    if os.path.exists(file_name):
+        print(f"Found existing results at {file_name}.")
+        base_results = torch.load(file_name)
+    else:
+        valid_raw_acc_lst = []
+        valid_acc_lst = []
+        for seed in seed_ids:
+            model = train_with_indices(
+                data_name=data_name.lower(), idxs_to_keep=None, model_id=seed
+            )
+            valid_results = get_accuracy(model, valid_loader)
+            valid_acc_lst.append(valid_results.sum())
+            valid_raw_acc_lst.append(valid_results)
+
+        base_results = {
+            "mean": torch.mean(torch.stack(valid_acc_lst)).item(),
+            "std": torch.std(torch.stack(valid_acc_lst)).item(),
+            "div_factor": torch.from_numpy(
+                (np.array(valid_raw_acc_lst).mean(0) >= 0.5)
+            ).sum(),
+            "mask": torch.from_numpy((np.array(valid_raw_acc_lst).mean(0) >= 0.5)),
+        }
+        save_tensor(tensor=base_results, file_name=file_name, overwrite=False)
+    mask = base_results["mask"]
+    print(mask)
+
+    expt_name = "random"
+    print(expt_name)
+    file_name = get_file_name(expt_name=expt_name, data_name=data_name.lower())
+    if os.path.exists(file_name):
+        print(f"Found existing results at {file_name}.")
+    else:
+        total_success_lst = []
+        for i in range(valid_target_num):
+            print(f"{i}th validation data point.")
+            if mask[i]:
+                random_idxs = list(np.random.permutation(list(range(num_train))))
+                results = train_with_configurations(
+                    data_name=data_name.lower(),
+                    num_train=num_train,
+                    mask=mask,
+                    top_idxs=random_idxs,
+                    valid_loader=valid_loader,
+                    intervals=remove_intervals,
+                    seed_ids=seed_ids,
+                )
+                success_lst = []
+                for j, ri in enumerate(remove_intervals):
+                    if np.array(results["raw_lst"][j]).mean(0)[i] < 0.5:
+                        success_lst.append(1)
+                    else:
+                        success_lst.append(0)
+                total_success_lst.append(success_lst)
+        results = {"results": total_success_lst}
+        save_tensor(tensor=results, file_name=file_name, overwrite=False)
+
+    for algo_name in algo_name_lst:
+        print(algo_name)
+        expt_name = algo_name
+        file_name = get_file_name(expt_name=expt_name, data_name=data_name.lower())
+        if os.path.exists(file_name):
+            print(f"Found existing results at {file_name}.")
+        else:
+            algo_scores = torch.load(
+                f"../files/results/data_{data_name.lower()}/model_{model_id}/{algo_name}.pt",
+                map_location="cpu",
+            )
+            total_success_lst = []
+            for i in range(valid_target_num):
+                print(f"{i}th validation data point.")
+                if mask[i]:
+                    top_idxs = torch.argsort(algo_scores[i], descending=True)
+                    top_idxs = [ti.item() for ti in top_idxs]
+
+                    results = train_with_configurations(
+                        data_name=data_name.lower(),
+                        num_train=num_train,
+                        mask=mask,
+                        top_idxs=top_idxs,
+                        valid_loader=valid_loader,
+                        intervals=remove_intervals,
+                        seed_ids=seed_ids,
+                    )
+                    success_lst = []
+                    for j, ri in enumerate(remove_intervals):
+                        if np.array(results["raw_lst"][j]).mean(0)[i] < 0.5:
+                            success_lst.append(1)
+                        else:
+                            success_lst.append(0)
+                    total_success_lst.append(success_lst)
+            results = {"results": total_success_lst}
+            save_tensor(tensor=results, file_name=file_name, overwrite=False)
+
+
+if __name__ == "__main__":
+    algo_name_lst = [
+        # "representation_similarity_dot",
+        # "tracin_dot",
+        # "tracin_cos",
+        # "trak",
+        # "if_d1e-08",
+        # "unif_average",
+        # "unif_segment",
+        "kfac",
+        "kfac_1e-06",
+    ]
+    main(data_name="cifar10", algo_name_lst=algo_name_lst, model_id=0)

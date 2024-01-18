@@ -1,104 +1,143 @@
-# We use an example from the TRAK repository:
-# https://github.com/MadryLab/trak/blob/main/examples/cifar_quickstart.ipynb.
-
-
+import argparse
 import os
-from pathlib import Path
-from tqdm.auto import tqdm
+import time
+from typing import Optional, Tuple
+
 import numpy as np
 import torch
-from torch.cuda.amp import GradScaler, autocast
+import torch.nn as nn
+import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
 from torch.optim import SGD, lr_scheduler
 
-from utils import get_cifar10_dataloader, construct_rn9
-from utils import set_seed
+from examples.cifar_influence.pipeline import construct_model, get_hyperparameters, get_loaders
+from examples.utils import clear_gpu_cache, save_tensor, set_seed
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"DEVICE: {DEVICE}")
 
 
 def train(
-    model,
-    loader,
-    lr=0.4,
-    epochs=24,
-    momentum=0.9,
-    weight_decay=5e-4,
-    lr_peak_epoch=5,
-    save_name="default",
-    model_id=0,
-    save=True,
-):
-    opt = SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
+    model: nn.Module,
+    loader: torch.utils.data.DataLoader,
+    lr: float,
+    epochs: int,
+    weight_decay: float,
+    model_id: int = 0,
+    save_name: Optional[str] = None,
+) -> nn.Module:
+    save = save_name is not None
+    if save:
+        os.makedirs(f"../files/checkpoints/{save_name}/", exist_ok=True)
+        os.makedirs(
+            f"../files/checkpoints/{save_name}/model_{model_id}/", exist_ok=True
+        )
+        save_tensor(
+            model.state_dict(),
+            f"../files/checkpoints/{save_name}/model_{model_id}/epoch_0.pt",
+            overwrite=True,
+        )
+    optimizer = SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=weight_decay)
+    loss_fn = CrossEntropyLoss(reduction="mean")
+    lr_peak_epoch = epochs // 5
     iters_per_epoch = len(loader)
-    # Cyclic LR with single triangle
     lr_schedule = np.interp(
         np.arange((epochs + 1) * iters_per_epoch),
         [0, lr_peak_epoch * iters_per_epoch, epochs * iters_per_epoch],
         [0, 1, 0],
     )
-    scheduler = lr_scheduler.LambdaLR(opt, lr_schedule.__getitem__)
-    scaler = GradScaler()
-    loss_fn = CrossEntropyLoss()
+    scheduler = lr_scheduler.LambdaLR(optimizer, lr_schedule.__getitem__)
 
-    for epoch in tqdm(range(epochs)):
-        set_seed(model_id * 10_061 + epoch + 1)
+    model.train()
+    for epoch in range(1, epochs + 1):
         for images, labels in loader:
-            images = images.to(DEVICE)
-            labels = labels.to(DEVICE)
-            opt.zero_grad(set_to_none=True)
-            with autocast():
-                out = model(images)
-                loss = loss_fn(out, labels)
-
-            scaler.scale(loss).backward()
-            scaler.step(opt)
-            scaler.update()
+            images, labels = images.to(device=DEVICE), labels.to(device=DEVICE)
+            optimizer.zero_grad()
+            outputs = model(images)
+            loss = loss_fn(outputs, labels)
+            loss.backward()
+            optimizer.step()
             scheduler.step()
 
-    if save:
-        torch.save(
-            model.state_dict(),
-            f"checkpoints/{save_name}_{model_id}_epoch_{epochs-1}.pt",
-        )
-
+        if save and epoch == epochs:
+            save_tensor(
+                model.state_dict(),
+                f"../files/checkpoints/{save_name}/model_{model_id}/epoch_{epoch}.pt",
+                overwrite=True,
+            )
     return model
 
 
-def main(dataset="cifar10"):
-    os.makedirs("checkpoints", exist_ok=True)
+def evaluate(
+    model: nn.Module, loader: torch.utils.data.DataLoader
+) -> Tuple[float, float]:
+    model.eval()
+    with torch.no_grad():
+        total_loss, total_correct, total_num = 0.0, 0.0, 0.0
+        for images, labels in loader:
+            images, labels = images.to(device=DEVICE), labels.to(device=DEVICE)
+            outputs = model(images)
+            total_loss += F.cross_entropy(outputs, labels, reduction="sum").cpu().item()
+            total_correct += outputs.argmax(1).eq(labels).sum().cpu().item()
+            total_num += images.shape[0]
+    return total_loss / total_num, total_correct / total_num
 
-    if dataset == "cifar10":
-        train_loader = get_cifar10_dataloader(
-            batch_size=512, split="train", shuffle=True, subsample=True
-        )
-        valid_loader = get_cifar10_dataloader(
-            batch_size=512, split="val", shuffle=False
-        )
+
+def main(
+    data_name: str = "cifar2", num_train: int = 50, do_corrupt: bool = False, model_id = 0
+) -> None:
+    os.makedirs("../files", exist_ok=True)
+    os.makedirs("../files/checkpoints", exist_ok=True)
+
+    train_loader, _, valid_loader = get_loaders(
+        data_name=data_name,
+        do_corrupt=do_corrupt,
+        num_workers=4,
+    )
+    hyper_dict = get_hyperparameters(data_name=data_name)
+    lr = hyper_dict["lr"]
+    wd = hyper_dict["wd"]
+    epochs = int(hyper_dict["epochs"])
+
+    save_name = f"data_{data_name}"
+    if do_corrupt:
+        save_name += "_corrupted"
+
+    print(f"Training model_id={model_id} model.")
+    start_time = time.time()
+
+    last_epoch_name = (
+        f"../files/checkpoints/{save_name}/model_{model_id}/epoch_{epochs}.pt"
+    )
+    if os.path.exists(last_epoch_name):
+        print("Already exists!")
     else:
-        raise NotImplementedError
+        set_seed(model_id)
+        model = construct_model(data_name=data_name).to(DEVICE)
+        model = train(
+            model=model,
+            loader=train_loader,
+            lr=lr,
+            epochs=epochs,
+            weight_decay=wd,
+            model_id=model_id,
+            save_name=save_name,
+        )
+        valid_loss, valid_acc = evaluate(model, valid_loader)
+        print(f"Validation Loss: {valid_loss}")
+        print(f"Validation Accuracy: {valid_acc}")
+        del model
+        clear_gpu_cache()
 
-    # you can modify the for loop below to train more models
-    for model_id in tqdm(range(1), desc="Training models.."):
-        model = construct_rn9().to(memory_format=torch.channels_last).to(DEVICE)
-
-        model = train(model, train_loader, save_name=dataset, model_id=model_id)
-
-        model = model.eval()
-
-        model.eval()
-        with torch.no_grad():
-            total_correct, total_num = 0.0, 0.0
-            for images, labels in tqdm(valid_loader):
-                images = images.to(DEVICE)
-                labels = labels.to(DEVICE)
-                with autocast():
-                    out = model(images)
-                    total_correct += out.argmax(1).eq(labels).sum().cpu().item()
-                    total_num += images.shape[0]
-
-            print(f"Accuracy: {total_correct / total_num * 100:.1f}%")
+        print(f"Took {time.time() - start_time} seconds.")
 
 
 if __name__ == "__main__":
-    main()
+    # create arg parse for model_id
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model_id", type=int, default=0)
+    args = parser.parse_args()
+    # main(data_name="cifar2", do_corrupt=False, num_train=5)
+    main(data_name="cifar10", do_corrupt=False, num_train=10, model_id=args.model_id)
+    # main(data_name="cifar2", do_corrupt=True, num_train=5)
+    # main(data_name="cifar10", do_corrupt=True, num_train=5)
