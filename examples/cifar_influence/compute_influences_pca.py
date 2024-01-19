@@ -6,10 +6,11 @@ import os
 from analog import AnaLog, AnaLogScheduler
 from analog.utils import DataIDGenerator
 from analog.analysis import InfluenceFunction
+from tqdm import tqdm
 
 from train import (
-    get_cifar10_dataloader,
-    construct_rn9,
+    get_loaders,
+    construct_model,
 )
 from examples.compute_utils import get_ensemble_file_name
 
@@ -34,7 +35,7 @@ os.makedirs(f"{BASE_PATH}/data_{data_name}/alpha_{alpha}/", exist_ok=True)
 
 for model_id in range(10):
     score_table = 0.0
-    model = construct_rn9().to(DEVICE)
+    model = construct_model(data_name="cifar10").to(DEVICE)
     final_epoch = 25
 
     # Get a single checkpoint (first model_id and last epoch).
@@ -43,12 +44,9 @@ for model_id in range(10):
     )
     model.eval()
 
-    dataloader_fn = get_cifar10_dataloader
-    train_loader = dataloader_fn(
-        batch_size=512, split="train", shuffle=False, subsample=True, augment=False
-    )
-    query_loader = dataloader_fn(
-        batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs, augment=False
+    train_loader, _ ,valid_loader = get_loaders(
+        data_name="cifar10",
+        eval_batch_size = 256,
     )
 
     analog = AnaLog(project="test", config="./config.yaml")
@@ -59,7 +57,7 @@ for model_id in range(10):
     id_gen = DataIDGenerator()
     if not args.resume:
         for epoch in analog_scheduler:
-            for inputs, targets in train_loader:
+            for inputs, targets in tqdm(train_loader):
                 data_id = id_gen(inputs)
                 with analog(data_id=data_id):
                     inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
@@ -72,10 +70,11 @@ for model_id in range(10):
         analog.initialize_from_log()
 
         # Influence Analysis
-        log_loader = analog.build_log_dataloader()
+    log_loader = analog.build_log_dataloader()
+    print("analog finalized on train set\n")
 
     analog.add_analysis({"influence": InfluenceFunction})
-    query_iter = iter(query_loader)
+    query_iter = iter(valid_loader)
     test_input, test_target = next(query_iter)
     test_id = id_gen(test_input)
     analog.eval()
@@ -86,17 +85,20 @@ for model_id in range(10):
         test_loss = torch.nn.functional.cross_entropy(
             test_out, test_target, reduction="sum"
         )
+        test_loss.backward()
+        test_log = analog.get_log()
     start = time.time()
     if_scores = analog.influence.compute_influence_all(
         test_log, log_loader, damping=args.damping
     )
     # Save
-    if_scores = if_scores.numpy().tolist()
-    torch.save(if_scores, "if_analog_pca.pt")
+    # if_scores = if_scores.numpy().tolist()
     print("Computation time:", time.time() - start)
+    score_table += if_scores
 
 score_table /= 10
-exptname = analog.config._lora_config["init"] + analog.config._lora_config["compression_ratio_by_momory"]
+expt_name = analog.config._lora_config["init"] + str(analog.config._lora_config["compression_ratio_by_memory"])
 file_name = get_ensemble_file_name(
     base_path=BASE_PATH, expt_name=expt_name, data_name=data_name, alpha=alpha
 )
+torch.save(score_table, file_name)

@@ -83,6 +83,8 @@ for i in range(10):
         test_loss = torch.nn.functional.cross_entropy(
             test_out, test_target, reduction="sum"
         )
+        test_loss.backward()
+        test_log = analog.get_log()
     start = time.time()
     if_scores = analog.influence.compute_influence_all(
         test_log, log_loader, damping=args.damping
@@ -93,7 +95,7 @@ for i in range(10):
     print("Computation time:", time.time() - start)
     score_table += if_scores
 score_table /= 10
-exptname = analog.config._lora_config["init"] + analog.config._lora_config["compression_ratio_by_momory"]
+expt_name = analog.config._lora_config["init"] + analog.config._lora_config["compression_ratio_by_momory"]
 file_name = get_ensemble_file_name(
     base_path=BASE_PATH, expt_name=expt_name, data_name=data_name, alpha=alpha
 )

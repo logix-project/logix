@@ -2,4 +2,4 @@ storage:
   type: default
 lora:
   init: pca
-  compression_ratio_by_memory: 0.1
+  compression_ratio_by_memory: 0.000001

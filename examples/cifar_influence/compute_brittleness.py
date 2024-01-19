@@ -5,15 +5,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from train import (
-    get_cifar10_dataloader,
-    construct_rn9,
-    train,
-)
-
+from examples.cifar_influence.pipeline import construct_model, get_hyperparameters, get_loaders
+from examples.cifar_influence.train import train
 from examples.utils import save_tensor, set_seed
 
-BASE_PATH = "../files/brittleness_results"
+BASE_PATH = "../files/ensemble_brittleness_results"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"DEVICE: {DEVICE}")
 
@@ -34,23 +30,21 @@ def get_accuracy(model: nn.Module, loader: torch.utils.data.DataLoader) -> torch
 def train_with_indices(
     data_name: str, model_id: int, idxs_to_keep: Optional[List[int]] = None
 ) -> nn.Module:
-    lr = 0.4
-    wd = 0.001
-    epochs = 24
+    hyper_dict = get_hyperparameters(data_name)
+    print(hyper_dict)
+    lr = hyper_dict["lr"]
+    wd = hyper_dict["wd"]
+    epochs = int(hyper_dict["epochs"])
 
     if idxs_to_keep is None:
-        train_loader = get_cifar10_dataloader(
-            batch_size=512, split="train", shuffle=True
-        )
+        train_loader, _, _ = get_loaders(data_name=data_name)
     else:
-        train_loader = get_cifar10_dataloader(
-            batch_size=512,
-            split="train",
-            shuffle=True,
-            indices=idxs_to_keep,
+        train_loader, _, _ = get_loaders(
+            data_name=data_name,
+            train_indices=idxs_to_keep,
         )
     set_seed(model_id + 1234)
-    model = construct_rn9().to(device=DEVICE)
+    model = construct_model(data_name=data_name).to(device=DEVICE)
     model = train(
         model=model, loader=train_loader, lr=lr, weight_decay=wd, epochs=epochs
     )
@@ -102,15 +96,16 @@ def get_file_name(expt_name: str, data_name: str) -> str:
     return f"{BASE_PATH}/data_{data_name}/{expt_name}.pt"
 
 
-def main(data_name: str, algo_name_lst: List[str], model_id: int) -> None:
+def main(data_name: str, algo_name_lst: List[str]) -> None:
     os.makedirs(BASE_PATH, exist_ok=True)
     os.makedirs(f"{BASE_PATH}/data_{data_name.lower()}/", exist_ok=True)
 
     valid_target_num = 100
-    valid_loader = get_cifar10_dataloader(
-        batch_size=valid_target_num, split="valid", shuffle=False
+    _, eval_train_loader, valid_loader = get_loaders(
+        data_name=data_name.lower(),
+        valid_indices=list(range(valid_target_num)),
     )
-    num_train = 50000
+    num_train = len(eval_train_loader.dataset)
 
     seed_ids = list(range(3))
     remove_intervals = [200, 400, 600, 800, 1000, 1200]
@@ -179,10 +174,24 @@ def main(data_name: str, algo_name_lst: List[str], model_id: int) -> None:
         if os.path.exists(file_name):
             print(f"Found existing results at {file_name}.")
         else:
-            algo_scores = torch.load(
-                f"../files/results/data_{data_name.lower()}/model_{model_id}/{algo_name}.pt",
-                map_location="cpu",
-            )
+            if "prototype" in algo_name:
+                # algo_scores = torch.load(
+                #     f"../files/prototype_results/data_{data_name.lower()}/model_{model_id}/{algo_name}.pt",
+                #     map_location="cpu",
+                # )
+                raise NotImplementedError()
+            elif "unif" in algo_name:
+                # algo_scores = torch.load(
+                #     f"../files/unif_results/data_{data_name.lower()}/model_{model_id}/{algo_name}.pt",
+                #     map_location="cpu",
+                # )
+                raise NotImplementedError()
+            else:
+                ensemble_alpha = "0.5" if "trak" in algo_name else "0.0"
+                algo_scores = torch.load(
+                    f"../files/ensemble_results/data_{data_name}/alpha_{ensemble_alpha}/{algo_name}_10.pt",
+                    map_location="cpu",
+                )
             total_success_lst = []
             for i in range(valid_target_num):
                 print(f"{i}th validation data point.")
@@ -214,12 +223,8 @@ if __name__ == "__main__":
     algo_name_lst = [
         # "representation_similarity_dot",
         # "tracin_dot",
-        # "tracin_cos",
         # "trak",
         # "if_d1e-08",
-        # "unif_average",
-        # "unif_segment",
-        "kfac",
-        "kfac_1e-06",
+        "pca1e-6"
     ]
-    main(data_name="cifar10", algo_name_lst=algo_name_lst, model_id=0)
+    main(data_name="cifar10", algo_name_lst=algo_name_lst)
