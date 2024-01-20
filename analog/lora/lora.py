@@ -16,18 +16,12 @@ class LoRAHandler:
     _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d}
 
     def __init__(self, config: Dict[str, Any], state: StatisticState):
-        self.config = config
         self._state = state
 
-        self.parse_config()
-
-    def parse_config(self):
-        self.init_strategy = self.config.get("init", "random")
-        self.rank = self.config.get("rank", 64)
-        self.parameter_sharing = self.config.get("parameter_sharing", False)
-        self.parameter_sharing_groups = self.config.get(
-            "parameter_sharing_groups", None
-        )
+        self.init_strategy = config.init
+        self.rank = config.rank
+        self.parameter_sharing = config.parameter_sharing
+        self.parameter_sharing_groups = config.parameter_sharing_groups
 
     def add_lora(
         self,
@@ -87,5 +81,5 @@ class LoRAHandler:
                 lora_module.pca_init_weight(covariance_state[name])
             lora_module.to(device)
 
-            parent, target, target_name = _get_submodules(model, name)
+            parent, _, target_name = _get_submodules(model, name)
             setattr(parent, target_name, lora_module)

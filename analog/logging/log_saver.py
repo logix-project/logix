@@ -7,13 +7,13 @@ from analog.logging.mmap import MemoryMapHandler
 
 class LogSaver:
     def __init__(self, config):
-        self.log_dir = config.get("log_dir")
+        self.log_dir = config.log_dir
         self.file_prefix = f"log_rank_{get_rank()}_chunk_"
 
-        self.max_worker = config.get("num_workers", 1)
+        self.max_worker = config.num_workers
         self.allow_async = True if self.max_worker > 1 else False
 
-        self.flush_threshold = config.get("flush_threshold", -1)
+        self.flush_threshold = config.flush_threshold
         self.flush_count = 0
 
         self.buffer = nested_dict()

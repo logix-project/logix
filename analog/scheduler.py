@@ -75,15 +75,12 @@ class AnaLogScheduler:
         return self
 
     def __next__(self):
-        try:
-            analog_state = next(self.schedule_iterator)
-            self._epoch += 1
-            self.analog.setup(analog_state)
-            if self._epoch == self.execution_schedule["lora"]:
-                self.analog.add_lora()
-            return self._epoch
-        except StopIteration:
-            raise StopIteration
+        analog_state = next(self.schedule_iterator)
+        self._epoch += 1
+        self.analog.setup(analog_state)
+        if self._epoch == self.execution_schedule["lora"]:
+            self.analog.add_lora()
+        return self._epoch
 
     def __len__(self):
         return len(self.analog_state_schedule)
