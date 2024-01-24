@@ -44,20 +44,21 @@ for model_id in range(10):
     )
     model.eval()
 
-    train_loader, _ ,valid_loader = get_loaders(
+    _, eval_train_loader ,valid_loader = get_loaders(
         data_name="cifar10",
         eval_batch_size = 256,
     )
 
-    analog = AnaLog(project="test", config="./config.yaml")
+    analog = AnaLog(project="test1", config="./config1.yaml")
     analog_scheduler = AnaLogScheduler(analog, lora=args.lora)
+    # analog_scheduler.analog_state_schedule[-1]["save"] = None
 
     # Gradient & Hessian logging
     analog.watch(model)
     id_gen = DataIDGenerator()
     if not args.resume:
         for epoch in analog_scheduler:
-            for inputs, targets in tqdm(train_loader):
+            for inputs, targets in tqdm(eval_train_loader):
                 data_id = id_gen(inputs)
                 with analog(data_id=data_id):
                     inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)

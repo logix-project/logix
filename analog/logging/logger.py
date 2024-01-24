@@ -10,6 +10,7 @@ from analog.logging.option import LogOption
 from analog.logging.log_saver import LogSaver
 from analog.logging.utils import compute_per_sample_gradient
 
+import pydevd
 
 class HookLogger:
     def __init__(
@@ -140,7 +141,6 @@ class HookLogger:
             module_name (str): The name of the module.
         """
         assert len(grad_outputs) == 1
-
         log = self.binfo.log[module_name]
 
         if self.opt.log["backward"]:
@@ -184,6 +184,7 @@ class HookLogger:
         # we need to accumulate the gradients. We achieve this by using the
         # additional tensor hook on the output of the module.
         def _grad_backward_hook_fn(grad: torch.Tensor):
+            pydevd.settrace(suspend=False, trace_only_current_thread=True)
             if self.opt.log["grad"]:
                 per_sample_gradient = compute_per_sample_gradient(
                     inputs[0], grad, module

@@ -1,3 +1,4 @@
+import argparse
 import os.path
 from typing import List, Optional
 
@@ -96,7 +97,7 @@ def get_file_name(expt_name: str, data_name: str) -> str:
     return f"{BASE_PATH}/data_{data_name}/{expt_name}.pt"
 
 
-def main(data_name: str, algo_name_lst: List[str]) -> None:
+def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
     os.makedirs(BASE_PATH, exist_ok=True)
     os.makedirs(f"{BASE_PATH}/data_{data_name.lower()}/", exist_ok=True)
 
@@ -140,11 +141,12 @@ def main(data_name: str, algo_name_lst: List[str]) -> None:
     expt_name = "random"
     print(expt_name)
     file_name = get_file_name(expt_name=expt_name, data_name=data_name.lower())
+    file_name = f"{file_name[:-3]}_{startIdx}_{endIdx}.pt"
     if os.path.exists(file_name):
         print(f"Found existing results at {file_name}.")
     else:
         total_success_lst = []
-        for i in range(valid_target_num):
+        for i in range(startIdx, endIdx):
             print(f"{i}th validation data point.")
             if mask[i]:
                 random_idxs = list(np.random.permutation(list(range(num_train))))
@@ -171,6 +173,7 @@ def main(data_name: str, algo_name_lst: List[str]) -> None:
         print(algo_name)
         expt_name = algo_name
         file_name = get_file_name(expt_name=expt_name, data_name=data_name.lower())
+        file_name = f"{file_name[:-3]}_{startIdx}_{endIdx}.pt"
         if os.path.exists(file_name):
             print(f"Found existing results at {file_name}.")
         else:
@@ -193,7 +196,7 @@ def main(data_name: str, algo_name_lst: List[str]) -> None:
                     map_location="cpu",
                 )
             total_success_lst = []
-            for i in range(valid_target_num):
+            for i in range(startIdx, endIdx):
                 print(f"{i}th validation data point.")
                 if mask[i]:
                     top_idxs = torch.argsort(algo_scores[i], descending=True)
@@ -225,6 +228,11 @@ if __name__ == "__main__":
         # "tracin_dot",
         # "trak",
         # "if_d1e-08",
-        "pca1e-6"
+        # "pca1e-06",
+        "pca0.0001_toverify"
     ]
-    main(data_name="cifar10", algo_name_lst=algo_name_lst)
+    parser = argparse.ArgumentParser("CIFAR Influence Analysis")
+    parser.add_argument("--startIdx", type=int, default=0)
+    parser.add_argument("--endIdx", type=int, default=10)
+    args = parser.parse_args()
+    main(data_name="cifar10", algo_name_lst=algo_name_lst, startIdx=args.startIdx, endIdx=args.endIdx)
