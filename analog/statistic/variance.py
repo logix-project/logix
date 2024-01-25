@@ -35,8 +35,9 @@ class Variance:
         # initialize variance state if necessary
         if log_type not in variance_state[module_name]:
             device = data.device if not cpu_offload else "cpu"
+            dtype = data.dtype
             variance_state[module_name][log_type] = torch.zeros(
-                data.shape[-1], device=device
+                data.shape[-1], device=device, dtype=dtype
             )
             variance_counter[module_name][log_type] = 0
 

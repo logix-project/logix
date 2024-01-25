@@ -37,8 +37,9 @@ class CorrectedEigval:
 
         if module_name not in ekfac_eigval_state:
             device = data.device if not cpu_offload else "cpu"
+            dtype = data.dtype
             ekfac_eigval_state[module_name] = torch.zeros(
-                data.shape[-2], data.shape[-1], device=device
+                data.shape[-2], data.shape[-1], device=device, dtype=dtype
             )
             ekfac_counter[module_name] = 0
 

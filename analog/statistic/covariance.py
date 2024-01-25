@@ -35,8 +35,9 @@ class Covariance:
         # initialize covariance state if necessary
         if log_type not in covariance_state[module_name]:
             device = data.device if not cpu_offload else "cpu"
+            dtype = data.dtype
             covariance_state[module_name][log_type] = torch.zeros(
-                data.shape[-1], data.shape[-1], device=device
+                data.shape[-1], data.shape[-1], device=device, dtype=dtype
             )
             covariance_counter[module_name][log_type] = 0
 

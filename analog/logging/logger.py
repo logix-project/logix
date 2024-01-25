@@ -189,7 +189,7 @@ class HookLogger:
                 per_sample_gradient = compute_per_sample_gradient(
                     inputs[0], grad, module
                 )
-                if "grad" not in log[module_name]:
+                if "grad" not in log:
                     log["grad"] = per_sample_gradient
                 else:
                     log["grad"] += per_sample_gradient

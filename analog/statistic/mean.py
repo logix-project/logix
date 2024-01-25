@@ -35,8 +35,9 @@ class Mean:
         # initialize mean state if necessary
         if log_type not in mean_state[module_name]:
             device = data.device if not cpu_offload else "cpu"
+            dtype = data.dtype
             mean_state[module_name][log_type] = torch.zeros(
-                data.shape[-1], device=device
+                data.shape[-1], device=device, dtype=dtype
             )
             mean_counter[module_name][log_type] = 0
 
