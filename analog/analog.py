@@ -1,13 +1,15 @@
 import os
 
 from typing import Optional, Iterable, Dict, Any, List
+from dataclasses import asdict
+import yaml
 
 import torch
 import torch.nn as nn
 
-from analog.analysis import AnalysisBase
+from analog.analysis import InfluenceFunction
 from analog.batch_info import BatchInfo
-from analog.config import Config
+from analog.config import init_config_from_yaml
 from analog.logging import HookLogger
 from analog.logging.log_loader import LogDataset
 from analog.logging.log_loader_util import collate_nested_dicts
@@ -47,9 +49,10 @@ class AnaLog:
         self.model = None
 
         # Config
-        self.config = Config(config_file=config, project_name=project)
-        self.logging_config = self.config.logging_config
-        self.lora_config = self.config.lora_config
+        self.config = init_config_from_yaml(config_path=config, project=project)
+        self.logging_config = self.config.logging
+        self.lora_config = self.config.lora
+        self.influence_config = self.config.influence
         self.log_dir = self.config.log_dir
 
         # AnaLog state
@@ -61,8 +64,10 @@ class AnaLog:
             config=self.logging_config, state=self.state, binfo=self.binfo
         )
 
-        # Analysis plugins
-        self.analysis_plugins = {}
+        # Analysis
+        self.influence = InfluenceFunction(
+            config=self.influence_config, state=self.state
+        )
 
         self.type_filter = None
         self.name_filter = None
@@ -131,7 +136,6 @@ class AnaLog:
         """
         if not hasattr(self, "lora_handler"):
             self.lora_handler = LoRAHandler(self.lora_config, self.state)
-            self.lora_config = self.config.lora_config
 
         if model is None:
             model = self.model
@@ -150,41 +154,6 @@ class AnaLog:
             self.clear()
         if watch:
             self.watch(model)
-
-    def add_analysis(self, analysis_dict: Dict[str, AnalysisBase]) -> None:
-        """
-        Adds analysis plugins to AnaLog.
-
-        Args:
-            analysis_dict (dict): Dictionary containing analysis names as keys and analysis classes as values.
-        """
-        for analysis_name, analysis_cls in analysis_dict.items():
-            if hasattr(self, analysis_name):
-                raise ValueError(f"Analysis name {analysis_name} is reserved.")
-            analysis_plugin = analysis_cls(self.config.analysis_config, self.state)
-            setattr(
-                self,
-                analysis_name,
-                analysis_plugin,
-            )
-            self.analysis_plugins[analysis_name] = getattr(self, analysis_name)
-
-        return analysis_plugin
-
-    def remove_analysis(self, analysis_name: str) -> None:
-        """
-        Removes analysis plugins from AnaLog.
-
-        Args:
-            analysis_name (str): Name of the analysis to be removed.
-        """
-        if analysis_name not in self.analysis_plugins:
-            get_logger().warning(
-                f"Analysis {analysis_name} does not exist. Nothing to remove."
-            )
-            return None
-        del self.analysis_plugins[analysis_name]
-        delattr(self, analysis_name)
 
     def log(self, data_id: Any, mask: Optional[torch.Tensor] = None):
         """
@@ -280,11 +249,55 @@ class AnaLog:
         """
         return self.state.get_covariance_svd_state()
 
+    def compute_influence(self, src_log, tgt_log, mode="dot", precondition=True):
+        """
+        Front-end interface for computing influence scores. It calls the
+        `compute_influence` method of the `InfluenceFunction` class.
+
+        Args:
+            src_log (Tuple[str, Dict[str, Dict[str, torch.Tensor]]]): Log of source gradients
+            tgt_log (Tuple[str, Dict[str, Dict[str, torch.Tensor]]]): Log of target gradients
+            mode (str, optional): Influence function mode. Defaults to "dot".
+            precondition (bool, optional): Whether to precondition the gradients. Defaults to True.
+        """
+        return self.influence.compute_influence(
+            src_log, tgt_log, mode=mode, precondition=precondition
+        )
+
+    def compute_influence_all(self, src_log, loader, mode="dot", precondition=True):
+        """
+        Front-end interface for computing influence scores against all train data in the log.
+        It calls the `compute_influence_all` method of the `InfluenceFunction` class.
+
+        Args:
+            src_log (Tuple[str, Dict[str, Dict[str, torch.Tensor]]]): Log of source gradients
+            loader (torch.utils.data.DataLoader): DataLoader of train data
+            mode (str, optional): Influence function mode. Defaults to "dot".
+            precondition (bool, optional): Whether to precondition the gradients. Defaults to True.
+        """
+        return self.influence.compute_influence_all(
+            src_log, loader, mode=mode, precondition=precondition
+        )
+
+    def compute_self_influence(self, src_log, precondition=True):
+        """
+        Front-end interface for computing self-influence scores. It calls the
+        `compute_self_influence` method of the `InfluenceFunction` class.
+
+        Args:
+            src_log (Tuple[str, Dict[str, Dict[str, torch.Tensor]]]): Log of source gradients
+            precondition (bool, optional): Whether to precondition the gradients. Defaults to True.
+        """
+        return self.influence.compute_self_influence(src_log, precondition=precondition)
+
     def save_config(self) -> None:
         """
         Save AnaLog state to disk.
         """
-        torch.save(self.config, os.path.join(self.log_dir, "config.pt"))
+        config_file = os.path.join(self.log_dir, "config.yaml")
+        config_dict = asdict(self.config)
+        with open(config_file, "w", encoding="utf-8") as f:
+            yaml.dump(config_dict, f, default_flow_style=False)
 
     def save_state(self) -> None:
         """
@@ -313,8 +326,8 @@ class AnaLog:
         # Load analog config
         assert os.path.exists(self.log_dir), f"{self.log_dir} does not exist!"
 
-        config_path = os.path.join(self.log_dir, "config.pt")
-        self.config.load_config(config_path)
+        config_file = os.path.join(self.log_dir, "config.yaml")
+        self.config.load_config(config_file)
 
         # Load LoRA state
         lora_dir = os.path.join(self.log_dir, "lora")
@@ -367,5 +380,3 @@ class AnaLog:
         """
         self.state.clear()
         self.logger.clear()
-        for key in self.analysis_plugins:
-            self.remove_analysis(key)

@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 
 from analog.batch_info import BatchInfo
+from analog.config import LoggingConfig
 from analog.state import StatisticState
 from analog.logging.option import LogOption
 from analog.logging.log_saver import LogSaver
@@ -14,7 +15,7 @@ from analog.logging.utils import compute_per_sample_gradient
 class HookLogger:
     def __init__(
         self,
-        config: Dict,
+        config: LoggingConfig,
         state: StatisticState,
         binfo: BatchInfo,
     ) -> None:
@@ -24,7 +25,7 @@ class HookLogger:
         self.state = state
         self.binfo = binfo
         self.opt = LogOption()
-        self.cpu_offload = config.get("cpu_offload", False)
+        self.cpu_offload = config.cpu_offload
 
         # log saver
         self.log_saver = LogSaver(config=config)
