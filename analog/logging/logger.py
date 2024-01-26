@@ -148,16 +148,17 @@ class HookLogger:
         """
         assert len(grad_outputs) == 1
 
+        error = grad_outputs[0]
         log = self.binfo.log[module_name]
 
         if self.dtype is not None:
-            grad_outputs[0] = grad_outputs[0].to(dtype=self.dtype)
+            error = error.to(dtype=self.dtype)
 
         if self.opt.log["backward"]:
             if "backward" not in log:
-                log["backward"] = grad_outputs[0]
+                log["backward"] = error
             else:
-                log["backward"] += grad_outputs[0]
+                log["backward"] += error
 
         for stat in self.opt.statistic["backward"]:
             stat.update(
@@ -166,7 +167,7 @@ class HookLogger:
                 module=module,
                 module_name=module_name,
                 log_type="backward",
-                data=grad_outputs[0],
+                data=error,
                 cpu_offload=self.cpu_offload,
             )
 
