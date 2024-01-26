@@ -105,6 +105,9 @@ class AnaLog:
                 is_lora=_is_lora,
             ):
                 self.logger.add_module(name, module)
+            elif len(list(module.children())) == 0:
+                for p in module.parameters():
+                    p.requires_grad = False
         print_tracked_modules(self.logger.modules_to_name)
 
         self.logger.register_all_module_hooks()
