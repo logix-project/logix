@@ -60,7 +60,7 @@ def main():
                 model.zero_grad()
                 out = model(**batch)
                 loss = loss_fn(out.logits, batch["labels"], reduction="sum")
-                loss.backward()
+                accelerator.backward(loss)
         analog.finalize()
 
 

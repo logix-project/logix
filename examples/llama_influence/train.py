@@ -73,7 +73,7 @@ def main():
                 loss_fn(out.logits, batch["labels"])
                 / config.gradient_accumulation_steps
             )
-            loss.backward()
+            accelerator.backward(loss)
 
             if step % (config.log_steps * config.gradient_accumulation_steps) == 0:
                 log_loss = loss.item() * config.gradient_accumulation_steps
