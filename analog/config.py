@@ -4,6 +4,8 @@ from typing import List, Dict, Optional, Any, Union
 from dataclasses import dataclass, field, is_dataclass
 import yaml
 
+import torch
+
 from analog.utils import get_rank
 
 
@@ -50,6 +52,20 @@ class LoggingConfig:
     cpu_offload: int = field(
         default=False, metadata={"help": "Offload statistic states to CPU."}
     )
+    log_dtype: str = field(default="none", metadata={"help": "Data type for logging."})
+
+    def get_dtype(self):
+        if self.log_dtype == "none":
+            return None
+        elif self.log_dtype == "float64":
+            return torch.float64
+        elif self.log_dtype == "float16":
+            return torch.float16
+        elif self.log_dtype == "bfloat16":
+            return torch.bfloat16
+        elif self.log_dtype == "int8":
+            return torch.int8
+        return torch.float32
 
 
 @dataclass

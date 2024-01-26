@@ -8,6 +8,7 @@ logging:
   cpu_offload: false
   flush_threshold: -1
   log_dir: ./analog/test
+  log_dtype: none
   num_workers: 1
 lora:
   init: random

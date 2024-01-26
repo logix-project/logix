@@ -63,9 +63,14 @@ class StatisticState:
 
         for module_name, module_state in self.covariance_state.items():
             for mode, covariance in module_state.items():
-                eigvals, eigvecs = torch.linalg.eigh(covariance)
-                self.covariance_eigval_state[module_name][mode] = eigvals
-                self.covariance_eigvec_state[module_name][mode] = eigvecs
+                dtype = covariance.dtype
+                eigvals, eigvecs = torch.linalg.eigh(covariance.double())
+                self.covariance_eigval_state[module_name][mode] = eigvals.to(
+                    dtype=dtype
+                )
+                self.covariance_eigvec_state[module_name][mode] = eigvecs.to(
+                    dtype=dtype
+                )
 
     @torch.no_grad()
     def covariance_inverse(self, set_attr: bool = False) -> None:

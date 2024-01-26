@@ -25,7 +25,10 @@ class HookLogger:
         self.state = state
         self.binfo = binfo
         self.opt = LogOption()
+
+        # parse config
         self.cpu_offload = config.cpu_offload
+        self.dtype = config.get_dtype()
 
         # log saver
         self.log_saver = LogSaver(config=config)
@@ -107,6 +110,9 @@ class HookLogger:
                 if mask.shape[-1] == activations.shape[-1]:
                     activations = activations * mask
 
+        if self.dtype is not None:
+            activations = activations.to(dtype=self.dtype)
+
         if self.opt.log["forward"]:
             if "forward" not in log:
                 log["forward"] = activations
@@ -143,6 +149,9 @@ class HookLogger:
         assert len(grad_outputs) == 1
 
         log = self.binfo.log[module_name]
+
+        if self.dtype is not None:
+            grad_outputs[0] = grad_outputs[0].to(dtype=self.dtype)
 
         if self.opt.log["backward"]:
             if "backward" not in log:
@@ -189,6 +198,10 @@ class HookLogger:
                 per_sample_gradient = compute_per_sample_gradient(
                     inputs[0], grad, module
                 )
+
+                if self.dtype is not None:
+                    per_sample_gradient = per_sample_gradient.to(dtype=self.dtype)
+
                 if "grad" not in log:
                     log["grad"] = per_sample_gradient
                 else:
@@ -209,6 +222,10 @@ class HookLogger:
             tensor_name (str): A string identifier for the tensor, useful for logging.
         """
         log = self.binfo.log[tensor_name]
+
+        if self.dtype is not None:
+            tensor = tensor.to(dtype=self.dtype)
+
         log["forward"] = tensor
 
         for stat in self.opt.statistic["forward"]:
@@ -234,6 +251,10 @@ class HookLogger:
             tensor_name (str): A string identifier for the tensor whose gradient is being tracked.
         """
         log = self.binfo.log[tensor_name]
+
+        if self.dtype is not None:
+            grad = grad.to(dtype=self.dtype)
+
         log["backward"] = grad
 
         for stat in self.opt.statistic["backward"]:

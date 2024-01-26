@@ -3,6 +3,7 @@ import torch.nn as nn
 from einops import einsum, reduce
 
 
+@torch.no_grad()
 def compute_per_sample_gradient(
     fwd: torch.Tensor, bwd: torch.Tensor, module: nn.Module
 ):
