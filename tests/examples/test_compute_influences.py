@@ -109,7 +109,7 @@ class TestSingleCheckpointInfluence(unittest.TestCase):
 
         from analog.analysis import InfluenceFunction
 
-        analog.add_analysis({"influence": InfluenceFunction})
+        # analog.add_analysis({"influence": InfluenceFunction})
         query_iter = iter(query_loader)
         analog.eval()
         with analog(data_id=["test"]) as al:

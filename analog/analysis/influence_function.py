@@ -3,19 +3,26 @@ import pandas as pd
 import torch
 
 from einops import einsum, rearrange, reduce
+from analog.config import InfluenceConfig
+from analog.state import StatisticState
 from analog.utils import get_logger, nested_dict
-from analog.analysis import AnalysisBase
 from analog.analysis.utils import synchronize_device
 
 
-class InfluenceFunction(AnalysisBase):
-    def __init__(self, config, state):
-        super().__init__(config, state)
+class InfluenceFunction:
+    def __init__(self, config: InfluenceConfig, state: StatisticState):
+        # state
+        self._state = state
+
+        # config
+        self.log_dir = config.log_dir
+        self.mode = config.mode
+        self.damping = config.damping
+        self.relative_damping = config.relative_damping
+
+        # influence scores
         self.influence_scores = pd.DataFrame()
         self.self_influence_scores = pd.DataFrame()
-
-    def parse_config(self):
-        return
 
     @torch.no_grad()
     def precondition(
@@ -112,7 +119,6 @@ class InfluenceFunction(AnalysisBase):
         total_influence = 0
         for module_name in src.keys():
             src_module, tgt_module = src[module_name]["grad"], tgt[module_name]["grad"]
-            tgt_module = tgt_module
             assert src_module.shape[1:] == tgt_module.shape[1:]
             src_module_expanded = rearrange(src_module, "n ... -> n 1 ...")
             tgt_module_expanded = rearrange(tgt_module, "m ... -> 1 m ...")

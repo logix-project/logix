@@ -1,95 +1,168 @@
 import os
-from typing import Dict, Any
+
+from typing import List, Dict, Optional, Any, Union
+from dataclasses import dataclass, field, is_dataclass
 import yaml
 
 import torch
 
-from analog.utils import get_logger, get_rank
+from analog.utils import get_rank
 
 
+def init_config_from_yaml(config_path: str, project: Optional[str] = None):
+    config_dict = {}
+    if os.path.exists(config_path):
+        with open(config_path, "r", encoding="utf-8") as config_file:
+            config_dict = yaml.safe_load(config_file)
+
+    if project is not None:
+        config_dict["project"] = project
+    assert "project" in config_dict, "Project name must be provided."
+
+    return Config(**config_dict)
+
+
+def load_config_from_dict(config, config_dict: Dict[str, Any]):
+    for name, value in config_dict.items():
+        if isinstance(value, dict):
+            assert is_dataclass(getattr(config, name))
+            load_config_from_dict(getattr(config, name), value)
+        else:
+            setattr(config, name, value)
+
+
+@dataclass
+class LoggingConfig:
+    """
+    Configuration for logging.
+
+    Args:
+        flush_threshold: Flush threshold for the buffer.
+        num_workers: Number of workers used for log saving.
+        cpu_offload: Offload statistic states to CPU.
+    """
+
+    log_dir: str = field(init=False)
+    flush_threshold: int = field(
+        default=-1, metadata={"help": "Flush threshold for the log buffer."}
+    )
+    num_workers: int = field(
+        default=1, metadata={"help": "Number of workers used for logging."}
+    )
+    cpu_offload: int = field(
+        default=False, metadata={"help": "Offload statistic states to CPU."}
+    )
+    log_dtype: str = field(default="none", metadata={"help": "Data type for logging."})
+
+    def get_dtype(self):
+        if self.log_dtype == "none":
+            return None
+        elif self.log_dtype == "float64":
+            return torch.float64
+        elif self.log_dtype == "float16":
+            return torch.float16
+        elif self.log_dtype == "bfloat16":
+            return torch.bfloat16
+        elif self.log_dtype == "int8":
+            return torch.int8
+        return torch.float32
+
+
+@dataclass
+class LoRAConfig:
+    """
+    Configuration for LoRA.
+
+    Args:
+        init: Initialization method for LoRA.
+        rank: Rank for LoRA.
+        parameter_sharing: Parameter sharing for LoRA.
+        parameter_sharing_groups: Parameter sharing groups for LoRA.
+    """
+
+    init: str = field(
+        default="random", metadata={"help": "Initialization method for LoRA."}
+    )
+    rank: int = field(default=64, metadata={"help": "Rank for LoRA."})
+    parameter_sharing: bool = field(
+        default=False, metadata={"help": "Parameter sharing for LoRA."}
+    )
+    parameter_sharing_groups: Optional[List[str]] = field(
+        default=None, metadata={"help": "Parameter sharing groups for LoRA."}
+    )
+
+
+@dataclass
+class InfluenceConfig:
+    """
+    Configuration for influence.
+
+    Args:
+        damping: Damping for influence.
+        relative_damping: Compute the damping term based on sigular values.
+        mode: Mode for influence.
+    """
+
+    log_dir: str = field(init=False)
+    damping: float = field(
+        default=0.0, metadata={"help": "Damping strength for influence."}
+    )
+    relative_damping: bool = field(
+        default=False,
+        metadata={"help": "Compute the damping term based on sigular values."},
+    )
+    mode: str = field(default="dot", metadata={"help": "Mode for influence."})
+
+
+@dataclass
 class Config:
     """
     Configuration management class.
     Loads configurations from a YAML file and provides access to component-specific configurations.
+
+    Args:
+        project: Project name.
+        root_dir: Root directory for logging.
+        logging: Logging configuration.
+        lora: LoRA configuration.
+        analysis: Analysis configuration.
     """
 
-    # Default values for each configuration
-    _DEFAULTS = {
-        "root_dir": "./analog",
-        "logging": {"flush_threshold": -1},
-        "analysis": {},
-        "lora": {"init": "random", "rank": 64},
-    }
+    project: str
+    log_dir: str = field(init=False)
+    root_dir: str = field(
+        default="./analog", metadata={"help": "Root directory for logging."}
+    )
+    logging: Union[Dict[str, Any], LoggingConfig] = field(
+        default_factory=LoggingConfig, metadata={"help": "Logging configuration."}
+    )
+    influence: Union[Dict[str, Any], InfluenceConfig] = field(
+        default_factory=InfluenceConfig, metadata={"help": "Influence configuration."}
+    )
+    lora: Union[Dict[str, Any], LoRAConfig] = field(
+        default_factory=LoRAConfig, metadata={"help": "LoRA configuration."}
+    )
 
-    def __init__(self, config_file: str, project_name: str) -> None:
-        """
-        Initialize Config class with given configuration file.
+    def __post_init__(self):
+        if isinstance(self.logging, dict):
+            self.logging = LoggingConfig(**self.logging)
+        if isinstance(self.lora, dict):
+            self.lora = LoRAConfig(**self.lora)
 
-        :param config_file: Path to the YAML configuration file.
-        """
-        self.project_name = project_name
-        try:
-            with open(config_file, "r") as file:
-                self.data: Dict[str, Any] = yaml.safe_load(file)
-        except FileNotFoundError:
-            get_logger().warning(
-                "Configuration file not found. Using default values.\n"
-            )
-            self.data = {}
+        self.log_dir = None
+        self.configure_log_dir()
 
-        self._logging_config = self.data.get("logging", self._DEFAULTS["logging"])
-        self._analysis_config = self.data.get("analysis", self._DEFAULTS["analysis"])
-        self._lora_config = self.data.get("lora", self._DEFAULTS["lora"])
-
-        self._log_dir = None
-        self._configure_log_dir(self.data.get("root_dir", self._DEFAULTS["root_dir"]))
-
-    @property
-    def logging_config(self) -> Dict[str, Any]:
-        """
-        Retrieve logging configuration.
-
-        :return: Dictionary containing logging configurations.
-        """
-        return self._logging_config
-
-    @property
-    def analysis_config(self) -> Dict[str, Any]:
-        """
-        Retrieve analysis configuration.
-
-        :return: Dictionary containing analysis configurations.
-        """
-        return self._analysis_config
-
-    @property
-    def lora_config(self) -> Dict[str, Any]:
-        """
-        Retrieve LoRA configuration.
-
-        :return: Dictionary containing LoRA configurations.
-        """
-        return self._lora_config
-
-    @property
-    def log_dir(self) -> str:
-        """
-        Retrieve logging directory.
-
-        :return: Path to logging directory.
-        """
-        return self._log_dir
-
-    def _configure_log_dir(self, root_dir) -> None:
+    def configure_log_dir(self) -> None:
         """
         Set single logging directory for all components.
         """
-        self._log_dir = os.path.join(root_dir, self.project_name)
+        self.log_dir = os.path.join(self.root_dir, self.project)
 
-        if not os.path.exists(self._log_dir) and get_rank() == 0:
-            os.makedirs(self._log_dir)
+        if not os.path.exists(self.log_dir) and get_rank() == 0:
+            os.makedirs(self.log_dir)
 
-        self._logging_config["log_dir"] = self._log_dir
+        self.logging.log_dir = self.log_dir
+        self.influence.log_dir = self.log_dir
 
     def load_config(self, config_path: str) -> None:
         """
@@ -98,8 +171,10 @@ class Config:
         Args:
             config_path: Path to the saved YAML file.
         """
-        config = torch.load(config_path)
-        self._logging_config.update(config.logging_config)
-        self._analysis_config.update(config.analysis_config)
-        self._lora_config.update(config.lora_config)
-        self._log_dir = config.log_dir
+        assert os.path.exists(config_path), "Configuration file not found."
+        config_dict = {}
+        with open(config_path, "r", encoding="utf-8") as config_file:
+            config_dict = yaml.safe_load(config_file)
+
+        load_config_from_dict(self, config_dict)
+        self.configure_log_dir()

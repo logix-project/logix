@@ -1,0 +1,5 @@
+root_dir: /data/tir/projects/tir6/general/sangkeuc/llama
+logging:
+  cpu_offload: false
+  flush_threshold: 1000000000
+  log_dtype: float32
