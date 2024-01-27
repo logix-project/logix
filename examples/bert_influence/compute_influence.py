@@ -33,7 +33,6 @@ def main():
     analog.watch(model)
     analog.initialize_from_log()
     log_loader = analog.build_log_dataloader()
-    if_computer = analog.add_analysis({"influence": InfluenceFunction})
 
     # influence analysis
     analog.setup({"log": "grad"})
@@ -50,10 +49,10 @@ def main():
             accelerator.backward(loss)
 
         test_log = run.get_log()
-        if_computer.compute_influence_all(test_log, log_loader, args.damping)
+        run.influence.compute_influence_all(test_log, log_loader, damping=args.damping)
         break
 
-    if_computer.save_influence_scores()
+    run.influence.save_influence_scores()
 
 
 if __name__ == "__main__":
