@@ -105,7 +105,6 @@ def get_loaders(
     torch.utils.data.DataLoader,
     torch.utils.data.DataLoader,
 ]:
-    # assert data_name in ["qnli", "sst2"]
     assert data_name in ["qnli", "sst2", "rte"]
     train_batch_size = 16
 
@@ -137,7 +136,6 @@ def get_dataloader(
     indices: List[int] = None,
     do_not_pad: bool = False,
 ) -> torch.utils.data.DataLoader:
-    # assert data_name in ["qnli", "sst2"]
     assert data_name in ["qnli", "sst2", "rte"]
 
     raw_datasets = load_dataset(
