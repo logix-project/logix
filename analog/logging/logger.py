@@ -10,6 +10,7 @@ from analog.state import StatisticState
 from analog.logging.option import LogOption
 from analog.logging.log_saver import LogSaver
 from analog.logging.utils import compute_per_sample_gradient
+from analog.utils import get_logger
 
 
 class HookLogger:
@@ -78,7 +79,7 @@ class HookLogger:
 
         # Write and flush the buffer if necessary
         if any(self.opt.save.values()):
-            self.log_saver.buffer_write(data_id=self.binfo.data_id, log=self.binfo.log)
+            self.log_saver.buffer_write(binfo=self.binfo)
             self.log_saver.flush()
 
     def _forward_hook_fn(

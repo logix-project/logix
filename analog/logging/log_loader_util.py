@@ -49,7 +49,7 @@ def get_mmap_data(path, mmap_filename, dtype="uint8") -> List:
         mmap_filename (str): Filename of the mmap file.
 
     Returns:
-       List: A list of memory maps and an ordered dictionary mapping data_ids to chunks.
+       List: A list of memory maps.
     """
     with MemoryMapHandler.read(path, mmap_filename, dtype) as mm:
         return mm

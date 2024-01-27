@@ -14,6 +14,11 @@ def extract_arrays(obj, base_path=()):
             yield from extract_arrays(v, base_path + (k,))
     elif isinstance(obj, np.ndarray):
         yield base_path, obj
+    # For flattened.
+    # TODO: Modify this in case we switch the binfo.
+    elif isinstance(obj, list):
+        for i in range(len(obj)):
+            yield base_path, obj[i]
 
 
 class MemoryMapHandler:
@@ -33,7 +38,6 @@ class MemoryMapHandler:
 
         metadata = []
         offset = 0
-
         for data_id, nested_dict in data_buffer:
             for path, arr in extract_arrays(nested_dict):
                 bytes = arr.nbytes
@@ -65,7 +69,6 @@ class MemoryMapHandler:
             filename (str): filename for the path to mmap.
         Returns:
             mmap (np.mmap): memory mapped buffer read from filename.
-            metadata (json):
         """
         _, file_ext = os.path.splitext(filename)
         if file_ext == "":

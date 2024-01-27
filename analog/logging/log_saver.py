@@ -17,12 +17,19 @@ class LogSaver:
         self.flush_count = 0
 
         self.buffer = nested_dict()
+        self.flatten = config.get("flatten")
+        if self.flatten:
+            self.buffer = {}  # Dict[str, Tensor]
         self.buffer_size = 0
 
-    def buffer_write(self, data_id, log):
+    def buffer_write(self, binfo):
         """
         Add log state on exit.
         """
+
+        data_id = binfo.data_id
+        log = binfo.log
+        flatten_context = binfo.flatten_context
 
         def _add(log, buffer, idx):
             for key, value in log.items():
@@ -33,7 +40,36 @@ class LogSaver:
                     continue
                 _add(value, buffer[key], idx)
 
+        # TODO: Modify this in case we switch the binfo data type.
+        # def _add_flatten(log, idx, concat_numpys, paths):
+        #     for key, value in log.items():
+        #         if not isinstance(value, torch.Tensor):
+        #             _add_flatten(value, idx, concat_numpys)
+        #             continue
+        #         numpy_value = to_numpy(value[idx])
+        #         self.buffer_size += numpy_value.size
+        #         concat_numpys.append(numpy_value)
+        def _get_numpy_value(log, key_tuple, idx):
+            current_level = log
+            for key in key_tuple:
+                if key in current_level:
+                    current_level = current_level[key]
+                    if isinstance(current_level, torch.Tensor):
+                        current_level = current_level[idx]
+                else:
+                    raise ValueError(f"no path {key} exist in the log")
+            return current_level
+
         for idx, did in enumerate(data_id):
+            if self.flatten:
+                concat_numpys = []
+                for path in flatten_context.paths:
+                    numpy_value = to_numpy(_get_numpy_value(log, path, idx))
+                    self.buffer_size += numpy_value.size
+                    concat_numpys.append(numpy_value)
+
+                self.buffer[did] = concat_numpys
+                continue
             _add(log, self.buffer[did], idx)
 
     def _flush_unsafe(self, log_dir, buffer, flush_count) -> str:
@@ -66,7 +102,6 @@ class LogSaver:
         if len(self.buffer) == 0:
             return log_dir
         buffer_list = [(k, v) for k, v in self.buffer.items()]
-
         MemoryMapHandler.write(
             log_dir,
             self.file_prefix + f"{self.flush_count}.mmap",

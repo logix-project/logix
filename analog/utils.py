@@ -1,7 +1,7 @@
 import sys
 import logging as default_logging
 from typing import Any, List, Optional
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 import hashlib
 
@@ -9,7 +9,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.distributed as dist
-
 
 _logger = None
 
@@ -90,16 +89,18 @@ def get_rank(group=None) -> int:
     else:
         return 0
 
-
-def print_tracked_modules(named_modules) -> None:
-    """
-    Print the tracked modules.
-    """
-    get_logger().info("Tracking the following modules:")
+def get_repr_dim(named_modules):
     repr_dim = 0
     for k, v in named_modules.items():
         get_logger().info(f"{v}: {k}")
         repr_dim += k.weight.data.numel()
+    return repr_dim
+
+def print_tracked_modules(repr_dim) -> None:
+    """
+    Print the tracked modules.
+    """
+    get_logger().info("Tracking the following modules:")
     get_logger().info(f"Total number of parameters: {repr_dim:,}\n")
 
 
