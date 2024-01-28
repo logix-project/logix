@@ -48,11 +48,10 @@ class TestMemoryMapHandler(unittest.TestCase):
         shutil.rmtree(cls.test_dir)
 
     def test_write_and_read(self):
-        data_buffer = [
-            (i, {"dummy_data": arr}) for i, arr in enumerate(generate_random_arrays())
-        ]
+        rand_arr = generate_random_arrays()
+        data_buffer = [(i, {"dummy_data": arr}) for i, arr in enumerate(rand_arr)]
         filename = "test_data"
-        order = ["dummy_data"]
+        order = [["dummy_data"]]
         MemoryMapHandler.write(self.test_dir, filename, data_buffer, order)
 
         mmap = None
@@ -78,12 +77,10 @@ class TestMemoryMapHandler(unittest.TestCase):
         expected_files_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "test_mmap_data"
         )
-
+        static_arr = generate_static_arrays()
         filename = "test_data"
-        data_buffer = [
-            (i, {"dummy_data": arr}) for i, arr in enumerate(generate_static_arrays())
-        ]
-        order = ["dummy_data"]
+        data_buffer = [(i, {"dummy_data": arr}) for i, arr in enumerate(static_arr)]
+        order = [["dummy_data"]]
         MemoryMapHandler.write(expected_files_path, filename, data_buffer, order)
         mmap = None
         with MemoryMapHandler.read(expected_files_path, filename) as mm:

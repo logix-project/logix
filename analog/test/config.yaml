@@ -11,7 +11,7 @@ logging:
   log_dtype: none
   num_workers: 1
 lora:
-  init: random
+  init: pca
   parameter_sharing: false
   parameter_sharing_groups: null
   rank: 64
