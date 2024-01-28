@@ -4,7 +4,6 @@ import argparse
 import torch
 from analog import AnaLog
 from analog.utils import DataIDGenerator
-from analog.analysis import InfluenceFunction
 
 from train import (
     get_mnist_dataloader,
@@ -35,7 +34,7 @@ query_loader = dataloader_fn(
     batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs
 )
 
-analog = AnaLog(project="test")
+analog = AnaLog(project="test") # switched.
 
 # Gradient & Hessian logging
 analog.watch(model)

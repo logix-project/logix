@@ -43,3 +43,4 @@ def compute_per_sample_gradient(
         raise NotImplementedError
     else:
         raise ValueError(f"Unsupported module type: {type(module)}")
+

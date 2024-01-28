@@ -90,11 +90,13 @@ def get_rank(group=None) -> int:
         return 0
 
 def get_repr_dim(named_modules):
-    repr_dim = 0
+    repr_dims = []
+    paths=[]
     for k, v in named_modules.items():
         get_logger().info(f"{v}: {k}")
-        repr_dim += k.weight.data.numel()
-    return repr_dim
+        repr_dims.append(k.weight.data.numel())
+        paths.append((v,"grad")) # hardcoded
+    return paths, repr_dims
 
 def print_tracked_modules(repr_dim) -> None:
     """

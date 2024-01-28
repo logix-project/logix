@@ -5,10 +5,8 @@ from dataclasses import asdict
 import yaml
 from functools import reduce
 
-
 import torch
 import torch.nn as nn
-
 
 from analog.analysis import InfluenceFunction
 
@@ -21,7 +19,7 @@ from analog.logging.log_loader import LogDataset
 from analog.logging.log_loader_util import collate_nested_dicts
 from analog.lora import LoRAHandler
 from analog.lora.utils import is_lora
-from analog.state import StatisticState
+from analog.state import AnaLogState
 from analog.utils import (
     get_logger,
     get_rank,
@@ -40,9 +38,9 @@ class AnaLog:
     _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d}
 
     def __init__(
-        self,
-        project: str,
-        config: str = "",
+            self,
+            project: str,
+            config: str = "",
     ) -> None:
         """
         Initializes the AnaLog class for neural network logging.
@@ -62,13 +60,11 @@ class AnaLog:
         self.influence_config = self.config.influence
         self.log_dir = self.config.log_dir
 
-        self.flatten = False
-        if self.logging_config["flatten"]:
-            self.flatten = True
+        self.flatten = self.influence_config.flatten
 
         # AnaLog state
-        self.state = StatisticState()
-        self.binfo = BatchInfo(self.flatten)
+        self.state = AnaLogState()
+        self.binfo = BatchInfo()
 
         # Initialize logger
         self.logger = HookLogger(
@@ -84,10 +80,10 @@ class AnaLog:
         self.name_filter = None
 
     def watch(
-        self,
-        model: nn.Module,
-        type_filter: List[nn.Module] = None,
-        name_filter: List[str] = None,
+            self,
+            model: nn.Module,
+            type_filter: List[nn.Module] = None,
+            name_filter: List[str] = None,
     ) -> None:
         """
         Sets up modules in the model to be watched.
@@ -106,28 +102,23 @@ class AnaLog:
 
         _is_lora = is_lora(self.model)
 
-        shapes = []
-        paths = []
         for name, module in self.model.named_modules():
             if module_check(
-                module=module,
-                module_name=name,
-                supported_modules=self._SUPPORTED_MODULES,
-                type_filter=self.type_filter,
-                name_filter=self.name_filter,
-                is_lora=_is_lora,
+                    module=module,
+                    module_name=name,
+                    supported_modules=self._SUPPORTED_MODULES,
+                    type_filter=self.type_filter,
+                    name_filter=self.name_filter,
+                    is_lora=_is_lora,
             ):
                 self.logger.add_module(name, module)
             elif len(list(module.children())) == 0:
                 for p in module.parameters():
                     p.requires_grad = False
-        repr_dim = get_repr_dim(self.logger.modules_to_name)
-        print_tracked_modules(repr_dim)
-
+        module_path, repr_dim = get_repr_dim(self.logger.modules_to_name)
+        print_tracked_modules(reduce(lambda x, y: x + y, repr_dim))
         self.logger.register_all_module_hooks()
-        if self.flatten:
-            block_size = reduce(lambda x, y: x + y, shapes)
-            self.binfo.set_flatten_context(paths, block_size)
+        self.state.set_state("model_module", path=module_path, path_dim=repr_dim)
 
     def watch_activation(self, tensor_dict: Dict[str, torch.Tensor]) -> None:
         """
@@ -139,10 +130,10 @@ class AnaLog:
         self.logger.register_all_tensor_hooks(tensor_dict)
 
     def add_lora(
-        self,
-        model: Optional[nn.Module] = None,
-        watch: bool = True,
-        clear: bool = True,
+            self,
+            model: Optional[nn.Module] = None,
+            watch: bool = True,
+            clear: bool = True,
     ) -> None:
         """
         Adds LoRA for gradient compression.
@@ -186,9 +177,9 @@ class AnaLog:
         self.logger.log(data_id=data_id, mask=mask)
 
     def __call__(
-        self,
-        data_id: Iterable[Any] = None,
-        mask: Optional[torch.Tensor] = None,
+            self,
+            data_id: Iterable[Any] = None,
+            mask: Optional[torch.Tensor] = None,
     ):
         """
         Args:
@@ -229,13 +220,11 @@ class AnaLog:
         """
         Constructs the log dataset from the storage handler.
         """
-        log_dataset = LogDataset(log_dir=self.log_dir, config=self.config)
-        if self.flatten:
-            log_dataset.set_flatten_context(self.binfo.flatten_context)
+        log_dataset = LogDataset(log_dir=self.log_dir, config=self.influence_config)
         return log_dataset
 
     def build_log_dataloader(
-        self, batch_size: int = 16, num_workers: int = 0, pin_memory: bool = False
+            self, batch_size: int = 16, num_workers: int = 0, pin_memory: bool = False
     ):
         """
         Constructs the log dataloader from the storage handler.
@@ -369,7 +358,7 @@ class AnaLog:
         self.state.load_state(self.log_dir)
 
     def finalize(
-        self,
+            self,
     ) -> None:
         """
         Finalizes the logging session.

@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 from analog.batch_info import BatchInfo
-from analog.state import StatisticState
+from analog.state import AnaLogState
 from analog.statistic.utils import make_2d
 
 
@@ -12,7 +12,7 @@ class Covariance:
     @staticmethod
     @torch.no_grad()
     def update(
-        state: StatisticState,
+        state: AnaLogState,
         binfo: BatchInfo,
         module: nn.Module,
         module_name: str,

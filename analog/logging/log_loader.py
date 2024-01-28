@@ -1,11 +1,11 @@
-import time
 from collections import OrderedDict
-from functools import reduce
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 
 from analog.logging.log_loader_util import (
+    get_entry_metadata,
+    get_flatten_item,
     get_mmap_data,
     get_mmap_metadata,
     find_chunk_indices,
@@ -15,18 +15,15 @@ from analog.logging.log_loader_util import (
 class LogDataset(Dataset):
     def __init__(self, log_dir, config):
         self.chunk_indices = None
-        self.flatten_context = None
         self.memmaps = []
+
         self.data_id_to_chunk = OrderedDict()
         self.log_dir = log_dir
-        self.logging_config = config.logging_config
+        self.flatten = config.flatten
 
         # Find all chunk indices
         self.chunk_indices = find_chunk_indices(self.log_dir)
         self.fetch_data()
-
-    def set_flatten_context(self, flatten_context):
-        self.flatten_context = flatten_context
 
     def fetch_data(self):
         # Add metadata and mmap files for all indices.
@@ -49,8 +46,9 @@ class LogDataset(Dataset):
         nested_dict = {}
         mmap = self.memmaps[chunk_idx]
 
-        if self.logging_config["flatten"]:
-            return data_id, self._get_flatten_item(mmap, index)
+        if self.flatten:
+            blocksize, dtype = get_entry_metadata(entries)
+            return data_id, get_flatten_item(mmap, index, blocksize, dtype)
 
         for entry in entries:
             # Read the data and put it into the nested dictionary
@@ -70,16 +68,6 @@ class LogDataset(Dataset):
             current_level[path[-1]] = tensor
         return data_id, nested_dict
 
-    def _get_flatten_item(self, mmap, index):
-        offset = index * self.flatten_context.block_size
-        array = np.ndarray(
-            self.flatten_context.block_size,
-            self.flatten_context.dtype,
-            buffer=mmap,
-            offset=offset * np.dtype(self.flatten_context.dtype).itemsize,
-            order="C",
-        )
-        return torch.from_numpy(array)
 
     def __len__(self):
         return len(self.data_id_to_chunk)
@@ -87,3 +75,5 @@ class LogDataset(Dataset):
     def close(self):
         for mmap in self.memmaps:
             del mmap
+
+

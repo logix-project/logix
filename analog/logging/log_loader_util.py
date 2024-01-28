@@ -1,8 +1,11 @@
 import os
 import re
+import numpy as np
 from typing import List
 from collections import OrderedDict
 from torch.utils.data import default_collate
+import torch
+from functools import reduce
 
 from analog.logging.mmap import MemoryMapHandler
 
@@ -56,7 +59,7 @@ def get_mmap_data(path, mmap_filename, dtype="uint8") -> List:
 
 
 def get_mmap_metadata(
-    data_id_to_chunk, path, metadata_filename, chunk_index
+        data_id_to_chunk, path, metadata_filename, chunk_index
 ) -> OrderedDict:
     metadata = MemoryMapHandler.read_metafile(path, metadata_filename)
     # Update the mapping from data_id to chunk
@@ -90,6 +93,28 @@ def collate_nested_dicts(batch):
     _collate_tensors_in_structure(batched_nested_dicts)
 
     return batched_data_ids, batched_nested_dicts
+
+
+def get_entry_metadata(entries):
+    blocks = []
+    dtype = None
+    for entry in entries:
+        blocks.append(reduce(lambda x, y: x * y, entry["shape"]))
+        dtype = np.dtype(entry["dtype"])
+    blocksize = reduce(lambda x, y: x + y, blocks)
+    return blocksize, dtype
+
+
+def get_flatten_item(mmap, index, block_size, dtype="float32"):
+    offset = index * block_size
+    array = np.ndarray(
+        block_size,
+        dtype,
+        buffer=mmap,
+        offset=offset * np.dtype(dtype).itemsize,
+        order="C",
+    )
+    return torch.from_numpy(array)
 
 
 def _init_collate_structure(nested_dict):

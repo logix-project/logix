@@ -1,3 +1,4 @@
+import logging
 import os
 
 import torch
@@ -6,7 +7,7 @@ import torch.distributed as dist
 from analog.utils import nested_dict, get_world_size, get_rank
 
 
-class StatisticState:
+class AnaLogState:
     """
     AnaLogState stores all these relevant log states that are used for
     communication between different handlers. All states in AnaLogState
@@ -14,21 +15,23 @@ class StatisticState:
     """
 
     def __init__(self) -> None:
-        self._states = []
+        self._states = set()
         self._states_to_synchronize = []
         self._states_to_save = []
         self._states_to_normalize = []
+        self._states_to_not_clear = set()
 
         self.register_state("mean_state", synchronize=True, save=True)
         self.register_state("mean_counter", synchronize=True, save=False)
         self.register_state("covariance_state", synchronize=True, save=True)
         self.register_state("covariance_counter", synchronize=True, save=False)
+        self.register_state("model_module", synchronize=False, save=True, not_clear=True)
 
         self.register_normalize_pair("mean_state", "mean_counter")
         self.register_normalize_pair("covariance_state", "covariance_counter")
 
     def register_state(
-        self, state_name: str, synchronize: bool = False, save: bool = False
+        self, state_name: str, synchronize: bool = False, save: bool = False, not_clear: bool = False
     ):
         """
         Register a state to be logged.
@@ -38,11 +41,13 @@ class StatisticState:
 
         assert state_name not in self._states
         setattr(self, state_name, nested_dict())
-        self._states.append(state_name)
+        self._states.add(state_name)
         if synchronize:
             self._states_to_synchronize.append(state_name)
         if save:
             self._states_to_save.append(state_name)
+        if not_clear:
+            self._states_to_not_clear.add(state_name)
 
     def register_normalize_pair(self, state_name: str, counter_name: str):
         """
@@ -202,6 +207,19 @@ class StatisticState:
             state_dict = torch.load(os.path.join(state_log_dir, f"{state_name}.pt"))
             setattr(self, state_name, state_dict)
 
+    def set_state(self, state_name, **kwargs):
+        """
+        set_state sets the state for the given state_name with input kwargs.
+        """
+        if state_name not in self._states:
+            raise ValueError("state name {} not in registered state".format(state_name))
+        for key, value in kwargs.items():
+            state = getattr(self, state_name)
+            state[key] = value
+
+    def get_state(self, state_name):
+        return getattr(self, state_name)
+
     def clear_log_state(self) -> None:
         """
         Clear the log state.
@@ -211,5 +229,7 @@ class StatisticState:
 
     def clear(self) -> None:
         for state_name in self._states:
+            if state_name in self._states_to_not_clear:
+                continue
             state = getattr(self, state_name)
             state.clear()

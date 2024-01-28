@@ -52,8 +52,8 @@ class TestMemoryMapHandler(unittest.TestCase):
             (i, {"dummy_data": arr}) for i, arr in enumerate(generate_random_arrays())
         ]
         filename = "test_data"
-
-        MemoryMapHandler.write(self.test_dir, filename, data_buffer)
+        order = ["dummy_data"]
+        MemoryMapHandler.write(self.test_dir, filename, data_buffer, order)
 
         mmap = None
         with MemoryMapHandler.read(self.test_dir, filename) as mm:
@@ -83,8 +83,8 @@ class TestMemoryMapHandler(unittest.TestCase):
         data_buffer = [
             (i, {"dummy_data": arr}) for i, arr in enumerate(generate_static_arrays())
         ]
-
-        MemoryMapHandler.write(expected_files_path, filename, data_buffer)
+        order = ["dummy_data"]
+        MemoryMapHandler.write(expected_files_path, filename, data_buffer, order)
         mmap = None
         with MemoryMapHandler.read(expected_files_path, filename) as mm:
             mmap = mm

@@ -4,13 +4,13 @@ import torch
 
 from einops import einsum, rearrange, reduce
 from analog.config import InfluenceConfig
-from analog.state import StatisticState
+from analog.state import AnaLogState
 from analog.utils import get_logger, nested_dict
 from analog.analysis.utils import synchronize_device, synchronize_device_flatten
 
 
 class InfluenceFunction:
-    def __init__(self, config: InfluenceConfig, state: StatisticState):
+    def __init__(self, config: InfluenceConfig, state: AnaLogState):
         # state
         self._state = state
 
@@ -22,8 +22,7 @@ class InfluenceFunction:
 
         # influence scores
         self.influence_scores = pd.DataFrame()
-        self.flatten_context = None
-        self.flatten = False
+        self.flatten = config.flatten
 
     @torch.no_grad()
     def precondition(
@@ -209,7 +208,7 @@ class InfluenceFunction:
 
     def flatten_log(self, src):
         to_cat = []
-        for module, log_type in self.flatten_context.paths:
+        for module, log_type in self._state.get_state("model_module")["path"]:
             to_cat.append(src[module][log_type].flatten())
         return torch.cat(to_cat).view(1, -1)
 
@@ -258,8 +257,3 @@ class InfluenceFunction:
         """
         self.influence_scores.to_csv(filename, index=True, header=True)
         get_logger().info(f"Influence scores saved to {filename}")
-
-    def set_flatten_context(self, flatten_context):
-        if not self.flatten:
-            return
-        self.flatten_context = flatten_context
