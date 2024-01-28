@@ -34,7 +34,7 @@ query_loader = dataloader_fn(
     batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs
 )
 
-analog = AnaLog(project="test")  # switched.
+analog = AnaLog(project="test")
 
 # Gradient & Hessian logging
 analog.watch(model)

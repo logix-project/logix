@@ -1,8 +1,8 @@
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional, List, Tuple, Union
 import torch
 
 
-def synchronize_device(
+def synchronize_device_unflatten(
     src: Dict[str, Dict[str, torch.Tensor]],
     tgt: Dict[str, Dict[str, torch.Tensor]],
     device: Optional[torch.device] = None,
@@ -40,3 +40,16 @@ def synchronize_device_flatten(
     if device is None:
         src_device = src.device
     tgt.to(device=src_device)
+
+
+def synchronize_device(
+    src: Union[Dict[str, Dict[str, torch.Tensor]], torch.Tensor],
+    tgt: Union[Dict[str, Dict[str, torch.Tensor]], torch.Tensor],
+    device: Optional[torch.device] = None,
+):
+    if isinstance(src, dict):
+        assert isinstance(tgt, dict)
+        synchronize_device_unflatten(src, tgt, device)
+    else:
+        assert isinstance(src, torch.Tensor) and isinstance(tgt, torch.Tensor)
+        synchronize_device_flatten(src, tgt, device)

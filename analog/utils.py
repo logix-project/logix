@@ -1,7 +1,7 @@
 import sys
 import logging as default_logging
 from typing import Any, List, Optional
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 
 import hashlib
 

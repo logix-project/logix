@@ -19,7 +19,6 @@ class LogSaver:
         self.flush_count = 0
 
         self.buffer = nested_dict()
-
         self.buffer_size = 0
 
     def buffer_write(self, binfo):

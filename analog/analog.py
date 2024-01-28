@@ -10,8 +10,6 @@ import torch.nn as nn
 
 from analog.analysis import InfluenceFunction
 
-from analog.analysis import InfluenceFunction
-
 from analog.batch_info import BatchInfo
 from analog.config import init_config_from_yaml
 from analog.logging import HookLogger

@@ -113,7 +113,7 @@ class InfluenceFunction:
 
         if self.flatten:
             src = self.flatten_log(src)
-            synchronize_device_flatten(src, tgt)
+            synchronize_device(src, tgt)
             total_influence += self._dot_product_logs(src, tgt)
 
         if not self.flatten:
