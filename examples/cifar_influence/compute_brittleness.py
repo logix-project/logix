@@ -229,7 +229,8 @@ if __name__ == "__main__":
         # "trak",
         # "if_d1e-08",
         # "pca1e-06",
-        "pca0.0001_toverify"
+        # "pca0.0001_toverify"
+        "noLoraEkfac"
     ]
     parser = argparse.ArgumentParser("CIFAR Influence Analysis")
     parser.add_argument("--startIdx", type=int, default=0)

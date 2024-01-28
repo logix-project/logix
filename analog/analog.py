@@ -22,10 +22,6 @@ from analog.utils import (
     module_check,
 )
 
-import pydevd
-pydevd.settrace(suspend=False, trace_only_current_thread=True)
-
-
 class AnaLog:
     """
     AnaLog is a tool for logging and analyzing neural networks.

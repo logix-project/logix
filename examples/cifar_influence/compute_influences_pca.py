@@ -17,7 +17,7 @@ from examples.compute_utils import get_ensemble_file_name
 parser = argparse.ArgumentParser("CIFAR Influence Analysis")
 parser.add_argument("--data", type=str, default="cifar10", help="cifar10/100")
 parser.add_argument("--eval-idxs", type=int, nargs="+", default=[0])
-parser.add_argument("--damping", type=float, default=1e-5)
+parser.add_argument("--damping", type=float, default=1e-10)
 parser.add_argument("--ekfac", action="store_true")
 parser.add_argument("--lora", action="store_true")
 parser.add_argument("--sample", action="store_true")
@@ -51,7 +51,6 @@ for model_id in range(10):
 
     analog = AnaLog(project="test1", config="./config1.yaml")
     analog_scheduler = AnaLogScheduler(analog, lora=args.lora)
-    # analog_scheduler.analog_state_schedule[-1]["save"] = None
 
     # Gradient & Hessian logging
     analog.watch(model)
