@@ -25,13 +25,19 @@ class AnaLogState:
         self.register_state("mean_counter", synchronize=True, save=False)
         self.register_state("covariance_state", synchronize=True, save=True)
         self.register_state("covariance_counter", synchronize=True, save=False)
-        self.register_state("model_module", synchronize=False, save=True, not_clear=True)
+        self.register_state(
+            "model_module", synchronize=False, save=True, not_clear=True
+        )
 
         self.register_normalize_pair("mean_state", "mean_counter")
         self.register_normalize_pair("covariance_state", "covariance_counter")
 
     def register_state(
-        self, state_name: str, synchronize: bool = False, save: bool = False, not_clear: bool = False
+        self,
+        state_name: str,
+        synchronize: bool = False,
+        save: bool = False,
+        not_clear: bool = False,
     ):
         """
         Register a state to be logged.

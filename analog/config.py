@@ -53,7 +53,10 @@ class LoggingConfig:
         default=False, metadata={"help": "Offload statistic states to CPU."}
     )
     log_dtype: str = field(default="none", metadata={"help": "Data type for logging."})
-    flatten: bool = field(default=False, metadata={"help": "flattening flag for logging"})
+    flatten: bool = field(
+        default=False, metadata={"help": "flattening flag for logging"}
+    )
+
     def get_dtype(self):
         if self.log_dtype == "none":
             return None
@@ -112,7 +115,9 @@ class InfluenceConfig:
         metadata={"help": "Compute the damping term based on sigular values."},
     )
     mode: str = field(default="dot", metadata={"help": "Mode for influence."})
-    flatten: bool = field(default=False, metadata={"help": "flattening flag for logging"})
+    flatten: bool = field(
+        default=False, metadata={"help": "flattening flag for logging"}
+    )
 
 
 @dataclass

@@ -68,12 +68,9 @@ class LogDataset(Dataset):
             current_level[path[-1]] = tensor
         return data_id, nested_dict
 
-
     def __len__(self):
         return len(self.data_id_to_chunk)
 
     def close(self):
         for mmap in self.memmaps:
             del mmap
-
-

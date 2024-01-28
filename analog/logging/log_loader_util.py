@@ -59,7 +59,7 @@ def get_mmap_data(path, mmap_filename, dtype="uint8") -> List:
 
 
 def get_mmap_metadata(
-        data_id_to_chunk, path, metadata_filename, chunk_index
+    data_id_to_chunk, path, metadata_filename, chunk_index
 ) -> OrderedDict:
     metadata = MemoryMapHandler.read_metafile(path, metadata_filename)
     # Update the mapping from data_id to chunk

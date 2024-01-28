@@ -30,7 +30,6 @@ class LogSaver:
         data_id = binfo.data_id
         log = binfo.log
 
-
         def _add(log, buffer, idx):
             for key, value in log.items():
                 if isinstance(value, torch.Tensor):
@@ -71,7 +70,9 @@ class LogSaver:
         """
         filename = self.file_prefix + f"{flush_count}.mmap"
         buffer_list = [(k, v) for k, v in buffer]
-        MemoryMapHandler.write(log_dir, filename, buffer_list, self.model_module["path"])
+        MemoryMapHandler.write(
+            log_dir, filename, buffer_list, self.model_module["path"]
+        )
         return filename
 
     def _flush_safe(self, log_dir) -> str:

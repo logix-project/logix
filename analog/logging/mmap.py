@@ -15,12 +15,14 @@ def extract_arrays(obj, base_path=()):
     elif isinstance(obj, np.ndarray):
         yield base_path, obj
 
+
 def get_from_nested_dict(nested_dict, keys):
     current_level = nested_dict
     for key in keys:
         if key in current_level:
             current_level = current_level[key]
     return current_level
+
 
 class MemoryMapHandler:
     @staticmethod

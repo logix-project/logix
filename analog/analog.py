@@ -38,9 +38,9 @@ class AnaLog:
     _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d}
 
     def __init__(
-            self,
-            project: str,
-            config: str = "",
+        self,
+        project: str,
+        config: str = "",
     ) -> None:
         """
         Initializes the AnaLog class for neural network logging.
@@ -80,10 +80,10 @@ class AnaLog:
         self.name_filter = None
 
     def watch(
-            self,
-            model: nn.Module,
-            type_filter: List[nn.Module] = None,
-            name_filter: List[str] = None,
+        self,
+        model: nn.Module,
+        type_filter: List[nn.Module] = None,
+        name_filter: List[str] = None,
     ) -> None:
         """
         Sets up modules in the model to be watched.
@@ -104,12 +104,12 @@ class AnaLog:
 
         for name, module in self.model.named_modules():
             if module_check(
-                    module=module,
-                    module_name=name,
-                    supported_modules=self._SUPPORTED_MODULES,
-                    type_filter=self.type_filter,
-                    name_filter=self.name_filter,
-                    is_lora=_is_lora,
+                module=module,
+                module_name=name,
+                supported_modules=self._SUPPORTED_MODULES,
+                type_filter=self.type_filter,
+                name_filter=self.name_filter,
+                is_lora=_is_lora,
             ):
                 self.logger.add_module(name, module)
             elif len(list(module.children())) == 0:
@@ -130,10 +130,10 @@ class AnaLog:
         self.logger.register_all_tensor_hooks(tensor_dict)
 
     def add_lora(
-            self,
-            model: Optional[nn.Module] = None,
-            watch: bool = True,
-            clear: bool = True,
+        self,
+        model: Optional[nn.Module] = None,
+        watch: bool = True,
+        clear: bool = True,
     ) -> None:
         """
         Adds LoRA for gradient compression.
@@ -177,9 +177,9 @@ class AnaLog:
         self.logger.log(data_id=data_id, mask=mask)
 
     def __call__(
-            self,
-            data_id: Iterable[Any] = None,
-            mask: Optional[torch.Tensor] = None,
+        self,
+        data_id: Iterable[Any] = None,
+        mask: Optional[torch.Tensor] = None,
     ):
         """
         Args:
@@ -224,7 +224,7 @@ class AnaLog:
         return log_dataset
 
     def build_log_dataloader(
-            self, batch_size: int = 16, num_workers: int = 0, pin_memory: bool = False
+        self, batch_size: int = 16, num_workers: int = 0, pin_memory: bool = False
     ):
         """
         Constructs the log dataloader from the storage handler.
@@ -358,7 +358,7 @@ class AnaLog:
         self.state.load_state(self.log_dir)
 
     def finalize(
-            self,
+        self,
     ) -> None:
         """
         Finalizes the logging session.
