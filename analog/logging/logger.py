@@ -6,17 +6,18 @@ import torch.nn as nn
 
 from analog.batch_info import BatchInfo
 from analog.config import LoggingConfig
-from analog.state import StatisticState
+from analog.state import AnaLogState
 from analog.logging.option import LogOption
 from analog.logging.log_saver import LogSaver
 from analog.logging.utils import compute_per_sample_gradient
+from analog.utils import get_logger
 
 
 class HookLogger:
     def __init__(
         self,
         config: LoggingConfig,
-        state: StatisticState,
+        state: AnaLogState,
         binfo: BatchInfo,
     ) -> None:
         """
@@ -31,7 +32,7 @@ class HookLogger:
         self.dtype = config.get_dtype()
 
         # log saver
-        self.log_saver = LogSaver(config=config)
+        self.log_saver = LogSaver(config=config, state=self.state)
 
         # hooks
         self.modules_to_hook = []
@@ -78,7 +79,7 @@ class HookLogger:
 
         # Write and flush the buffer if necessary
         if any(self.opt.save.values()):
-            self.log_saver.buffer_write(data_id=self.binfo.data_id, log=self.binfo.log)
+            self.log_saver.buffer_write(binfo=self.binfo)
             self.log_saver.flush()
 
     def _forward_hook_fn(

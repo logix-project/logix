@@ -4,7 +4,6 @@ import argparse
 import torch
 from analog import AnaLog
 from analog.utils import DataIDGenerator
-from analog.analysis import InfluenceFunction
 
 from train import (
     get_mnist_dataloader,

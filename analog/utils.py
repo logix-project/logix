@@ -10,7 +10,6 @@ import torch
 import torch.nn as nn
 import torch.distributed as dist
 
-
 _logger = None
 
 
@@ -91,15 +90,21 @@ def get_rank(group=None) -> int:
         return 0
 
 
-def print_tracked_modules(named_modules) -> None:
+def get_repr_dim(named_modules):
+    repr_dims = []
+    paths = []
+    for k, v in named_modules.items():
+        get_logger().info(f"{v}: {k}")
+        repr_dims.append(k.weight.data.numel())
+        paths.append((v, "grad"))  # hardcoded
+    return paths, repr_dims
+
+
+def print_tracked_modules(repr_dim) -> None:
     """
     Print the tracked modules.
     """
     get_logger().info("Tracking the following modules:")
-    repr_dim = 0
-    for k, v in named_modules.items():
-        get_logger().info(f"{v}: {k}")
-        repr_dim += k.weight.data.numel()
     get_logger().info(f"Total number of parameters: {repr_dim:,}\n")
 
 

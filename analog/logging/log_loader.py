@@ -4,6 +4,8 @@ import torch
 from torch.utils.data import Dataset
 
 from analog.logging.log_loader_util import (
+    get_entry_metadata,
+    get_flatten_item,
     get_mmap_data,
     get_mmap_metadata,
     find_chunk_indices,
@@ -11,11 +13,13 @@ from analog.logging.log_loader_util import (
 
 
 class LogDataset(Dataset):
-    def __init__(self, log_dir):
+    def __init__(self, log_dir, config):
         self.chunk_indices = None
         self.memmaps = []
+
         self.data_id_to_chunk = OrderedDict()
         self.log_dir = log_dir
+        self.flatten = config.flatten
 
         # Find all chunk indices
         self.chunk_indices = find_chunk_indices(self.log_dir)
@@ -41,6 +45,10 @@ class LogDataset(Dataset):
         chunk_idx, entries = self.data_id_to_chunk[data_id]
         nested_dict = {}
         mmap = self.memmaps[chunk_idx]
+
+        if self.flatten:
+            blocksize, dtype = get_entry_metadata(entries)
+            return data_id, get_flatten_item(mmap, index, blocksize, dtype)
 
         for entry in entries:
             # Read the data and put it into the nested dictionary

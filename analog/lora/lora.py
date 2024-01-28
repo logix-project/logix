@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 
 import torch.nn as nn
 
-from analog.state import StatisticState
+from analog.state import AnaLogState
 from analog.lora.modules import LoraLinear, LoraConv2d, LoraEmbedding
 from analog.lora.utils import find_parameter_sharing_group, _get_submodules
 from analog.utils import get_logger, module_check
@@ -15,7 +15,7 @@ class LoRAHandler:
 
     _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d}
 
-    def __init__(self, config: Dict[str, Any], state: StatisticState):
+    def __init__(self, config: Dict[str, Any], state: AnaLogState):
         self._state = state
 
         self.init_strategy = config.init

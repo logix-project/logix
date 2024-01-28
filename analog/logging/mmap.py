@@ -16,9 +16,17 @@ def extract_arrays(obj, base_path=()):
         yield base_path, obj
 
 
+def get_from_nested_dict(nested_dict, keys):
+    current_level = nested_dict
+    for key in keys:
+        if key in current_level:
+            current_level = current_level[key]
+    return current_level
+
+
 class MemoryMapHandler:
     @staticmethod
-    def write(save_path, filename, data_buffer, dtype="uint8"):
+    def write(save_path, filename, data_buffer, write_order_key, dtype="uint8"):
         file_root, file_ext = os.path.splitext(filename)
         if file_ext == "":
             filename += ".mmap"
@@ -33,16 +41,17 @@ class MemoryMapHandler:
 
         metadata = []
         offset = 0
-
         for data_id, nested_dict in data_buffer:
-            for path, arr in extract_arrays(nested_dict):
+            # Enforcing the insert order based on the module path.
+            for key in write_order_key:
+                arr = get_from_nested_dict(nested_dict, key)
                 bytes = arr.nbytes
                 mmap[offset : offset + bytes] = arr.ravel().view(dtype)
                 metadata.append(
                     {
                         "data_id": data_id,
                         "size": bytes,
-                        "path": path,
+                        "path": key,
                         "offset": offset,
                         "shape": arr.shape,
                         "dtype": str(arr.dtype),
@@ -65,7 +74,6 @@ class MemoryMapHandler:
             filename (str): filename for the path to mmap.
         Returns:
             mmap (np.mmap): memory mapped buffer read from filename.
-            metadata (json):
         """
         _, file_ext = os.path.splitext(filename)
         if file_ext == "":

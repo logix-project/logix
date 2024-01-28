@@ -4,13 +4,13 @@ import torch
 
 from einops import einsum, rearrange, reduce
 from analog.config import InfluenceConfig
-from analog.state import StatisticState
+from analog.state import AnaLogState
 from analog.utils import get_logger, nested_dict
-from analog.analysis.utils import synchronize_device
+from analog.analysis.utils import synchronize_device, synchronize_device_flatten
 
 
 class InfluenceFunction:
-    def __init__(self, config: InfluenceConfig, state: StatisticState):
+    def __init__(self, config: InfluenceConfig, state: AnaLogState):
         # state
         self._state = state
 
@@ -22,7 +22,7 @@ class InfluenceFunction:
 
         # influence scores
         self.influence_scores = pd.DataFrame()
-        self.self_influence_scores = pd.DataFrame()
+        self.flatten = config.flatten
 
     @torch.no_grad()
     def precondition(
@@ -109,25 +109,25 @@ class InfluenceFunction:
 
         src_ids, src = src_log
         tgt_ids, tgt = tgt_log
-        synchronize_device(src, tgt)
-
-        # Compute influence scores. By default, we should compute the basic influence
-        # scores, which is essentially the inner product between the source and target
-        # gradients. If mode is cosine, we should normalize the influence score by the
-        # L2 norm of the target gardients. If mode is l2, we should subtract the L2
-        # norm of the target gradients.
         total_influence = 0
-        for module_name in src.keys():
-            src_module, tgt_module = src[module_name]["grad"], tgt[module_name]["grad"]
-            assert src_module.shape[1:] == tgt_module.shape[1:]
-            src_module_expanded = rearrange(src_module, "n ... -> n 1 ...")
-            tgt_module_expanded = rearrange(tgt_module, "m ... -> 1 m ...")
-            module_influence = reduce(
-                src_module_expanded * tgt_module_expanded,
-                "n m a b -> n m",
-                "sum",
-            )
-            total_influence += module_influence
+
+        if self.flatten:
+            src = self.flatten_log(src)
+            synchronize_device(src, tgt)
+            total_influence += self._dot_product_logs(src, tgt)
+
+        if not self.flatten:
+            synchronize_device(src, tgt)
+            # Compute influence scores. By default, we should compute the basic influence
+            # scores, which is essentially the inner product between the source and target
+            # gradients. If mode is cosine, we should normalize the influence score by the
+            # L2 norm of the target gardients. If mode is l2, we should subtract the L2
+            # norm of the target gradients.
+            for module_name in src.keys():
+                total_influence += self._dot_product_logs(
+                    src[module_name]["grad"], tgt[module_name]["grad"]
+                )
+
         if mode == "cosine":
             tgt_norm = self.compute_self_influence(
                 tgt_log, precondition=True, damping=damping
@@ -161,6 +161,16 @@ class InfluenceFunction:
 
         return total_influence
 
+    def _dot_product_logs(self, src_module, tgt_module):
+        assert src_module.shape[1:] == tgt_module.shape[1:]
+        src_module_expanded = rearrange(src_module, "n ... -> n 1 ...")
+        tgt_module_expanded = rearrange(tgt_module, "m ... -> 1 m ...")
+        return reduce(
+            src_module_expanded * tgt_module_expanded,
+            "n m ... -> n m",
+            "sum",
+        )
+
     @torch.no_grad()
     def compute_self_influence(
         self,
@@ -181,6 +191,13 @@ class InfluenceFunction:
 
         # Compute self-influence scores
         total_influence = 0
+
+        if self.flatten:
+            src = self.flatten_log(src)
+            tgt = self.flatten_log(tgt)
+            synchronize_device_flatten(src, tgt)
+            total_influence += self._dot_product_logs(src, tgt)
+
         for module_name in src.keys():
             src_module = src[module_name]["grad"]
             tgt_module = tgt[module_name]["grad"] if tgt is not None else src_module
@@ -188,6 +205,12 @@ class InfluenceFunction:
             total_influence += module_influence.reshape(-1)
 
         return total_influence
+
+    def flatten_log(self, src):
+        to_cat = []
+        for module, log_type in self._state.get_state("model_module")["path"]:
+            to_cat.append(src[module][log_type].flatten())
+        return torch.cat(to_cat).view(1, -1)
 
     def compute_influence_all(
         self,

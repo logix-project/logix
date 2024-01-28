@@ -112,6 +112,9 @@ class InfluenceConfig:
         metadata={"help": "Compute the damping term based on sigular values."},
     )
     mode: str = field(default="dot", metadata={"help": "Mode for influence."})
+    flatten: bool = field(
+        default=False, metadata={"help": "flattening flag for logging"}
+    )
 
 
 @dataclass
@@ -146,6 +149,8 @@ class Config:
     def __post_init__(self):
         if isinstance(self.logging, dict):
             self.logging = LoggingConfig(**self.logging)
+        if isinstance(self.influence, dict):
+            self.influence = InfluenceConfig(**self.influence)
         if isinstance(self.lora, dict):
             self.lora = LoRAConfig(**self.lora)
 

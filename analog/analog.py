@@ -3,6 +3,7 @@ import os
 from typing import Optional, Iterable, Dict, Any, List
 from dataclasses import asdict
 import yaml
+from functools import reduce
 
 import torch
 import torch.nn as nn
@@ -15,10 +16,11 @@ from analog.logging.log_loader import LogDataset
 from analog.logging.log_loader_util import collate_nested_dicts
 from analog.lora import LoRAHandler
 from analog.lora.utils import is_lora
-from analog.state import StatisticState
+from analog.state import AnaLogState
 from analog.utils import (
     get_logger,
     get_rank,
+    get_repr_dim,
     get_world_size,
     print_tracked_modules,
     module_check,
@@ -55,8 +57,10 @@ class AnaLog:
         self.influence_config = self.config.influence
         self.log_dir = self.config.log_dir
 
+        self.flatten = self.influence_config.flatten
+
         # AnaLog state
-        self.state = StatisticState()
+        self.state = AnaLogState()
         self.binfo = BatchInfo()
 
         # Initialize logger
@@ -108,9 +112,10 @@ class AnaLog:
             elif len(list(module.children())) == 0:
                 for p in module.parameters():
                     p.requires_grad = False
-        print_tracked_modules(self.logger.modules_to_name)
-
+        module_path, repr_dim = get_repr_dim(self.logger.modules_to_name)
+        print_tracked_modules(reduce(lambda x, y: x + y, repr_dim))
         self.logger.register_all_module_hooks()
+        self.state.set_state("model_module", path=module_path, path_dim=repr_dim)
 
     def watch_activation(self, tensor_dict: Dict[str, torch.Tensor]) -> None:
         """
@@ -212,7 +217,8 @@ class AnaLog:
         """
         Constructs the log dataset from the storage handler.
         """
-        return LogDataset(log_dir=self.log_dir)
+        log_dataset = LogDataset(log_dir=self.log_dir, config=self.influence_config)
+        return log_dataset
 
     def build_log_dataloader(
         self, batch_size: int = 16, num_workers: int = 0, pin_memory: bool = False
@@ -221,13 +227,16 @@ class AnaLog:
         Constructs the log dataloader from the storage handler.
         """
         log_dataset = self.build_log_dataset()
+        collate_fn = None
+        if not self.flatten:
+            collate_fn = collate_nested_dicts
         log_dataloader = torch.utils.data.DataLoader(
             log_dataset,
             batch_size=batch_size,
             num_workers=num_workers,
             pin_memory=pin_memory,
             shuffle=False,
-            collate_fn=collate_nested_dicts,
+            collate_fn=collate_fn,
         )
         return log_dataloader
 

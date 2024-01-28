@@ -6,8 +6,10 @@ from analog.logging.mmap import MemoryMapHandler
 
 
 class LogSaver:
-    def __init__(self, config):
+    def __init__(self, config, state):
         self.log_dir = config.log_dir
+        self.state = state
+        self.model_module = self.state.get_state("model_module")
         self.file_prefix = f"log_rank_{get_rank()}_chunk_"
 
         self.max_worker = config.num_workers
@@ -19,10 +21,13 @@ class LogSaver:
         self.buffer = nested_dict()
         self.buffer_size = 0
 
-    def buffer_write(self, data_id, log):
+    def buffer_write(self, binfo):
         """
         Add log state on exit.
         """
+
+        data_id = binfo.data_id
+        log = binfo.log
 
         def _add(log, buffer, idx):
             for key, value in log.items():
@@ -33,7 +38,29 @@ class LogSaver:
                     continue
                 _add(value, buffer[key], idx)
 
+        # Confirm delete.
+        # def _get_numpy_value(log, key_tuple, idx):
+        #     current_level = log
+        #     for key in key_tuple:
+        #         if key in current_level:
+        #             current_level = current_level[key]
+        #             if isinstance(current_level, torch.Tensor):
+        #                 current_level = current_level[idx]
+        #         else:
+        #             raise ValueError(f"no path {key} exist in the log")
+        #     return current_level
+
         for idx, did in enumerate(data_id):
+            # if self.flatten:
+            #     paths = self.state.get_state("model_module")
+            #     concat_numpys = []
+            #     for path in paths['path']:
+            #         numpy_value = to_numpy(_get_numpy_value(log, path, idx))
+            #         self.buffer_size += numpy_value.size
+            #         concat_numpys.append(numpy_value)
+            #
+            #     self.buffer[did] = concat_numpys
+            #     continue
             _add(log, self.buffer[did], idx)
 
     def _flush_unsafe(self, log_dir, buffer, flush_count) -> str:
@@ -42,7 +69,9 @@ class LogSaver:
         """
         filename = self.file_prefix + f"{flush_count}.mmap"
         buffer_list = [(k, v) for k, v in buffer]
-        MemoryMapHandler.write(log_dir, filename, buffer_list)
+        MemoryMapHandler.write(
+            log_dir, filename, buffer_list, self.model_module["path"]
+        )
         return filename
 
     def _flush_safe(self, log_dir) -> str:
@@ -66,11 +95,11 @@ class LogSaver:
         if len(self.buffer) == 0:
             return log_dir
         buffer_list = [(k, v) for k, v in self.buffer.items()]
-
         MemoryMapHandler.write(
             log_dir,
             self.file_prefix + f"{self.flush_count}.mmap",
             buffer_list,
+            self.model_module["path"],
             dtype="uint8",
         )
 
