@@ -1,19 +1,17 @@
 influence:
   damping: 0.0
-  flatten: false
   log_dir: ./analog/test
   mode: dot
   relative_damping: false
 log_dir: ./analog/test
 logging:
   cpu_offload: false
-  flatten: false
   flush_threshold: -1
   log_dir: ./analog/test
   log_dtype: none
   num_workers: 1
 lora:
-  init: random
+  init: pca
   parameter_sharing: false
   parameter_sharing_groups: null
   rank: 64
