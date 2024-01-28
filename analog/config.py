@@ -53,9 +53,6 @@ class LoggingConfig:
         default=False, metadata={"help": "Offload statistic states to CPU."}
     )
     log_dtype: str = field(default="none", metadata={"help": "Data type for logging."})
-    flatten: bool = field(
-        default=False, metadata={"help": "flattening flag for logging"}
-    )
 
     def get_dtype(self):
         if self.log_dtype == "none":
