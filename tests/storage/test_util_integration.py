@@ -102,7 +102,6 @@ class TestMemoryMapHandler(unittest.TestCase):
             shape = tuple(shape) if len(shape) > 1 else shape[0]
             dtype = np.dtype(item["dtype"])
             block_size = item["block_size"]
-
             test_data = np.frombuffer(
                 mmap, dtype=dtype, count=block_size, offset=offset
             ).reshape(shape)
