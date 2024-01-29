@@ -2,25 +2,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from transformers.trainer import *
 from analog.utils import DataIDGenerator
+from analog.huggingface.callback import AnalogCallback
 
 from analog import AnaLog, AnaLogScheduler
-
-
-class AnalogCallback(TrainerCallback):
-    def __init__(self, run, scheduler=None):
-        self.run = run
-        self.scheduler = iter(scheduler) if scheduler is not None else None
-
-    def on_epoch_begin(self, args, state, control, **kwargs):
-        if self.scheduler is not None:
-            next(self.scheduler)
-
-    def on_epoch_end(self, args, state, control, **kwargs):
-        self.run.finalize()
-
-    def on_train_begin(self, args, state, control, **kwargs):
-        model = kwargs["model"]
-        self.run.watch(model)
 
 
 class AnaLogTrainer(Trainer):
@@ -45,6 +29,9 @@ class AnaLogTrainer(Trainer):
             Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
         ] = None,
     ):
+        if args is None:
+            output_dir = "tmp_trainer"
+            args = TrainingArguments(output_dir=output_dir)
         args.num_train_epochs = len(scheduler)
         args.report_to = []
 
@@ -106,7 +93,7 @@ class AnaLogTrainer(Trainer):
     def training_step(
         self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]
     ) -> torch.Tensor:
-        model.eval()
+        model.train()
         inputs = self._prepare_inputs(inputs)
 
         if self.tokenizer is not None:
