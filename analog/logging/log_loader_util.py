@@ -70,7 +70,7 @@ def get_mmap_metadata(
             # Append to the existing list for this data_id
             data_id_to_chunk[data_id][1].append(entry)
             continue
-        data_id_to_chunk[data_id] = (chunk_index, [entry])
+        data_id_to_chunk[data_id] = (chunk_index, entry)
     return data_id_to_chunk
 
 

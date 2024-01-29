@@ -1,4 +1,6 @@
 from collections import OrderedDict
+from functools import reduce
+
 import numpy as np
 import torch
 from torch.utils.data import Dataset
@@ -42,30 +44,34 @@ class LogDataset(Dataset):
 
     def __getitem__(self, index):
         data_id = list(self.data_id_to_chunk.keys())[index]
-        chunk_idx, entries = self.data_id_to_chunk[data_id]
+        chunk_idx, entry = self.data_id_to_chunk[data_id]
         nested_dict = {}
         mmap = self.memmaps[chunk_idx]
-
         if self.flatten:
-            blocksize, dtype = get_entry_metadata(entries)
-            return data_id, get_flatten_item(mmap, index, blocksize, dtype)
+            return data_id, get_flatten_item(
+                mmap, index, entry["block_size"], entry["dtype"]
+            )
 
-        for entry in entries:
-            # Read the data and put it into the nested dictionary
-            path = entry["path"]
-            offset = entry["offset"]
-            shape = tuple(entry["shape"])
-            dtype = np.dtype(entry["dtype"])
-            array = np.ndarray(shape, dtype, buffer=mmap, offset=offset, order="C")
-            tensor = torch.from_numpy(array)
+        offset = entry["offset"]
+        dtype = entry["dtype"]
+        for i in range(len(entry["path"])):
+            path = entry["path"][i]
+            shape = tuple(entry["shape"][i])
+            tensor = torch.from_numpy(
+                np.ndarray(shape, dtype, buffer=mmap, offset=offset, order="C")
+            )
 
-            # Place the tensor in the correct location within the nested dictionary
             current_level = nested_dict
             for key in path[:-1]:
                 if key not in current_level:
                     current_level[key] = {}
                 current_level = current_level[key]
             current_level[path[-1]] = tensor
+            offset += reduce(lambda x, y: x * y, shape) * np.dtype(dtype).itemsize
+
+        assert (
+            offset == entry["offset"] + entry["block_size"] * np.dtype(dtype).itemsize
+        ), f"the block_size does not match the shape for data_id: {entry['data_id']}"
         return data_id, nested_dict
 
     def __len__(self):
