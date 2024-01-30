@@ -2,6 +2,7 @@ import os
 
 import json
 from contextlib import contextmanager
+from functools import reduce
 
 import numpy as np
 
@@ -42,22 +43,27 @@ class MemoryMapHandler:
         metadata = []
         offset = 0
         for data_id, nested_dict in data_buffer:
+            data_level_offset = offset
+            data_shape = []
+            block_size = 0
             # Enforcing the insert order based on the module path.
             for key in write_order_key:
                 arr = get_from_nested_dict(nested_dict, key)
                 bytes = arr.nbytes
+                data_shape.append(arr.shape)
+                block_size += reduce(lambda x, y: x * y, arr.shape)
                 mmap[offset : offset + bytes] = arr.ravel().view(dtype)
-                metadata.append(
-                    {
-                        "data_id": data_id,
-                        "size": bytes,
-                        "path": key,
-                        "offset": offset,
-                        "shape": arr.shape,
-                        "dtype": str(arr.dtype),
-                    }
-                )
                 offset += arr.nbytes
+            metadata.append(
+                {
+                    "data_id": data_id,
+                    "path": write_order_key,
+                    "offset": data_level_offset,
+                    "shape": data_shape,
+                    "block_size": block_size,
+                    "dtype": str(arr.dtype),
+                }
+            )
 
         mmap.flush()
         del mmap  # Release the memmap object

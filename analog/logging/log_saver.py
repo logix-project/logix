@@ -25,7 +25,6 @@ class LogSaver:
         """
         Add log state on exit.
         """
-
         data_id = binfo.data_id
         log = binfo.log
 
@@ -38,29 +37,7 @@ class LogSaver:
                     continue
                 _add(value, buffer[key], idx)
 
-        # Confirm delete.
-        # def _get_numpy_value(log, key_tuple, idx):
-        #     current_level = log
-        #     for key in key_tuple:
-        #         if key in current_level:
-        #             current_level = current_level[key]
-        #             if isinstance(current_level, torch.Tensor):
-        #                 current_level = current_level[idx]
-        #         else:
-        #             raise ValueError(f"no path {key} exist in the log")
-        #     return current_level
-
         for idx, did in enumerate(data_id):
-            # if self.flatten:
-            #     paths = self.state.get_state("model_module")
-            #     concat_numpys = []
-            #     for path in paths['path']:
-            #         numpy_value = to_numpy(_get_numpy_value(log, path, idx))
-            #         self.buffer_size += numpy_value.size
-            #         concat_numpys.append(numpy_value)
-            #
-            #     self.buffer[did] = concat_numpys
-            #     continue
             _add(log, self.buffer[did], idx)
 
     def _flush_unsafe(self, log_dir, buffer, flush_count) -> str:

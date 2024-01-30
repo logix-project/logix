@@ -63,12 +63,15 @@ class TestMemoryMapHandler(unittest.TestCase):
 
         for item in metadata:
             offset = item["offset"]
-            size = item["size"]
-            shape = tuple(item["shape"])
+            shape = []
+            for path in item["shape"]:
+                shape.append(path)
+            shape = tuple(shape) if len(shape) > 1 else shape[0]
             dtype = np.dtype(item["dtype"])
+            block_size = item["block_size"]
             expected_data = data_buffer[item["data_id"]][1]["dummy_data"]
             read_data = np.frombuffer(
-                mmap, dtype=dtype, count=size // dtype.itemsize, offset=offset
+                mmap, dtype=dtype, count=block_size, offset=offset
             ).reshape(shape)
             # Test if expected value and read value equals
             self.assertTrue(np.array_equal(read_data, expected_data), "Data mismatch")
@@ -93,14 +96,17 @@ class TestMemoryMapHandler(unittest.TestCase):
             expected_mmap = mm
         for item in metadata:
             offset = item["offset"]
-            size = item["size"]
-            shape = tuple(item["shape"])
+            shape = []
+            for path in item["shape"]:
+                shape.append(path)
+            shape = tuple(shape) if len(shape) > 1 else shape[0]
             dtype = np.dtype(item["dtype"])
+            block_size = item["block_size"]
             test_data = np.frombuffer(
-                mmap, dtype=dtype, count=size // dtype.itemsize, offset=offset
+                mmap, dtype=dtype, count=block_size, offset=offset
             ).reshape(shape)
             expected_data = np.frombuffer(
-                mmap, dtype=dtype, count=size // dtype.itemsize, offset=offset
+                mmap, dtype=dtype, count=block_size, offset=offset
             ).reshape(shape)
             self.assertTrue(np.allclose(test_data, expected_data), "Data mismatch")
         cleanup(expected_files_path, filename)
