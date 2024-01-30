@@ -15,7 +15,7 @@ from train import (
     get_loaders,
     construct_model,
 )
-from examples.compute_utils import get_ensemble_file_name
+from examples.compute_utils import get_ensemble_file_name, get_expt_name_by_loraConfig
 
 parser = argparse.ArgumentParser("CIFAR Influence Analysis")
 parser.add_argument("--data", type=str, default="cifar10", help="cifar10/100")
@@ -32,7 +32,6 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BASE_PATH = "../files/ensemble_results"
 
 alpha = 0.0
-model_id = args.model_id
 data_name = args.data
 os.makedirs(BASE_PATH, exist_ok=True)
 os.makedirs(f"{BASE_PATH}/data_{data_name}/", exist_ok=True)
@@ -43,7 +42,7 @@ final_epoch = 25
 
 # Get a single checkpoint (first model_id and last epoch).
 model.load_state_dict(
-    torch.load(f"../files/checkpoints/data_{data_name}/model_{model_id}/epoch_{final_epoch}.pt", map_location="cpu")
+    torch.load(f"../files/checkpoints/data_{data_name}/model_{args.model_id}/epoch_{final_epoch}.pt", map_location="cpu")
 )
 model.eval()
 
@@ -54,9 +53,10 @@ _, eval_train_loader ,valid_loader = get_loaders(
 
 analog = AnaLog(project="test_nosave", config="./config.yaml")
 analog_scheduler = AnaLogScheduler(analog, lora=args.lora, ekfac=args.ekfac, sample=args.sample)
-analog_scheduler.analog_state_schedule[-1]["save"] = None
+analog_scheduler.analog_state_schedule[-1]["save"] = None # hacky way to disable saving
 
-expt_name = ("lora" if args.lora else "noLora") + ("Ekfac" if args.ekfac else "Kfac") + str(model_id)
+expt_name = get_expt_name_by_loraConfig(args, analog.lora_config)
+
 file_name = get_ensemble_file_name(
     base_path=BASE_PATH, expt_name=expt_name, data_name=data_name, alpha=alpha
 )

@@ -54,9 +54,14 @@ def get_color(algo_name: str) -> str:
     ):
         return "#cab2d6"
     elif "pca" in algo_name:
-        return "#6a3d9a"
+        if algo_name == "pca1e06":
+            return '#d9d9d9'
+        elif algo_name == "pca0.0001":
+            return '#bdbdbd'
     elif "noLora" in algo_name:
         return "#ffff99"
+    elif "random" in algo_name:
+        return "#a6cee3"
     else:
         raise NotImplementedError()
 
@@ -83,12 +88,8 @@ def get_name(algo_name: str) -> str:
         return r"IF Segment"
     elif "unif_segment" in algo_name:
         return r"UNIF ($L=3$)"
-    elif "pca" in algo_name:
-        return algo_name.upper()
-    elif "noLora" in algo_name:
-        return algo_name.upper()
     else:
-        raise NotImplementedError()
+        return algo_name.upper()
 
 
 def init_plotting(
