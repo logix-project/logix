@@ -47,7 +47,6 @@ class MemoryMapHandler:
             data_shape = []
             block_size = 0
             # Enforcing the insert order based on the module path.
-            # for path, arr in extract_arrays(nested_dict):
             for key in write_order_key:
                 arr = get_from_nested_dict(nested_dict, key)
                 bytes = arr.nbytes
