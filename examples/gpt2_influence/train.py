@@ -22,7 +22,7 @@ os.makedirs("files/checkpoints", exist_ok=True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 train_loader, _, valid_loader = get_loaders()
-model = construct_model().to(device)
+model = construct_model()[0].to(device)
 
 
 def train(
@@ -100,7 +100,7 @@ for i in range(args.num_train):
     start_time = time.time()
 
     set_seed(i)
-    model = construct_model()
+    model, _ = construct_model()
 
     train(
         model=model,

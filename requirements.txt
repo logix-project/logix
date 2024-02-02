@@ -4,4 +4,7 @@ torch
 einops
 
 pyyaml
+transformers
+datasets
+accelerate
 
