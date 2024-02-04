@@ -1,8 +1,11 @@
 from setuptools import setup, find_packages
 
 
-with open("requirements.txt", "r") as f:
-    requirements = f.read().splitlines()
+def fetch_requirements(path: str):
+    with open(path, "r") as f:
+        requirements = f.read().splitlines()
+        return requirements
+
 
 python_requires = ">=3.6.0,<3.11.0"
 
@@ -18,6 +21,9 @@ if __name__ == "__main__":
                 "*.tests.*",
             ]
         ),
-        install_requires=requirements,
+        install_requires=fetch_requirements("requirements.txt"),
+        extras_require={
+            "test": fetch_requirements("test-requirements.txt"),
+        },
         python_requires=python_requires,
     )
