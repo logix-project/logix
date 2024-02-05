@@ -69,8 +69,7 @@ class FunctionTimer:
 
 
 class Timer:
-    def __init__(self, host_timer=False):
-        self.host_timer = host_timer
+    def __init__(self):
         self.timers = {
             "cpu": {},
             "gpu": {},
@@ -86,11 +85,10 @@ class Timer:
             start_time = time.time()
             self.timers["cpu"][name] = [start_time]
         else:
-            self.is_synchromized = False
-
             if name in self.timers["gpu"]:
                 logging.warning(f"timer for {name} already exist")
                 return
+            self.is_synchromized = False
             start_event = torch.cuda.Event(enable_timing=True)
             start_event.record()
             self.timers["gpu"][name] = [start_event]
@@ -117,7 +115,7 @@ class Timer:
                 self.timer_info[name] = events[0].elapsed_time(events[1])
             self.is_synchromized = True
 
-    def get_timer_info(self):
+    def get_info(self):
         if not self.is_synchromized:
             self._calculate_elapse_time()
         return self.timer_info
