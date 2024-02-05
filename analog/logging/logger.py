@@ -345,12 +345,16 @@ class HookLogger:
         if hook:
             for hook in self.forward_hooks:
                 hook.remove()
+            self.forward_hooks.clear()
             for hook in self.backward_hooks:
                 hook.remove()
+            self.backward_hooks.clear()
             for hook in self.grad_hooks:
                 hook.remove()
+            self.grad_hooks.clear()
             for hook in self.tensor_hooks:
                 hook.remove()
+            self.tensor_hooks.clear()
 
         if module:
             self.modules_to_hook = []
