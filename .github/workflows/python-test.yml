@@ -25,10 +25,9 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install -r requirements.txt
-        pip install transformers
         python setup.py install
 
     - name: Run All Tests
       run: |
-        pip install torchvision
+        pip install -r test-requirements.txt
         python -m unittest discover -v -s tests
