@@ -29,40 +29,54 @@ class FunctionTimer:
         self.host_timer = host_timer
         self.log = {}
 
-    def __call__(self, func):
-        def _host_timer_wrapper(*args, **kwargs):
-            before_memory = get_device_memory()
-            start_time = time.time()
-            result = func(*args, **kwargs)
-            end_time = time.time()
-            after_memory = get_device_memory()
-            self.log[func.__name__] = {
-                "timer": end_time - start_time,
-                "cpu_memory": (before_memory - after_memory) >> 20,
-            }
-            return result
+    def __call__(self, label_or_func):
+        if isinstance(label_or_func, str):
+            label = label_or_func
 
-        def _device_timer_wrapper(*args, **kwargs):
-            before_memory = get_gpu_memory()
-            start_event = torch.cuda.Event(enable_timing=True)
-            start_event.record()
-            result = func(*args, **kwargs)
-            end_event = torch.cuda.Event(enable_timing=True)
-            end_event.record()
-            after_memory = get_gpu_memory()
-            torch.cuda.current_stream().wait_event(end_event)
-            torch.cuda.synchronize()
-            self.log[func.__name__] = {
-                "timer": start_event.elapsed_time(end_event),
-                "gpu_memory": (before_memory - after_memory) >> 20,
-            }
-            return result
+            def decorator(func):
+                return self._wrap_function(func, label)
 
+            return decorator
+
+        else:
+            func = label_or_func
+            return self._wrap_function(func, func.__name__)
+
+    def _wrap_function(self, func, label):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             if self.host_timer:
-                return _host_timer_wrapper(*args, **kwargs)
-            return _device_timer_wrapper(*args, **kwargs)
+                return self._device_timer_wrapper(func, label, *args, **kwargs)
+            # device timer.
+            return self._device_timer_wrapper(func, label, *args, **kwargs)
+
+    def _host_timer_wrapper(self, func, label, *args, **kwargs):
+        before_memory = get_device_memory()
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        after_memory = get_device_memory()
+        self.log[label] = {
+            "timer": end_time - start_time,
+            "cpu_memory": (before_memory - after_memory) >> 20,
+        }
+        return result
+
+    def _device_timer_wrapper(self, func, label, *args, **kwargs):
+        before_memory = get_gpu_memory()
+        start_event = torch.cuda.Event(enable_timing=True)
+        start_event.record()
+        result = func(*args, **kwargs)
+        end_event = torch.cuda.Event(enable_timing=True)
+        end_event.record()
+        after_memory = get_gpu_memory()
+        torch.cuda.current_stream().wait_event(end_event)
+        torch.cuda.synchronize()
+        self.log[label] = {
+            "timer": start_event.elapsed_time(end_event),
+            "gpu_memory": (before_memory - after_memory) >> 20,
+        }
+        return result
 
     def get_log(self):
         return self.log
