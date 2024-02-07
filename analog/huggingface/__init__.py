@@ -1,2 +1,1 @@
-from .trainer import AnaLogTrainer
-from .patch import patch
+from .patch import patch_trainer

@@ -7,7 +7,7 @@ from analog.utils import DataIDGenerator
 from analog.huggingface.callback import AnalogCallback
 
 
-def patch(TrainerClass):
+def patch_trainer(TrainerClass):
     class PatchedTrainer(TrainerClass):
         def __init__(
             self,
@@ -48,12 +48,43 @@ def patch(TrainerClass):
                 tokenizer,
                 model_init,
                 compute_metrics,
-                [analog_callback]
-                if callbacks is None
-                else [analog_callback] + callbacks,
+                (
+                    [analog_callback]
+                    if callbacks is None
+                    else [analog_callback] + callbacks
+                ),
                 optimizers,
                 preprocess_logits_for_metrics,
             )
+
+            self.is_initialized_from_log = False
+            self.analog_mode = "none"
+            self.log_dataloader = None
+
+        def log(self, *args, **kwargs):
+            self.train(*args, **kwargs)
+
+        def initialize_from_log(self, build_log_dataloader=False):
+            if not self.is_initialized_from_log:
+                self.run.initialize_from_log()
+                self.is_initialized_from_log = True
+
+            if build_log_dataloader and self.log_dataloader is None:
+                self.log_dataloader = self.run.build_log_dataloader()
+
+        def influence(self, *args, **kwargs):
+            self.initialize_from_log(build_log_dataloader=True)
+            self.run.setup({"log": "grad"})
+            self.run.eval()
+            self.analog_mode = "influence"
+            return self.train(*args, **kwargs)
+
+        def self_influence(self, *args, **kwargs):
+            self.initialize_from_log()
+            self.run.setup({"log": "grad"})
+            self.run.eval()
+            self.analog_mode = "self_influence"
+            return self.train(*args, **kwargs)
 
         def create_optimizer_and_scheduler(self, num_training_steps: int):
             self.create_optimizer()
@@ -119,14 +150,21 @@ def patch(TrainerClass):
                         loss.mean()
                     )  # mean() to average on multi-gpu parallel training
 
-                loss = (
-                    loss * inputs["labels"].numel()
-                )  # loss reduction with mean instead of sum
+                # loss reduction with mean instead of sum
+                sum_scale = (inputs["labels"] != -100).sum().item()
+                loss = loss * sum_scale
                 if self.use_apex:
                     with amp.scale_loss(loss, self.optimizer) as scaled_loss:
                         scaled_loss.backward()
                 else:
                     self.accelerator.backward(loss)
+
+            if self.analog_mode == "influence":
+                test_log = self.run.get_log()
+                self.run.compute_influence_all(test_log, self.log_dataloader)
+            elif self.analog_mode == "self_influence":
+                test_log = self.run.get_log()
+                self.run.compute_self_influence_all(test_log)
 
             return loss.detach() / self.args.gradient_accumulation_steps
 

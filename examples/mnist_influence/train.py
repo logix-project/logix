@@ -11,7 +11,6 @@ Note that:
     - FMNIST test accuracy: ~83.9%
 """
 
-
 from torch.nn import CrossEntropyLoss
 from torch.optim import SGD
 import os

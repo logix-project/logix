@@ -63,8 +63,7 @@ class InfluenceFunction:
                 fwd_eigval = module_eigval["forward"]
                 bwd_eigval = module_eigval["backward"]
                 full_eigval = torch.outer(bwd_eigval, fwd_eigval).to(device=device)
-            if damping is None:
-                damping = 0.1 * torch.mean(full_eigval)
+            damping = damping or self.damping
             full_eigval += damping
 
             # Precondition the gradient using eigenvectors and eigenvalues

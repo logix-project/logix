@@ -105,7 +105,7 @@ class InfluenceConfig:
 
     log_dir: str = field(init=False)
     damping: float = field(
-        default=0.0, metadata={"help": "Damping strength for influence."}
+        default=1e-10, metadata={"help": "Damping strength for influence."}
     )
     relative_damping: bool = field(
         default=False,
