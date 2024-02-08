@@ -53,37 +53,6 @@ def clear_gpu_cache() -> None:
         torch.cuda.reset_peak_memory_stats()
 
 
-# class SequenceClassificationModel(nn.Module):
-#     def __init__(self, data_name: str) -> None:
-#         super().__init__()
-#         self.config = AutoConfig.from_pretrained(
-#             "bert-base-cased",
-#             num_labels=2,
-#             finetuning_task=data_name,
-#             trust_remote_code=True,
-#         )
-
-#         self.model = AutoModelForSequenceClassification.from_pretrained(
-#             "bert-base-cased",
-#             from_tf=False,
-#             config=self.config,
-#             ignore_mismatched_sizes=False,
-#             trust_remote_code=True,
-#         )
-
-#     def forward(
-#         self,
-#         input_ids: torch.Tensor,
-#         token_type_ids: torch.Tensor,
-#         attention_mask: torch.Tensor,
-#     ) -> torch.Tensor:
-#         return self.model(
-#             input_ids=input_ids,
-#             token_type_ids=token_type_ids,
-#             attention_mask=attention_mask,
-#         ).logits
-
-
 def construct_model(data_name: str, ckpt_path: Union[None, str] = None) -> nn.Module:
     config = AutoConfig.from_pretrained(
         "bert-base-cased",

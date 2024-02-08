@@ -50,7 +50,6 @@ from tqdm import tqdm
 
 if not args.resume:
     for epoch in al_scheduler:
-        print(epoch, len(al_scheduler))
         sample = True if epoch < (len(al_scheduler) - 1) and args.sample else False
         for inputs, targets in tqdm(train_loader):
             data_id = id_gen(inputs)
@@ -69,10 +68,8 @@ else:
         analog.add_lora()
     analog.initialize_from_log()
 
-print("finish")
 # Influence Analysis
 log_loader = analog.build_log_dataloader(batch_size=64, num_workers=4)
-print("finish building log loader")
 
 # analog.add_analysis({"influence": InfluenceFunction})
 query_iter = iter(query_loader)
@@ -80,7 +77,6 @@ test_input, test_target = next(query_iter)
 test_id = id_gen(test_input)
 analog.setup({"log": "grad"})
 analog.eval()
-print("test log start")
 with analog(data_id=test_id):
     test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
     model.zero_grad()
@@ -90,17 +86,12 @@ with analog(data_id=test_id):
     )
     test_loss.backward()
 test_log = analog.get_log()
-print("test log end")
-start = time.time()
-print("influence start")
 if_scores = analog.influence.compute_influence_all(
     test_log, log_loader, damping=args.damping
 )
-print("influence end")
 _, top_influential_data = torch.topk(if_scores, k=10)
 
 # Save
 if_scores = if_scores.cpu().numpy().tolist()[0]
 torch.save(if_scores, "if_analog_scheduler.pt")
-print("Computation time:", time.time() - start)
 print("Top influential data indices:", top_influential_data.cpu().numpy().tolist())

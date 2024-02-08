@@ -5,14 +5,21 @@ from transformers.trainer import *
 from analog import AnaLog, AnaLogScheduler
 from analog.utils import DataIDGenerator
 from analog.huggingface.callback import AnalogCallback
+from analog.huggingface.arguments import AnaLogArguments
 
 
 def patch_trainer(TrainerClass):
+    """
+    Patch the (variant of) Huggingface Trainer class with the AnaLog functionalities.
+
+    Args:
+        TrainerClass: The Trainer class to patch
+    """
+
     class PatchedTrainer(TrainerClass):
         def __init__(
             self,
-            run: AnaLog,
-            scheduler: AnaLogScheduler,
+            analog_args: Optional[AnaLogArguments] = None,
             model: Union[PreTrainedModel, nn.Module] = None,
             args: TrainingArguments = None,
             data_collator: Optional[DataCollator] = None,
@@ -29,16 +36,24 @@ def patch_trainer(TrainerClass):
                 Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
             ] = None,
         ):
+            # Initialize AnaLog
+            self.analog_args = analog_args
+            self.analog = AnaLog(project=analog_args.project, config=analog_args.config)
+            self.analog_scheduler = AnaLogScheduler(
+                self.analog, ekfac=analog_args.ekfac
+            )
+            self.data_id_generator = DataIDGenerator()
+            analog_callback = AnalogCallback(
+                self.analog, self.analog_scheduler, self.analog_args
+            )
+
+            # Patch TrainingArguments
             if args is None:
                 output_dir = "tmp_trainer"
                 args = TrainingArguments(output_dir=output_dir)
-            args.num_train_epochs = len(scheduler)
+            args.num_train_epochs = len(self.analog_scheduler)
             args.report_to = []
 
-            self.run = run
-            self.scheduler = scheduler
-            self.data_id_generator = DataIDGenerator()
-            analog_callback = AnalogCallback(run, scheduler)
             super().__init__(
                 model,
                 args,
@@ -57,34 +72,17 @@ def patch_trainer(TrainerClass):
                 preprocess_logits_for_metrics,
             )
 
-            self.is_initialized_from_log = False
-            self.analog_mode = "none"
-            self.log_dataloader = None
-
-        def log(self, *args, **kwargs):
+        def extract_log(self, *args, **kwargs):
+            self.analog_args.mode = "log"
             self.train(*args, **kwargs)
 
-        def initialize_from_log(self, build_log_dataloader=False):
-            if not self.is_initialized_from_log:
-                self.run.initialize_from_log()
-                self.is_initialized_from_log = True
-
-            if build_log_dataloader and self.log_dataloader is None:
-                self.log_dataloader = self.run.build_log_dataloader()
-
         def influence(self, *args, **kwargs):
-            self.initialize_from_log(build_log_dataloader=True)
-            self.run.setup({"log": "grad"})
-            self.run.eval()
-            self.analog_mode = "influence"
-            return self.train(*args, **kwargs)
+            self.analog_args.mode = "influence"
+            self.train(*args, **kwargs)
 
         def self_influence(self, *args, **kwargs):
-            self.initialize_from_log()
-            self.run.setup({"log": "grad"})
-            self.run.eval()
-            self.analog_mode = "self_influence"
-            return self.train(*args, **kwargs)
+            self.analog_args.mode = "self_influence"
+            self.train(*args, **kwargs)
 
         def create_optimizer_and_scheduler(self, num_training_steps: int):
             self.create_optimizer()
@@ -104,6 +102,9 @@ def patch_trainer(TrainerClass):
                 def zero_grad(self):
                     pass
 
+                def state_dict(self):
+                    return dict()
+
             self.optimizer = DummyOptimizer(self.model.parameters())
 
         def create_scheduler(
@@ -118,6 +119,9 @@ def patch_trainer(TrainerClass):
 
                 def get_last_lr(self):
                     return [0]
+
+                def state_dict(self):
+                    return dict()
 
             self.lr_scheduler = DummyScheduler()
             return self.lr_scheduler
@@ -135,7 +139,7 @@ def patch_trainer(TrainerClass):
             else:
                 data_id = self.data_id_generator(inputs["input_ids"])
             mask = inputs.get("attention_mask", None)
-            with self.run(data_id=data_id, mask=mask):
+            with self.analog(data_id=data_id, mask=mask):
                 if is_sagemaker_mp_enabled():
                     loss_mb = smp_forward_backward(
                         model, inputs, self.args.gradient_accumulation_steps
@@ -150,7 +154,7 @@ def patch_trainer(TrainerClass):
                         loss.mean()
                     )  # mean() to average on multi-gpu parallel training
 
-                # loss reduction with mean instead of sum
+                # loss reduction with sum instead of mean
                 sum_scale = (inputs["labels"] != -100).sum().item()
                 loss = loss * sum_scale
                 if self.use_apex:
@@ -158,13 +162,6 @@ def patch_trainer(TrainerClass):
                         scaled_loss.backward()
                 else:
                     self.accelerator.backward(loss)
-
-            if self.analog_mode == "influence":
-                test_log = self.run.get_log()
-                self.run.compute_influence_all(test_log, self.log_dataloader)
-            elif self.analog_mode == "self_influence":
-                test_log = self.run.get_log()
-                self.run.compute_self_influence_all(test_log)
 
             return loss.detach() / self.args.gradient_accumulation_steps
 

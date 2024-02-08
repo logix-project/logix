@@ -3,10 +3,10 @@ import argparse
 import torch.nn.functional as F
 from accelerate import Accelerator
 from tqdm import tqdm
-from transformers import default_data_collator, Trainer
+from transformers import default_data_collator, Trainer, TrainingArguments
 
 import analog
-from analog.huggingface import patch_trainer
+from analog.huggingface import patch_trainer, AnaLogArguments
 from utils import construct_model, get_datasets, set_seed
 
 
@@ -27,20 +27,26 @@ def main():
     model.eval()
     train_dataset = get_datasets(args.data_name)[1]
 
-    # AnaLog
-    run = analog.init(args.project, config=args.config_path)
-    scheduler = analog.AnaLogScheduler(run, lora=True)
+    analog_args = AnaLogArguments(
+        project=args.project, config=args.config_path, lora=True
+    )
+    training_args = TrainingArguments(
+        output_dir="./output",
+        num_train_epochs=1,
+        per_device_train_batch_size=args.batch_size,
+        report_to="none",
+    )
 
     AnaLogTrainer = patch_trainer(Trainer)
     trainer = AnaLogTrainer(
-        run,
-        scheduler,
         model=model,
         tokenizer=tokenizer,
         train_dataset=train_dataset,
         data_collator=default_data_collator,
+        args=training_args,
+        analog_args=analog_args,
     )
-    trainer.train()
+    trainer.extract_log()
 
 
 if __name__ == "__main__":
