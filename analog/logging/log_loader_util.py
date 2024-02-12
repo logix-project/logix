@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import numpy as np
@@ -64,13 +65,9 @@ def get_mmap_metadata(
     metadata = MemoryMapHandler.read_metafile(path, metadata_filename)
     # Update the mapping from data_id to chunk
     for entry in metadata:
-        data_id = entry["data_id"]
-
-        # if data_id in data_id_to_chunk:
-        #     # Append to the existing list for this data_id
-        #     data_id_to_chunk[data_id][1].append(entry)
-        #     continue
-        data_id_to_chunk[data_id] = (chunk_index, entry)
+        if entry["data_id"] in data_id_to_chunk:
+            logging.warning(f"duplicated data_id overwrite:{entry['data_id']}")
+        data_id_to_chunk[entry["data_id"]] = (chunk_index, entry)
     return data_id_to_chunk
 
 
