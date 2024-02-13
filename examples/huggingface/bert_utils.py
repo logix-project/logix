@@ -80,40 +80,6 @@ def construct_model(data_name: str, ckpt_path: Union[None, str] = None) -> nn.Mo
     return model, tokenizer
 
 
-def get_loaders(
-    data_name: str,
-    eval_batch_size: int = 32,
-    train_indices: Optional[List[int]] = None,
-    valid_indices: Optional[List[int]] = None,
-) -> Tuple[
-    torch.utils.data.DataLoader,
-    torch.utils.data.DataLoader,
-    torch.utils.data.DataLoader,
-]:
-    assert data_name in ["qnli", "sst2"]
-    train_batch_size = 16
-
-    train_loader = get_dataloader(
-        data_name=data_name,
-        batch_size=train_batch_size,
-        split="train",
-        indices=train_indices,
-    )
-    eval_train_loader = get_dataloader(
-        data_name=data_name,
-        batch_size=eval_batch_size,
-        split="eval_train",
-        indices=train_indices,
-    )
-    valid_loader = get_dataloader(
-        data_name=data_name,
-        batch_size=eval_batch_size,
-        split="valid",
-        indices=valid_indices,
-    )
-    return train_loader, eval_train_loader, valid_loader
-
-
 def get_datasets(
     data_name: str,
     train_indices: Optional[List[int]] = None,
@@ -194,26 +160,3 @@ def get_dataset(
         ds = ds.select(indices)
 
     return ds
-
-
-def get_dataloader(
-    data_name: str,
-    batch_size: int = 32,
-    split: str = "train",
-    indices: List[int] = None,
-    do_not_pad: bool = False,
-) -> torch.utils.data.DataLoader:
-    ds = get_dataset(
-        data_name=data_name,
-        batch_size=batch_size,
-        split=split,
-        indices=indices,
-        do_not_pad=do_not_pad,
-    )
-
-    return torch.utils.data.DataLoader(
-        ds,
-        batch_size=batch_size,
-        shuffle=split == "train",
-        collate_fn=default_data_collator,
-    )

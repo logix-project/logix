@@ -47,6 +47,12 @@ def patch_trainer(TrainerClass):
                 self.analog, self.analog_scheduler, self.analog_args
             )
 
+            self.analog_input_key = analog_args.input_key
+            self.analog_label_key = analog_args.label_key
+            self.analog_attention_key = analog_args.attention_key
+            self.analog_ignore_idx = analog_args.ignore_idx
+            self.data_id_logic = analog_args.data_id
+
             # Patch TrainingArguments
             if args is None:
                 output_dir = "tmp_trainer"
@@ -80,9 +86,13 @@ def patch_trainer(TrainerClass):
             self.analog_args.mode = "influence"
             self.train(*args, **kwargs)
 
+            return self.analog.influence.get_influence_scores()
+
         def self_influence(self, *args, **kwargs):
             self.analog_args.mode = "self_influence"
             self.train(*args, **kwargs)
+
+            return
 
         def create_optimizer_and_scheduler(self, num_training_steps: int):
             self.create_optimizer()
@@ -132,13 +142,10 @@ def patch_trainer(TrainerClass):
             model.eval()
             inputs = self._prepare_inputs(inputs)
 
-            if self.tokenizer is not None:
-                data_id = self.tokenizer.batch_decode(
-                    inputs["input_ids"], skip_special_tokens=True
-                )
-            else:
-                data_id = self.data_id_generator(inputs["input_ids"])
-            mask = inputs.get("attention_mask", None)
+            data_id = self.get_data_id(inputs)
+            mask = inputs.get(self.analog_attention_key, None)
+            sum_scale = self.get_sum_scale(inputs)
+
             with self.analog(data_id=data_id, mask=mask):
                 if is_sagemaker_mp_enabled():
                     loss_mb = smp_forward_backward(
@@ -155,7 +162,6 @@ def patch_trainer(TrainerClass):
                     )  # mean() to average on multi-gpu parallel training
 
                 # loss reduction with sum instead of mean
-                sum_scale = (inputs["labels"] != -100).sum().item()
                 loss = loss * sum_scale
                 if self.use_apex:
                     with amp.scale_loss(loss, self.optimizer) as scaled_loss:
@@ -164,5 +170,17 @@ def patch_trainer(TrainerClass):
                     self.accelerator.backward(loss)
 
             return loss.detach() / self.args.gradient_accumulation_steps
+
+        def get_data_id(self, inputs):
+            ipt = inputs.get(self.analog_input_key)
+            if self.data_id_logic == "detokenize":
+                assert self.tokenizer is not None
+                return self.tokenizer.batch_decode(ipt, skip_special_tokens=True)
+            elif self.data_id_logic == "hash":
+                return self.data_id_generator(ipt)
+
+        def get_sum_scale(self, inputs):
+            labels = inputs.get(self.analog_label_key)
+            return (labels != self.analog_ignore_idx).sum().item()
 
     return PatchedTrainer

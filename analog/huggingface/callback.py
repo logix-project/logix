@@ -29,7 +29,8 @@ class AnalogCallback(TrainerCallback):
             next(self.analog_scheduler)
 
     def on_epoch_end(self, args, state, control, **kwargs):
-        self.analog.finalize()
+        if self.args.mode == "log":
+            self.analog.finalize()
 
     def on_train_begin(self, args, state, control, **kwargs):
         model = kwargs["model"]
@@ -45,6 +46,9 @@ class AnalogCallback(TrainerCallback):
         if self.args.mode in ["influence", "self_influence"]:
             self.analog.setup({"log": "grad"})
             self.analog.eval()
+
+            state.epoch = 0
+            state.num_train_epochs = 1
 
     def on_step_end(self, args, state, control, **kwargs):
         if self.args.mode == "influence":

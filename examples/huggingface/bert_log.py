@@ -7,7 +7,7 @@ from transformers import default_data_collator, Trainer, TrainingArguments
 
 import analog
 from analog.huggingface import patch_trainer, AnaLogArguments
-from utils import construct_model, get_datasets, set_seed
+from bert_utils import construct_model, get_datasets, set_seed
 
 
 def main():
@@ -25,14 +25,10 @@ def main():
         args.data_name, ckpt_path=f"files/checkpoints/0/{args.data_name}_epoch_3.pt"
     )
     model.eval()
-    train_dataset = get_datasets(args.data_name)[-1]
+    train_dataset = get_datasets(args.data_name)[1]
 
     analog_args = AnaLogArguments(
-        project=args.project,
-        config=args.config_path,
-        lora=True,
-        initialize_from_log=True,
-        log_batch_size=args.batch_size,
+        project=args.project, config=args.config_path, lora=True
     )
     training_args = TrainingArguments(
         output_dir="./output",
@@ -50,7 +46,7 @@ def main():
         args=training_args,
         analog_args=analog_args,
     )
-    trainer.influence()
+    trainer.extract_log()
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 influence:
-  damping: 0.0
+  damping: 1.0e-10
+  flatten: false
   log_dir: ./analog/test
   mode: dot
   relative_damping: false

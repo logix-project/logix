@@ -6,7 +6,7 @@ from einops import einsum, rearrange, reduce
 from analog.config import InfluenceConfig
 from analog.state import AnaLogState
 from analog.utils import get_logger, nested_dict
-from analog.analysis.utils import synchronize_device, synchronize_device_flatten
+from analog.analysis.utils import synchronize_device
 
 
 class InfluenceFunction:
@@ -112,7 +112,7 @@ class InfluenceFunction:
 
         if self.flatten:
             src = self.flatten_log(src)
-            synchronize_device(src, tgt)
+            tgt = tgt.to(device=src.device)
             total_influence += self._dot_product_logs(src, tgt)
 
         if not self.flatten:
@@ -194,7 +194,6 @@ class InfluenceFunction:
         if self.flatten:
             src = self.flatten_log(src)
             tgt = self.flatten_log(tgt)
-            synchronize_device_flatten(src, tgt)
             total_influence += self._dot_product_logs(src, tgt)
 
         for module_name in src.keys():
@@ -208,8 +207,10 @@ class InfluenceFunction:
     def flatten_log(self, src):
         to_cat = []
         for module, log_type in self._state.get_state("model_module")["path"]:
-            to_cat.append(src[module][log_type].flatten())
-        return torch.cat(to_cat).view(1, -1)
+            log = src[module][log_type]
+            bsz = log.shape[0]
+            to_cat.append(log.view(bsz, -1))
+        return torch.cat(to_cat, dim=1)
 
     def compute_influence_all(
         self,

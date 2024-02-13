@@ -29,6 +29,22 @@ class AnaLogArguments:
     log_num_workers: int = field(
         default=1, metadata={"help": "The number of workers for log dataloader."}
     )
+    input_key: str = field(
+        default="input_ids", metadata={"help": "The dictionary key for 'input_ids'."}
+    )
+    label_key: str = field(
+        default="labels", metadata={"help": "The dictionary key for 'labels'."}
+    )
+    attention_key: str = field(
+        default="attention_mask",
+        metadata={"help": "The dictionary key for 'attention_mask'."},
+    )
+    data_id: str = field(
+        default="detokenize", metadata={"help": "The 'data_id' generation logic."}
+    )
+    ignore_idx: int = field(
+        default=-100, metadata={"help": "The index to be ignored in loss computation."}
+    )
 
     def __post_init__(self):
         self.mode = "log"
