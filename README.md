@@ -70,13 +70,37 @@ with analog(data_id=test_input):
     test_loss.backward()
 test_log = analog.get_log() # extract a log for test data
 
-analog.add_analysis({"influence": InfluenceFunction}) # add your custom analysis
-
 analog.influence.compute_influence_all(test_log, log_loader) # data attribution
 analog.influence.compute_self_influence(test_log) # uncertainty
 ```
 
+### HuggingFace Integration
+Our software design allows for the seamless integration with HuggingFace's
+[Transformer](https://github.com/huggingface/transformers/tree/main), a popular DL framework
+that conveniently handles distributed training, data loading, etc. We plan to support more
+frameworks (e.g. Lightning) in the future!
+
+```python
+from transformers import Trainer, Seq2SeqTrainer
+from analog.huggingface import patch_trainer, AnaLogArguments
+
+analog_args = AnaLogArguments(project, config, lora=True, ekfac=True)
+AnaLogTrainer = patch_trainer(Trainer)
+
+trainer = AnaLogTrainer(analog_args=analog_args, # pass AnaLogArguments as TrainingArguments
+                        model=model,
+                        train_dataset=train_dataset,
+                        *args,
+                        **kwargs)
+
+# Instead of trainer.train(),
+trainer.extract_log()
+trainer.influence()
+trainer.self_influence()
+```
+
 Please check out [Examples](/examples) for more advanced features!
+
 
 ## Features
 Logs from neural networks are difficult to handle due to the large size. For example,
