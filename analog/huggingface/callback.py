@@ -57,8 +57,7 @@ class AnalogCallback(TrainerCallback):
     def on_substep_end(self, args, state, control, **kwargs):
         if self.args.mode == "influence":
             test_log = self.analog.get_log()
-            log_dataloader = self.get_log_dataloader()
-            self.analog.compute_influence_all(test_log, log_dataloader)
+            self.analog.compute_influence_all(test_log, self.log_dataloader())
         elif self.args.mode == "self_influence":
             test_log = self.analog.get_log()
             self.analog.compute_self_influence(test_log)
