@@ -131,12 +131,18 @@ class LoRAHandler:
             )
             if self.init_strategy == "pca":
                 lora_module.pca_init_weight(covariance_state[name])
+            elif self.init_strategy == "orthogonal":
+                lora_module.orthogonal_init_weight()
             lora_module.to(device)
 
             parent, target, target_name = _get_submodules(model, name)
             setattr(parent, target_name, lora_module)
 
     def _sanity_check(self):
+        if self.init_strategy not in ["random", "pca", "orthogonal"]:
+            raise ValueError(
+                f"init_strategy must be one of ['random', 'pca', 'orthogonal']. Got {self.init_strategy}."
+            )
         if (
             self.init_strategy == "pca"
             and self.compression_ratio_by_covariance is not None

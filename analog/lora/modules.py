@@ -64,6 +64,10 @@ class LoraLinear(nn.Linear):
         self.analog_lora_A.weight.data.copy_(top_r_singular_vector_forward.T)
         self.analog_lora_C.weight.data.copy_(top_r_singular_vector_backward)
 
+    def orthogonal_init_weight(self):
+        nn.init.orthogonal_(self.analog_lora_A.weight)
+        nn.init.orthogonal_(self.analog_lora_C.weight)
+
 
 class LoraConv2d(nn.Conv2d):
     def __init__(
@@ -143,6 +147,9 @@ class LoraConv2d(nn.Conv2d):
             top_r_singular_vector_backward.view(shape_C)
         )
 
+    def orthogonal_init_weight(self):
+        nn.init.orthogonal_(self.analog_lora_A.weight)
+        nn.init.orthogonal_(self.analog_lora_C.weight)
 
 class LoraEmbedding(nn.Embedding):
     def __init__(

@@ -1,5 +1,5 @@
 storage:
   type: default
 lora:
-  init: pca
-  rank: 32
+  init: random
+  rank: 16

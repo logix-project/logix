@@ -1,3 +1,4 @@
+import gc
 import random
 import numpy as np
 import torch
@@ -99,7 +100,11 @@ def get_fmnist_dataloader(
         drop_last=drop_last,
     )
 
-
+def clear_gpu_cache() -> None:
+    if torch.cuda.is_available():
+        gc.collect()
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
 if __name__ == "__main__":
     # Verifying if datasets look reasonable.
     import matplotlib.pyplot as plt

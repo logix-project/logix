@@ -6,8 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from examples.cifar_influence.pipeline import construct_model, get_hyperparameters, get_loaders
-from examples.cifar_influence.train import train
+from examples.pipeline import construct_model, get_hyperparameters, get_loaders, get_remove_intervals
 from examples.utils import save_tensor, set_seed
 
 from examples.compute_utils import get_expt_name_by_config
@@ -49,7 +48,7 @@ def train_with_indices(
             train_indices=idxs_to_keep,
         )
     set_seed(model_id + 1234)
-    model = construct_model(data_name=data_name).to(device=DEVICE)
+    model = construct_model(name=data_name).to(device=DEVICE)
     model = train(
         model=model, loader=train_loader, lr=lr, weight_decay=wd, epochs=epochs
     )
@@ -113,7 +112,7 @@ def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
     num_train = len(eval_train_loader.dataset)
 
     seed_ids = list(range(3))
-    remove_intervals = [200, 400, 600, 800, 1000, 1200]
+    remove_intervals = get_remove_intervals(data_name)
     expt_name = "base"
     file_name = get_file_name(expt_name=expt_name, data_name=data_name.lower())
     if os.path.exists(file_name):
@@ -228,6 +227,14 @@ def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
 
 if __name__ == "__main__":
     config = Config("config.yaml", "dummy_project_name")
+    parser = argparse.ArgumentParser("CIFAR Influence Analysis")
+    parser.add_argument("--startIdx", type=int, default=0)
+    parser.add_argument("--endIdx", type=int, default=10)
+    parser.add_argument("--data_name", type=str)
+    parser.add_argument("--damping", type=float, default=1e-10)
+    parser.add_argument("--ekfac", action="store_true")
+    parser.add_argument("--lora", action="store_true")
+    args = parser.parse_args()
     algo_name_lst = [
         # "representation_similarity_dot",
         # "tracin_dot",
@@ -236,10 +243,15 @@ if __name__ == "__main__":
         # "pca1e-06",
         # "pca0.0001_toverify"
         # "noLoraEkfac"
-        get_expt_name_by_config(config=config, isLora=True, isEkfac=True),
+        get_expt_name_by_config(config=config, isLora=args.lora, isEkfac=args.ekfac, damping=args.damping),
     ]
-    parser = argparse.ArgumentParser("CIFAR Influence Analysis")
-    parser.add_argument("--startIdx", type=int, default=0)
-    parser.add_argument("--endIdx", type=int, default=10)
-    args = parser.parse_args()
-    main(data_name="cifar10", algo_name_lst=algo_name_lst, startIdx=args.startIdx, endIdx=args.endIdx)
+
+
+    if args.data_name == "mnist" or args.data_name == "fmnist":
+        from examples.mnist_influence.train import train
+    elif args.data_name == "cifar10":
+        from examples.cifar_influence.train import train
+    else:
+        raise NotImplementedError()
+
+    main(data_name=args.data_name, algo_name_lst=algo_name_lst, startIdx=args.startIdx, endIdx=args.endIdx)

@@ -1,127 +1,122 @@
-"""Trains the network using the similar configurations from the following papers (other papers might have
-used this configuration as well):
-- https://arxiv.org/pdf/1703.04730.pdf
-- https://arxiv.org/pdf/2209.05364.pdf
-- https://arxiv.org/pdf/2008.03703.pdf
+import os
+import time
+from typing import Optional, Tuple
 
-Note that:
-- We use 10% of the MNIST & FMNIST datasets.
-- Grid searches are performed on LR and WD.
-    - MNIST test accuracy: ~95.5%
-    - FMNIST test accuracy: ~83.9%
-"""
-
-
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
 from torch.optim import SGD
-import os
-import torch
 
-from utils import (
-    get_mnist_dataloader,
-    construct_mlp,
-    get_fmnist_dataloader,
-    set_seed,
-)
+from examples.pipeline import construct_model, get_hyperparameters, get_loaders
+from examples.utils import clear_gpu_cache, save_tensor, set_seed
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
 def train(
-    model,
-    loader,
-    lr=0.1,
-    epochs=10,
-    momentum=0.9,
-    weight_decay=1e-4,
-    label_smoothing=0.0,
-    save_name="default",
-    model_id=0,
-    save=True,
-):
+    model: nn.Module,
+    loader: torch.utils.data.DataLoader,
+    lr: float,
+    weight_decay: float,
+    epochs: int = 20,
+    model_id: int = 0,
+    save_name: Optional[str] = None,
+) -> nn.Module:
+    save = save_name is not None
     if save:
-        torch.save(model.state_dict(), f"checkpoints/{save_name}_{model_id}_epoch_0.pt")
-    optimizer = SGD(
-        model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay
-    )
-    loss_fn = CrossEntropyLoss(label_smoothing=label_smoothing)
+        os.makedirs(f"../files/checkpoints/{save_name}/", exist_ok=True)
+        os.makedirs(
+            f"../files/checkpoints/{save_name}/model_{model_id}/", exist_ok=True
+        )
+        save_tensor(
+            model.state_dict(),
+            f"../files/checkpoints/{save_name}/model_{model_id}/epoch_0.pt",
+            overwrite=True,
+        )
+    optimizer = SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=weight_decay)
+    loss_fn = CrossEntropyLoss(reduction="mean")
 
-    for epoch in range(epochs):
-        # We use consistent data ordering when training.
-        set_seed(model_id * 10_061 + epoch + 1)
+    model.train()
+    for epoch in range(1, epochs + 1):
         for images, labels in loader:
-            images = images.to(DEVICE)
-            labels = labels.to(DEVICE)
-            optimizer.zero_grad(set_to_none=True)
-            out = model(images)
-            loss = loss_fn(out, labels)
+            images, labels = images.to(DEVICE), labels.to(DEVICE)
+            optimizer.zero_grad()
+            outputs = model(images)
+            loss = loss_fn(outputs, labels)
             loss.backward()
             optimizer.step()
+
         if save:
-            torch.save(
+            save_tensor(
                 model.state_dict(),
-                f"checkpoints/{save_name}_{model_id}_epoch_{epoch}.pt",
+                f"../files/checkpoints/{save_name}/model_{model_id}/epoch_{epoch}.pt",
+                overwrite=True,
             )
     return model
 
 
-def main(dataset="mnist"):
-    os.makedirs("checkpoints", exist_ok=True)
+def evaluate(
+    model: nn.Module, loader: torch.utils.data.DataLoader
+) -> Tuple[float, float]:
+    model.eval()
+    with torch.no_grad():
+        total_loss, total_correct, total_num = 0.0, 0.0, 0.0
+        for images, labels in loader:
+            images, labels = images.to(DEVICE), labels.to(DEVICE)
+            outputs = model(images)
+            total_loss += F.cross_entropy(outputs, labels, reduction="sum").cpu().item()
+            total_correct += outputs.argmax(1).eq(labels).sum().cpu().item()
+            total_num += images.shape[0]
+    return total_loss / total_num, total_correct / total_num
 
-    if dataset == "mnist":
-        train_loader = get_mnist_dataloader(
-            batch_size=128, split="train", shuffle=True, subsample=True
-        )
-        valid_loader = get_mnist_dataloader(
-            batch_size=512, split="valid", shuffle=False
-        )
-    else:
-        train_loader = get_fmnist_dataloader(
-            batch_size=128, split="train", shuffle=True, subsample=True
-        )
-        valid_loader = get_fmnist_dataloader(
-            batch_size=512, split="valid", shuffle=False
-        )
 
-    for i in range(10):
-        print(f"Model {i}")
-        model = construct_mlp(seed=i).to(DEVICE)
+def main(
+    data_name: str = "mnist", num_train: int = 50, do_corrupt: bool = False
+) -> None:
+    os.makedirs("../files", exist_ok=True)
+    os.makedirs("../files/checkpoints", exist_ok=True)
 
-        # I performed a grid search with the following search space:
-        # LR: [0.3, 0.1, 0.03, 0.01, 0.003, 0.001]
-        # WD: [3e-3, 1e-3, 3e-4, 1e-4, 3e-5, 1e-5, 0]
-        if dataset == "mnist":
-            model = train(
-                model,
-                train_loader,
-                lr=0.1,
-                weight_decay=0.001,
-                save_name=dataset,
-                model_id=i,
-            )
+    train_loader, _, valid_loader = get_loaders(
+        data_name=data_name,
+        do_corrupt=do_corrupt,
+    )
+    hyper_dict = get_hyperparameters(data_name)
+    lr = hyper_dict["lr"]
+    wd = hyper_dict["wd"]
+
+    save_name = f"data_{data_name}"
+    if do_corrupt:
+        save_name += "_corrupted"
+
+    for i in range(num_train):
+        print(f"Training {i}th model.")
+        start_time = time.time()
+
+        last_epoch_name = f"../files/checkpoints/data_{data_name}/model_{i}/epoch_20.pt"
+        if os.path.exists(last_epoch_name):
+            print("Already exists!")
         else:
-            model = train(
-                model,
-                train_loader,
-                lr=0.1,
-                weight_decay=0.0001,
-                save_name=dataset,
+            set_seed(i)
+            model = construct_model(data_name).to(DEVICE)
+            train(
+                model=model,
+                loader=train_loader,
+                lr=lr,
+                weight_decay=wd,
                 model_id=i,
+                save_name=save_name,
             )
+            valid_loss, valid_acc = evaluate(model, valid_loader)
+            print(f"Validation Loss: {valid_loss}.")
+            print(f"Validation Accuracy: {valid_acc}.")
+            del model
+            clear_gpu_cache()
 
-        model.eval()
-        with torch.no_grad():
-            total_correct, total_num = 0.0, 0.0
-            for ims, labs in valid_loader:
-                ims = ims.to(DEVICE)
-                ims = ims.reshape(ims.shape[0], -1)
-                labs = labs.to(DEVICE)
-                out = model(ims)
-                total_correct += out.argmax(1).eq(labs).sum().cpu().item()
-                total_num += ims.shape[0]
-            print(f"Accuracy: {total_correct / total_num * 100:.1f}%")
+        print(f"Took {time.time() - start_time} seconds.")
 
 
 if __name__ == "__main__":
-    main(dataset="mnist")
-    main(dataset="fmnist")
+    data_names = ["mnist", "fmnist"]
+    for dn in data_names:
+        main(data_name=dn, do_corrupt=False, num_train=10)
+        main(data_name=dn, do_corrupt=False, num_train=10)

@@ -53,17 +53,26 @@ def get_color(algo_name: str) -> str:
         or "unif_segment" in algo_name
     ):
         return "#cab2d6"
-    elif "pca" in algo_name:
-        if algo_name == "pca1e06":
-            return '#d9d9d9'
-        elif algo_name == "pca0.0001":
-            return '#bdbdbd'
-    elif "noLora" in algo_name:
-        return "#ffff99"
-    elif "random" in algo_name:
-        return "#a6cee3"
+    elif algo_name == "pca1e-06":
+        return "#6a3d9a"
+    elif algo_name == "noLoraEkfac":
+        return "#ff7f00"
+    elif algo_name == "pca0.0001":
+        return "#33a02c"
+    elif algo_name == "loraEkfacrandom64":
+        return "#b15928"
+    elif algo_name == "loraEkfacorthogonal64":
+        return "#1f78b4"
+    elif algo_name == "loraEkfacpca64":
+        return "#e31a1c"
+    elif algo_name == "loraEkfacrandom64_damping0.001":
+        return "#fdbf6f"
+    elif algo_name == "loraEkfacrandom64_damping1e-05":
+        return "#ff7f00"
+    elif algo_name == "loraEkfacrandom16":
+        return "#abdda4"
     else:
-        raise NotImplementedError()
+        return "#000000"
 
 
 def get_name(algo_name: str) -> str:

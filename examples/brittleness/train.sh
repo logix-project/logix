@@ -12,6 +12,6 @@
 #SBATCH --mem=256G
 
 # Your job command for each model
-python train.py --model_id $SLURM_ARRAY_TASK_ID
-# python compute_brittleness.py --startIdx $(($SLURM_ARRAY_TASK_ID*10)) --endIdx $(($SLURM_ARRAY_TASK_ID*10+10))
-# python compute_influences_pca_no_save.py --ekfac --model_id $SLURM_ARRAY_TASK_ID --lora
+# python train.py --model_id $SLURM_ARRAY_TASK_ID
+python compute_brittleness_ensemble.py --startIdx $(($SLURM_ARRAY_TASK_ID*10)) --endIdx $(($SLURM_ARRAY_TASK_ID*10+10)) --data_name cifar10 --ekfac
+# python compute_influence_ensemble.py --ekfac --model_id $SLURM_ARRAY_TASK_ID --data cifar10
