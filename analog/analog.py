@@ -29,7 +29,19 @@ from analog.utils import (
 
 class AnaLog:
     """
-    AnaLog is a tool for logging and analyzing neural networks.
+    AnaLog is a front-end interface for logging and analyzing neural networks.
+    Using (PyTorch) hooks, it tracks, saves, and computes statistics for activations,
+    gradients, and other tensors with its logger. Once logging is finished, it provides
+    an interface for computing influence scores and other analysis.
+
+    Args:
+        project (str):
+            The name or identifier of the project. This is used for organizing
+            logs and analysis results.
+        config (str, optional):
+            The path to the YAML configuration file. This file contains settings
+            for logging, analysis, and other features. Defaults to an empty string,
+            which means default settings are used.
     """
 
     _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d}
@@ -39,13 +51,6 @@ class AnaLog:
         project: str,
         config: str = "",
     ) -> None:
-        """
-        Initializes the AnaLog class for neural network logging.
-
-        Args:
-            project (str): The name or identifier of the project.
-            config (str, optional): The path to the YAML configuration file. Defaults to "".
-        """
         self.project = project
 
         self.model = None
@@ -83,13 +88,19 @@ class AnaLog:
         name_filter: List[str] = None,
     ) -> None:
         """
-        Sets up modules in the model to be watched.
+        Sets up modules in the model to be watched based on optional type and name filters.
+        Hooks will be added to the watched modules to track their forward activations,
+        backward error signals, and gradient, and compute various statistics (e.g. mean,
+        variance, covariance) for each of these.
 
         Args:
-            model: The neural network model.
-            type_filter (list, optional): List of types of modules to be watched.
-            name_filter (list, optional): List of keyword names for modules to be watched.
-            lora (bool, optional): Whether to use LoRA to watch the model.
+            model (nn.Module):
+                The neural network model to be watched.
+            type_filter (List[nn.Module], optional):
+                A list of module types to be watched. If None, all supported module types
+                are watched.
+            name_filter (List[str], optional):
+                A list of module names to be watched. If None, all modules are considered.
         """
         self.model = model
         if get_world_size() > 1 and hasattr(self.model, "module"):
@@ -118,10 +129,13 @@ class AnaLog:
 
     def watch_activation(self, tensor_dict: Dict[str, torch.Tensor]) -> None:
         """
-        Sets up tensors to be watched.
+        Sets up tensors to be watched. This is useful for logging custom tensors or
+        activations that are not directly associated with model modules.
 
         Args:
-            tensor_dict (dict): Dictionary containing tensor names as keys and tensors as values.
+            tensor_dict (Dict[str, torch.Tensor]):
+                A dictionary where keys are tensor names and values are the tensors
+                themselves.
         """
         self.logger.register_all_tensor_hooks(tensor_dict)
 
@@ -132,14 +146,23 @@ class AnaLog:
         clear: bool = True,
     ) -> None:
         """
-        Adds LoRA for gradient compression.
+        Adds an LoRA variant for gradient compression. Note that the added LoRA module
+        is different from the original LoRA module in that it consists of three parts:
+        encoder, bottleneck, and decoder. The encoder and decoder are initialized with
+        random weights, while the bottleneck is initialized to be zero. In doing so,
+        the encoder and decoder are repsectively used to compress forward and backward
+        signals, while the bottleneck is used to extract the compressed gradient.
+        Mathematically, this corresponds to random Kronecker product compression.
 
         Args:
-            model: The neural network model.
-            parameter_sharing (bool, optional): Whether to use parameter sharing or not.
-            parameter_sharing_groups (list, optional): List of parameter sharing groups.
-            watch (bool, optional): Whether to watch the model or not.
-            clear (bool, optional): Whether to clear the internal states or not.
+            model (Optional[nn.Module]):
+                The model to apply LoRA to. If None, the model already set with watch
+                is used.
+            watch (bool, optional):
+                Whether to watch the model after adding LoRA. Defaults to `True`.
+            clear (bool, optional):
+                Whether to clear the internal states after adding LoRA. Defaults to
+                `True`.
         """
         if not hasattr(self, "lora_handler"):
             self.lora_handler = LoRAHandler(self.lora_config, self.state)
@@ -164,11 +187,13 @@ class AnaLog:
 
     def log(self, data_id: Any, mask: Optional[torch.Tensor] = None):
         """
-        Logs the data.
+        Logs the data. This is an experimental feature for now.
 
         Args:
-            data_id: A unique identifier associated with the data for the logging session.
-            mask (torch.Tensor, optional): Mask for the data.
+            data_id (str):
+                A unique identifier associated with the data for the logging session.
+            mask (Optional[torch.Tensor], optional):
+                An optional attention mask used in Transformer models.
         """
         self.logger.log(data_id=data_id, mask=mask)
 
@@ -214,7 +239,12 @@ class AnaLog:
 
     def build_log_dataset(self):
         """
-        Constructs the log dataset from the storage handler.
+        Constructs the log dataset from the stored logs. This dataset can then be used
+        for analysis or visualization.
+
+        Returns:
+            LogDataset:
+                An instance of LogDataset containing the logged data.
         """
         log_dataset = LogDataset(log_dir=self.log_dir, config=self.influence_config)
         return log_dataset
@@ -223,7 +253,12 @@ class AnaLog:
         self, batch_size: int = 16, num_workers: int = 0, pin_memory: bool = False
     ):
         """
-        Constructs the log dataloader from the storage handler.
+        Constructs a DataLoader for the log dataset. This is useful for batch processing
+        of logged data during analysis.
+
+        Return:
+            DataLoader:
+                A DataLoader instance for the log dataset.
         """
         log_dataset = self.build_log_dataset()
         collate_fn = None
@@ -241,7 +276,7 @@ class AnaLog:
 
     def get_log(self) -> Dict[str, Dict[str, torch.Tensor]]:
         """
-        Returns the current log.
+        Returns the current log, including data identifiers and logged information.
 
         Returns:
             dict: The current log.
