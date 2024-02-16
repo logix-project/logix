@@ -114,7 +114,6 @@ class AnaLog:
                     p.requires_grad = False
         module_path, repr_dim = get_repr_dim(self.logger.modules_to_name)
         print_tracked_modules(reduce(lambda x, y: x + y, repr_dim))
-        self.logger.register_all_module_hooks()
         self.state.set_state("model_module", path=module_path, path_dim=repr_dim)
 
     def watch_activation(self, tensor_dict: Dict[str, torch.Tensor]) -> None:

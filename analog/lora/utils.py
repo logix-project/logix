@@ -7,7 +7,7 @@ def is_lora(model):
     """
     Check if LoRA is enabled for the model.
     """
-    return any("analog_lora_B" in name for name in model.state_dict())
+    return any("analog_lora_B" in name for name, module in model.named_modules())
 
 
 def compute_top_k_singular_vectors(matrix, k):
