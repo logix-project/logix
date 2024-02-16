@@ -115,7 +115,7 @@ billion-scale models. Below are a few features that AnaLog currently supports:
 ## Compatability
 | DistributedDataParallel| Mixed Precision| Gradient Checkpointing | torch.compile  | FSDP           |
 |:----------------------:|:--------------:|:----------------------:|:-------------:|:--------------:|
-| ✅                     | ✅             | ✅                    | ✅           |   ❓             |
+| ✅                     | ✅             | ✅                    | ✅           |   ✅             |
 
 ## Contributing
 
