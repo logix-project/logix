@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 import torch
 
+from analog.timer.timer import HostFunctionTimer, DeviceFunctionTimer
 from analog.utils import nested_dict, to_numpy, get_rank
 from analog.logging.mmap import MemoryMapHandler
 
@@ -21,6 +22,7 @@ class LogSaver:
         self.buffer = nested_dict()
         self.buffer_size = 0
 
+    @DeviceFunctionTimer.timer
     def buffer_write(self, binfo):
         """
         Add log state on exit.
@@ -85,6 +87,7 @@ class LogSaver:
         del buffer_list
         return log_dir
 
+    @DeviceFunctionTimer.timer
     def flush(self) -> None:
         """
         For the DefaultHandler, there's no batch operation needed since each add operation writes to the file.

@@ -11,6 +11,8 @@ from train import (
     construct_mlp,
 )
 
+from analog.timer import FunctionTimer
+
 parser = argparse.ArgumentParser("MNIST Influence Analysis")
 parser.add_argument("--data", type=str, default="mnist", help="mnist or fmnist")
 parser.add_argument("--eval-idxs", type=int, nargs="+", default=[0])
@@ -79,6 +81,7 @@ if_scores = analog.influence.compute_influence_all(
 )
 _, top_influential_data = torch.topk(if_scores, k=10)
 
+FunctionTimer.print_log()
 # Save
 if_scores = if_scores.cpu().numpy().tolist()[0]
 torch.save(if_scores, "if_analog.pt")

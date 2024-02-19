@@ -10,6 +10,7 @@ from analog.state import AnaLogState
 from analog.logging.option import LogOption
 from analog.logging.log_saver import LogSaver
 from analog.logging.utils import compute_per_sample_gradient
+from analog.timer.timer import DeviceFunctionTimer
 from analog.utils import get_logger
 
 
@@ -42,6 +43,7 @@ class HookLogger:
         self.grad_hooks = []
         self.tensor_hooks = []
 
+    @DeviceFunctionTimer.timer
     def log(self, data_id: Any, mask: Optional[torch.Tensor] = None):
         """
         Add log state on exit.
@@ -59,6 +61,7 @@ class HookLogger:
 
         return log
 
+    @DeviceFunctionTimer.timer
     def update(self):
         # Update statistics
         for stat in self.opt.statistic["grad"]:
@@ -82,6 +85,7 @@ class HookLogger:
             self.log_saver.buffer_write(binfo=self.binfo)
             self.log_saver.flush()
 
+    @DeviceFunctionTimer.timer
     def _forward_hook_fn(
         self, module: nn.Module, inputs: Tuple[torch.Tensor], module_name: str
     ) -> None:
@@ -131,6 +135,7 @@ class HookLogger:
                 cpu_offload=self.cpu_offload,
             )
 
+    @DeviceFunctionTimer.timer
     def _backward_hook_fn(
         self,
         module: nn.Module,
@@ -172,6 +177,7 @@ class HookLogger:
                 cpu_offload=self.cpu_offload,
             )
 
+    @DeviceFunctionTimer.timer
     def _grad_hook_fn(
         self,
         module: nn.Module,
@@ -270,6 +276,7 @@ class HookLogger:
                 cpu_offload=self.cpu_offload,
             )
 
+    @DeviceFunctionTimer.timer
     def register_all_module_hooks(self) -> None:
         """
         Register all module hooks.
