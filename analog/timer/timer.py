@@ -3,8 +3,6 @@ import time
 import functools
 
 import torch
-import psutil
-import os
 
 
 def get_gpu_memory(device_index=None):
@@ -13,15 +11,6 @@ def get_gpu_memory(device_index=None):
 
 def get_gpu_max_memory(device_index=None):
     return torch.cuda.max_memory_allocated(device_index)
-
-
-def get_host_memory():
-    process = psutil.Process(os.getpid())
-    return process.memory_info().rss
-
-
-def get_cpu_swap_memory():
-    return psutil.swap_memory().used
 
 
 class FunctionTimer:
@@ -40,36 +29,30 @@ class FunctionTimer:
 
     @classmethod
     def _host_timer_wrapper(cls, func, label, *args, **kwargs):
-        before_memory = get_host_memory()
         start_time = time.time()
         result = func(*args, **kwargs)
         end_time = time.time()
-        after_memory = get_host_memory()
         if label not in cls.log:
             cls.log[label] = [
                 {
                     "time_delta": end_time - start_time,
-                    "memory_delta": (before_memory - after_memory) >> 20,
                 }
             ]
         else:
             cls.log[label].append(
                 {
                     "time_delta": end_time - start_time,
-                    "memory_delta": (before_memory - after_memory) >> 20,
                 }
             )
         return result
 
     @classmethod
     def _device_timer_wrapper(cls, func, label, *args, **kwargs):
-        before_memory = get_gpu_memory()
         start_event = torch.cuda.Event(enable_timing=True)
         start_event.record()
         result = func(*args, **kwargs)
         end_event = torch.cuda.Event(enable_timing=True)
         end_event.record()
-        after_memory = get_gpu_memory()
         torch.cuda.current_stream().wait_event(end_event)
         torch.cuda.synchronize()
         if label not in cls.log:
@@ -77,7 +60,6 @@ class FunctionTimer:
                 {
                     "time_delta": start_event.elapsed_time(end_event)
                     / 1000,  # turn to seconds
-                    "memory_delta": (before_memory - after_memory) >> 20,
                 }
             ]
         else:
@@ -85,7 +67,6 @@ class FunctionTimer:
                 {
                     "time_delta": start_event.elapsed_time(end_event)
                     / 1000,  # turn to seconds
-                    "memory_delta": (before_memory - after_memory) >> 20,
                 }
             )
         return result
@@ -110,15 +91,24 @@ class FunctionTimer:
 
     @classmethod
     def print_log(cls):
-        print("Function Timer Logs:")
+        print(
+            "###########################################################################"
+        )
+        print(
+            "################################ TIMER LOG ################################"
+        )
+        header = f"{'Label':<50} | {'Total Time (sec)':>20}"
+        print(header)
+        print("-" * len(header))
         for label, details in cls.log.items():
-            print(f"  {label}:")
             sum_time = 0
-            for log in details:
-                for key, value in log.items():
-                    if key == "time_delta":
-                        sum_time += value
-            print(f"    operation costs {sum_time} seconds")
+            for log_entry in details:
+                time_delta = log_entry.get("time_delta", 0)
+                sum_time += time_delta
+            # truncate 47 letters if the label is longer than 50.
+            display_label = (label[:47] + "...") if len(label) > 50 else label
+            row = f"{display_label:<50} | {sum_time:>20.4f}"
+            print(row)
 
 
 class HostFunctionTimer(FunctionTimer):
