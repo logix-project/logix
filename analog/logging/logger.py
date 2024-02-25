@@ -10,7 +10,7 @@ from analog.state import AnaLogState
 from analog.logging.option import LogOption
 from analog.logging.log_saver import LogSaver
 from analog.logging.utils import compute_per_sample_gradient
-from analog.timer.timer import DeviceFunctionTimer
+from analog.monitor_util.timer import DeviceFunctionTimer
 from analog.utils import get_logger
 
 

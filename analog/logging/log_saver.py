@@ -1,7 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 import torch
 
-from analog.timer.timer import HostFunctionTimer, DeviceFunctionTimer
+from analog.monitor_util.timer import DeviceFunctionTimer
 from analog.utils import nested_dict, to_numpy, get_rank
 from analog.logging.mmap import MemoryMapHandler
 

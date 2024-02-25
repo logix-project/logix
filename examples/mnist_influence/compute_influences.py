@@ -11,7 +11,7 @@ from train import (
     construct_mlp,
 )
 
-from analog.timer import FunctionTimer
+from analog.monitor_util import FunctionTimer
 
 parser = argparse.ArgumentParser("MNIST Influence Analysis")
 parser.add_argument("--data", type=str, default="mnist", help="mnist or fmnist")

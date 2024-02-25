@@ -17,7 +17,7 @@ from analog.logging.log_loader_util import collate_nested_dicts
 from analog.lora import LoRAHandler
 from analog.lora.utils import is_lora
 from analog.state import AnaLogState
-from analog.timer.timer import DeviceFunctionTimer
+from analog.monitor_util.timer import DeviceFunctionTimer
 from analog.utils import (
     get_logger,
     get_rank,

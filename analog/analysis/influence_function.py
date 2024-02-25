@@ -5,7 +5,7 @@ import torch
 from einops import einsum, rearrange, reduce
 from analog.config import InfluenceConfig
 from analog.state import AnaLogState
-from analog.timer.timer import DeviceFunctionTimer
+from analog.monitor_util.timer import DeviceFunctionTimer
 from analog.utils import get_logger, nested_dict
 from analog.analysis.utils import synchronize_device
 
