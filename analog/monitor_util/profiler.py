@@ -16,9 +16,11 @@ def memory_profiler(func):
 
         print(
             prof.key_averages().table(
-                sort_by="self_cuda_memory_usage"
-                if device.type == "cuda"
-                else "self_cpu_memory_usage"
+                sort_by=(
+                    "self_cuda_memory_usage"
+                    if device.type == "cuda"
+                    else "self_cpu_memory_usage"
+                )
             )
         )
         return result
