@@ -6,7 +6,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from examples.pipeline import construct_model, get_hyperparameters, get_loaders, get_remove_intervals
+from examples.pipeline import (
+    construct_model,
+    get_hyperparameters,
+    get_loaders,
+    get_remove_intervals,
+)
 from examples.utils import save_tensor, set_seed
 
 from examples.compute_utils import get_expt_name_by_config
@@ -234,6 +239,8 @@ if __name__ == "__main__":
     parser.add_argument("--damping", type=float, default=1e-10)
     parser.add_argument("--ekfac", action="store_true")
     parser.add_argument("--lora", action="store_true")
+    parser.add_argument("--expt_name_additional_tag", type=str, default="")
+    parser.add_argument("--true_fisher", action="store_true")
     args = parser.parse_args()
     algo_name_lst = [
         # "representation_similarity_dot",
@@ -243,9 +250,15 @@ if __name__ == "__main__":
         # "pca1e-06",
         # "pca0.0001_toverify"
         # "noLoraEkfac"
-        get_expt_name_by_config(config=config, isLora=args.lora, isEkfac=args.ekfac, damping=args.damping),
+        get_expt_name_by_config(
+            config=config,
+            isLora=args.lora,
+            isEkfac=args.ekfac,
+            damping=args.damping,
+            additional_tag=args.expt_name_additional_tag,
+            true_fisher=args.true_fisher,
+        ),
     ]
-
 
     if args.data_name == "mnist" or args.data_name == "fmnist":
         from examples.mnist_influence.train import train
@@ -254,4 +267,9 @@ if __name__ == "__main__":
     else:
         raise NotImplementedError()
 
-    main(data_name=args.data_name, algo_name_lst=algo_name_lst, startIdx=args.startIdx, endIdx=args.endIdx)
+    main(
+        data_name=args.data_name,
+        algo_name_lst=algo_name_lst,
+        startIdx=args.startIdx,
+        endIdx=args.endIdx,
+    )

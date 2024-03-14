@@ -71,11 +71,22 @@ def get_color(algo_name: str) -> str:
         return "#ff7f00"
     elif algo_name == "loraEkfacrandom16":
         return "#abdda4"
+    elif algo_name == "noLoraEkfac_10_true_fisher":
+        return "#001234"
+    elif algo_name == "noLoraEkfac_10_aug_trueFisher":
+        return "#33a02c"
+    elif algo_name == "noLoraEkfac_10_aug_empiricalFisher":
+        return "#e31a1c"
     else:
         return "#000000"
 
 
 def get_name(algo_name: str) -> str:
+    if "_10" in algo_name:
+        #remove the _10
+        ind = algo_name.index("_10")
+        algo_name = algo_name[:ind] + algo_name[ind+3:]
+
     if algo_name in ALGORITHMS_TO_NAME.keys():
         return ALGORITHMS_TO_NAME[algo_name]
     elif "if_d" in algo_name:

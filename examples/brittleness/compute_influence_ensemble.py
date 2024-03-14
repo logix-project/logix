@@ -24,6 +24,7 @@ parser.add_argument("--sample", action="store_true")
 parser.add_argument("--resume", action="store_true")
 parser.add_argument("--model_id", type=int, default=0)
 parser.add_argument("--save", action="store_true")
+parser.add_argument("--expt_name_additional_tag", type=str, default="")
 args = parser.parse_args()
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -55,7 +56,7 @@ analog_scheduler = AnaLogScheduler(analog, lora=args.lora, ekfac=args.ekfac, sam
 if not args.save:
     analog_scheduler.analog_state_schedule[-1]["save"] = None # hacky way to disable saving
 
-expt_name = get_expt_name_by_config(analog.config, args.lora, args.ekfac, args.model_id, args.damping)
+expt_name = get_expt_name_by_config(analog.config, args.lora, args.ekfac, args.model_id, args.damping,"", args.sample)
 
 file_name = get_ensemble_file_name(
     base_path=BASE_PATH, expt_name=expt_name, data_name=data_name, alpha=alpha
@@ -68,12 +69,16 @@ analog.watch(model)
 id_gen = DataIDGenerator()
 if not args.resume:
     for epoch in analog_scheduler:
+        sample = True if epoch < (len(analog_scheduler) - 1) and args.sample else False
         for inputs, targets in tqdm(eval_train_loader):
             data_id = id_gen(inputs)
             with analog(data_id=data_id):
                 inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
                 model.zero_grad()
                 outs = model(inputs)
+                if sample:
+                    probs = torch.nn.functional.softmax(outs, dim=-1)
+                    targets = torch.multinomial(probs, 1).flatten().detach()
                 loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
                 loss.backward()
         analog.finalize()
@@ -82,7 +87,6 @@ else:
 
     # Influence Analysis
 print("analog finalized on train set\n")
-breakpoint()
 analog.add_analysis({"influence": InfluenceFunction})
 query_iter = iter(valid_loader)
 test_input, test_target = next(query_iter)

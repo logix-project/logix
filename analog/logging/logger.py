@@ -10,6 +10,8 @@ from analog.logging.option import LogOption
 from analog.logging.log_saver import LogSaver
 from analog.logging.utils import compute_per_sample_gradient
 
+import pydevd
+
 class HookLogger:
     def __init__(
         self,
