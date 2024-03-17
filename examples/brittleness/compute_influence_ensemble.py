@@ -25,6 +25,7 @@ parser.add_argument("--resume", action="store_true")
 parser.add_argument("--model_id", type=int, default=0)
 parser.add_argument("--save", action="store_true")
 parser.add_argument("--expt_name_additional_tag", type=str, default="")
+parser.add_argument("--use_full_covariance", action="store_true")
 args = parser.parse_args()
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -56,7 +57,7 @@ analog_scheduler = AnaLogScheduler(analog, lora=args.lora, ekfac=args.ekfac, sam
 if not args.save:
     analog_scheduler.analog_state_schedule[-1]["save"] = None # hacky way to disable saving
 
-expt_name = get_expt_name_by_config(analog.config, args.lora, args.ekfac, args.model_id, args.damping,"", args.sample)
+expt_name = get_expt_name_by_config(analog.config, args.lora, args.ekfac, args.model_id, args.damping,"", args.sample, args.use_full_covariance)
 
 file_name = get_ensemble_file_name(
     base_path=BASE_PATH, expt_name=expt_name, data_name=data_name, alpha=alpha
@@ -64,6 +65,8 @@ file_name = get_ensemble_file_name(
 if os.path.exists(file_name):
     print("File already exists")
     exit()
+else:
+    print(f"File to save: {file_name}")
 # Gradient & Hessian logging
 analog.watch(model)
 id_gen = DataIDGenerator()

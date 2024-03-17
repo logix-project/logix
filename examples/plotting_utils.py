@@ -74,9 +74,11 @@ def get_color(algo_name: str) -> str:
     elif algo_name == "noLoraEkfac_10_true_fisher":
         return "#001234"
     elif algo_name == "noLoraEkfac_10_aug_trueFisher":
-        return "#33a02c"
+        return "#8dd3c7"
     elif algo_name == "noLoraEkfac_10_aug_empiricalFisher":
         return "#e31a1c"
+    elif algo_name == "lora64randomKfac_full_covariance_10":
+        return "#b2df8a"
     else:
         return "#000000"
 

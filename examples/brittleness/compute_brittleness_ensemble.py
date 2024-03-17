@@ -241,6 +241,8 @@ if __name__ == "__main__":
     parser.add_argument("--lora", action="store_true")
     parser.add_argument("--expt_name_additional_tag", type=str, default="")
     parser.add_argument("--true_fisher", action="store_true")
+    parser.add_argument("--use_full_covariance", action="store_true")
+
     args = parser.parse_args()
     algo_name_lst = [
         # "representation_similarity_dot",
@@ -257,6 +259,7 @@ if __name__ == "__main__":
             damping=args.damping,
             additional_tag=args.expt_name_additional_tag,
             true_fisher=args.true_fisher,
+            use_full_covariance=args.use_full_covariance,
         ),
     ]
 

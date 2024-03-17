@@ -3,7 +3,7 @@ def get_ensemble_file_name(
 ) -> str:
     return f"{base_path}/data_{data_name}/alpha_{alpha}/{expt_name}.pt"
 
-def get_expt_name_by_config(config, isLora, isEkfac, model_id = None, damping = 1e-10, additional_tag = "", true_fisher = False) -> str:
+def get_expt_name_by_config(config, isLora, isEkfac, model_id = None, damping = 1e-10, additional_tag = "", true_fisher = False, use_full_covariance = False) -> str:
     expt_name = ""
     if isLora:
         expt_name += "lora" + str(config.lora_config["rank"]) + config.lora_config["init"]
@@ -21,11 +21,17 @@ def get_expt_name_by_config(config, isLora, isEkfac, model_id = None, damping = 
     if true_fisher:
         expt_name += "_true_fisher"
     
+    if use_full_covariance:
+        expt_name += "_full_covariance"
+
+    expt_name += additional_tag
+
     if model_id is not None:
         expt_name += str(model_id)
     else:
         expt_name += "_10"
 
-    expt_name += additional_tag
+
+
 
     return expt_name

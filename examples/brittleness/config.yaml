@@ -2,4 +2,4 @@ storage:
   type: default
 lora:
   init: random
-  rank: 16
+  rank: 64

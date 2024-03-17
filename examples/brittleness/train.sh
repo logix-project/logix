@@ -35,8 +35,8 @@ run_command python compute_brittleness_ensemble.py \
 --startIdx $(($SLURM_ARRAY_TASK_ID*10)) \
 --endIdx $(($SLURM_ARRAY_TASK_ID*10+10)) \
 --data_name cifar10 \
---ekfac \
---expt_name_additional_tag _true_fisher
+--lora \
+--use_full_covariance
 
 # python compute_influence_ensemble.py \
 # --ekfac \

@@ -6,6 +6,7 @@ from einops import einsum, rearrange, reduce
 from analog.utils import get_logger, nested_dict
 from analog.analysis import AnalysisBase
 from analog.analysis.utils import synchronize_device
+from analog.statistic.utils import make_2d
 
 
 class InfluenceFunction(AnalysisBase):
@@ -22,6 +23,7 @@ class InfluenceFunction(AnalysisBase):
         self,
         src_log: Dict[str, Dict[str, torch.Tensor]],
         damping: Optional[float] = None,
+        use_full_covariance = False,
     ):
         """
         Precondition gradients using the Hessian.
@@ -39,41 +41,55 @@ class InfluenceFunction(AnalysisBase):
             return src_log
 
         preconditioned = nested_dict()
-        for module_name in src.keys():
-            src_grad = src[module_name]["grad"]
-            device = src_grad.device
+        if use_full_covariance:
+            for module_name in src.keys():
+                device = src[module_name]["grad"].device
+                grad_covariance = self._state.covariance_state[module_name]["grad"]
+                if damping is None:
+                    damping = 0.1 * torch.mean(grad_covariance)
+                grad_covariance += torch.eye(grad_covariance.shape[0]).to(device) * damping
+                inv_grad_covariance = torch.inverse(grad_covariance)
+                original_shape = src[module_name]["grad"].shape
+                preconditioned[module_name]["grad"] =\
+                    (make_2d(src[module_name]["grad"], None, "grad") 
+                     @ inv_grad_covariance)\
+                    .reshape(original_shape)
+        else:
+            for module_name in src.keys():
+                src_grad = src[module_name]["grad"]
+                device = src_grad.device
 
-            module_eigvec = cov_eigvec[module_name]
-            fwd_eigvec = module_eigvec["forward"].to(device=device)
-            bwd_eigvec = module_eigvec["backward"].to(device=device)
+                module_eigvec = cov_eigvec[module_name]
+                fwd_eigvec = module_eigvec["forward"].to(device=device)
+                bwd_eigvec = module_eigvec["backward"].to(device=device)
 
-            # Reconstruct the full eigenvalue matrix with the damping factor added
-            module_eigval = cov_eigval[module_name]
-            if isinstance(module_eigval, torch.Tensor):
-                full_eigval = module_eigval.to(device=device)
-            else:
-                assert "forward" in module_eigval and "backward" in module_eigval
-                fwd_eigval = module_eigval["forward"]
-                bwd_eigval = module_eigval["backward"]
-                full_eigval = torch.outer(bwd_eigval, fwd_eigval).to(device=device)
-            if damping is None:
-                damping = 0.1 * torch.mean(full_eigval)
-            full_eigval += damping
+                # Reconstruct the full eigenvalue matrix with the damping factor added
+                module_eigval = cov_eigval[module_name]
+                if isinstance(module_eigval, torch.Tensor):
+                    full_eigval = module_eigval.to(device=device)
+                else:
+                    assert "forward" in module_eigval and "backward" in module_eigval
+                    fwd_eigval = module_eigval["forward"]
+                    bwd_eigval = module_eigval["backward"]
+                    full_eigval = torch.outer(bwd_eigval, fwd_eigval).to(device=device)
+                if damping is None:
+                    damping = 0.1 * torch.mean(full_eigval)
+                full_eigval += damping
 
-            # Precondition the gradient using eigenvectors and eigenvalues
-            rotated_grad = einsum(
-                bwd_eigvec.t(),
-                src_grad,
-                fwd_eigvec,
-                "a b, batch b c, c d -> batch a d",
-            )
-            prec_rotated_grad = rotated_grad / full_eigval
-            preconditioned[module_name]["grad"] = einsum(
-                bwd_eigvec,
-                prec_rotated_grad,
-                fwd_eigvec.t(),
-                "a b, batch b c, c d -> batch a d",
-            )
+                # Precondition the gradient using eigenvectors and eigenvalues
+                rotated_grad = einsum(
+                    bwd_eigvec.t(),
+                    src_grad,
+                    fwd_eigvec,
+                    "a b, batch b c, c d -> batch a d",
+                )
+                prec_rotated_grad = rotated_grad / full_eigval
+                preconditioned[module_name]["grad"] = einsum(
+                    bwd_eigvec,
+                    prec_rotated_grad,
+                    fwd_eigvec.t(),
+                    "a b, batch b c, c d -> batch a d",
+                )
         return (src_ids, preconditioned)
 
     @torch.no_grad()
@@ -84,6 +100,7 @@ class InfluenceFunction(AnalysisBase):
         mode: Optional[str] = "dot",
         precondition: Optional[bool] = True,
         damping: Optional[float] = None,
+        use_full_covariance = False,
     ):
         """
         Compute influence scores between two gradient dictionaries.
@@ -98,7 +115,7 @@ class InfluenceFunction(AnalysisBase):
         assert mode in ["dot", "l2", "cosine"], f"Invalid mode: {mode}"
 
         if precondition:
-            src_log = self.precondition(src_log, damping)
+            src_log = self.precondition(src_log, damping, use_full_covariance)
 
         src_ids, src = src_log
         tgt_ids, tgt = tgt_log
