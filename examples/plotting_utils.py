@@ -79,6 +79,9 @@ def get_color(algo_name: str) -> str:
         return "#e31a1c"
     elif algo_name == "lora64randomKfac_full_covariance_10":
         return "#b2df8a"
+    elif algo_name == "lora64random_full_covariance_aug_10":
+        #red
+        return "#e31a1c"
     else:
         return "#000000"
 

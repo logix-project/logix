@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
 from torch.optim import SGD, lr_scheduler
 
-from examples.cifar_influence.pipeline import construct_model, get_hyperparameters, get_loaders
+from examples.cifar_influence.pipeline import construct_model, get_hyperparameters, get_loaders, get_eval_train_loader_with_aug
 from examples.utils import clear_gpu_cache, save_tensor, set_seed
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
