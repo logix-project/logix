@@ -62,6 +62,12 @@ class LogOption:
                         "backward": [],
                         "grad": [CorrectedEigval],
                     }
+                elif statistic == "full_covariance":
+                    statistic = {
+                        "forward": [],
+                        "backward": [],
+                        "grad": [Covariance],
+                    }
                 else:
                     raise ValueError(f"Unknown statistic: {statistic}")
 

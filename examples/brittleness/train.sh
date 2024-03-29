@@ -35,12 +35,9 @@ run_command python compute_brittleness_ensemble.py \
 --startIdx $(($SLURM_ARRAY_TASK_ID*10)) \
 --endIdx $(($SLURM_ARRAY_TASK_ID*10+10)) \
 --data_name cifar10 \
---lora \
---use_full_covariance \
---use_augmented_data
+--algo_name initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simTrue_expt_name_additional_tag_model_id_10
 
-# python compute_influence_ensemble.py \
-# --ekfac \
+# run_command python compute_influence_ensemble.py \
 # --model_id $SLURM_ARRAY_TASK_ID \
 # --data cifar10 \
-# --sample
+# --grad_sim

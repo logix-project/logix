@@ -1,5 +1,0 @@
-storage:
-  type: default
-lora:
-  init: pca
-  compression_ratio_by_memory: 0.00001

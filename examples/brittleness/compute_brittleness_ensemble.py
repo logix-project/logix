@@ -231,38 +231,15 @@ def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
 
 
 if __name__ == "__main__":
-    config = Config("config.yaml", "dummy_project_name")
     parser = argparse.ArgumentParser("CIFAR Influence Analysis")
     parser.add_argument("--startIdx", type=int, default=0)
     parser.add_argument("--endIdx", type=int, default=10)
     parser.add_argument("--data_name", type=str)
-    parser.add_argument("--damping", type=float, default=1e-10)
-    parser.add_argument("--ekfac", action="store_true")
-    parser.add_argument("--lora", action="store_true")
-    parser.add_argument("--expt_name_additional_tag", type=str, default="")
-    parser.add_argument("--true_fisher", action="store_true")
-    parser.add_argument("--use_full_covariance", action="store_true")
-    parser.add_argument("--use_augmented_data", action="store_true")
+    parser.add_argument("--algo_name", type=str)
 
     args = parser.parse_args()
     algo_name_lst = [
-        # "representation_similarity_dot",
-        # "tracin_dot",
-        # "trak",
-        # "if_d1e-08",
-        # "pca1e-06",
-        # "pca0.0001_toverify"
-        # "noLoraEkfac"
-        get_expt_name_by_config(
-            config=config,
-            isLora=args.lora,
-            isEkfac=args.ekfac,
-            damping=args.damping,
-            additional_tag=args.expt_name_additional_tag,
-            true_fisher=args.true_fisher,
-            use_full_covariance=args.use_full_covariance,
-            use_augmented_data=args.use_augmented_data,
-        ),
+        args.algo_name,
     ]
 
     if args.data_name == "mnist" or args.data_name == "fmnist":

@@ -19,6 +19,15 @@ class Config:
         "logging": {"flush_threshold": -1},
         "analysis": {},
         "lora": {"init": "random", "rank": 64},
+        "logging_options": {
+            "use_lora": True,
+            "use_full_covariance": False,
+            "sample": False,
+            "ekfac": False
+        },
+        "other_options": {
+            "save_gradient": True,
+        }
     }
 
     def __init__(self, config_file: str, project_name: str) -> None:
@@ -40,6 +49,8 @@ class Config:
         self._logging_config = self.data.get("logging", self._DEFAULTS["logging"])
         self._analysis_config = self.data.get("analysis", self._DEFAULTS["analysis"])
         self._lora_config = self.data.get("lora", self._DEFAULTS["lora"])
+        self._logging_options = self.data.get("logging_options", self._DEFAULTS["logging_options"])
+        self._other_options = self.data.get("other_options", self._DEFAULTS["other_options"])
 
         self._log_dir = None
         self._configure_log_dir(self.data.get("root_dir", self._DEFAULTS["root_dir"]))
@@ -70,6 +81,24 @@ class Config:
         :return: Dictionary containing LoRA configurations.
         """
         return self._lora_config
+
+    @property
+    def logging_options(self) -> Dict[str, Any]:
+        """
+        Retrieve logging_options.
+
+        :return: Dictionary containing logging_options.
+        """
+        return self._logging_options
+
+    @property
+    def other_options(self) -> Dict[str, Any]:
+        """
+        Retrieve other_options.
+
+        :return: Dictionary containing other_options.
+        """
+        return self._other_options
 
     @property
     def log_dir(self) -> str:

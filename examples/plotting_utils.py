@@ -82,11 +82,22 @@ def get_color(algo_name: str) -> str:
     elif algo_name == "lora64random_full_covariance_aug_10":
         #red
         return "#e31a1c"
+    elif algo_name == "use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_expt_name_additional_tag_model_id_10":
+        # blue
+        return "#1f78b4"
+    elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_expt_name_additional_tag_model_id_10":
+        # yellow
+        return "#ff7f00"
     else:
         return "#000000"
 
 
 def get_name(algo_name: str) -> str:
+    if "_expt_name_additional_tag_model_id_10" in algo_name:
+        # remove it
+        ind = algo_name.index("_expt_name_additional_tag_model_id_10")
+        algo_name = algo_name[:ind]
+
     if "_10" in algo_name:
         #remove the _10
         ind = algo_name.index("_10")

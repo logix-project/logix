@@ -53,3 +53,12 @@ def get_loaders(
     else:
         raise ValueError(f"Unknown dataset: {data_name}")
     return get_loaders(data_name, eval_batch_size, train_indices, valid_indices, do_corrupt)
+
+def get_eval_train_loader_with_aug(
+    data_name: str, eval_batch_size: int = 1024, train_indices: Optional[List[int]] = None, do_corrupt: bool = False
+) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+    if "cifar10" in data_name or "cifar2" in data_name:
+        from examples.cifar_influence.pipeline import get_eval_train_loader_with_aug
+    else:
+        raise ValueError(f"Unknown dataset: {data_name}")
+    return get_eval_train_loader_with_aug(data_name, eval_batch_size, train_indices, do_corrupt)

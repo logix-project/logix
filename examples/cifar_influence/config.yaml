@@ -3,3 +3,10 @@ storage:
 lora:
   init: random
   rank: 64
+logging_options:
+  use_lora: true
+  use_full_covariance: true
+  sample: false
+  ekfac: false
+other_options:
+  save_gradient: save
