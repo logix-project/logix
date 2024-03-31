@@ -16,9 +16,9 @@ parser = argparse.ArgumentParser("MNIST Influence Analysis")
 parser.add_argument("--data", type=str, default="mnist", help="mnist or fmnist")
 parser.add_argument("--eval-idxs", type=int, nargs="+", default=[0])
 parser.add_argument("--damping", type=float, default=1e-5)
-parser.add_argument("--ekfac", action="store_true")
-parser.add_argument("--lora", action="store_true")
-parser.add_argument("--sample", action="store_true")
+parser.add_argument("--hessian", type=str, default="none")
+parser.add_argument("--lora", type=str, default="none")
+parser.add_argument("--save", type=str, default="grad")
 parser.add_argument("--resume", action="store_true")
 args = parser.parse_args()
 
@@ -40,7 +40,7 @@ query_loader = dataloader_fn(
 
 analog = AnaLog(project="test", config="./config.yaml")
 al_scheduler = AnaLogScheduler(
-    analog, ekfac=args.ekfac, lora=args.lora, sample=args.sample
+    analog, lora=args.lora, hessian=args.hessian, save=args.save
 )
 
 # Gradient & Hessian logging

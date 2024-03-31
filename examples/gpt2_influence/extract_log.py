@@ -1,9 +1,11 @@
 import argparse
 
 from tqdm import tqdm
+import torch
 import torch.nn.functional as F
 from accelerate import Accelerator
 import analog
+from analog.statistic import Covariance
 
 from utils import construct_model, get_loaders, set_seed
 
@@ -13,6 +15,9 @@ def main():
     parser.add_argument("--project", type=str, default="wiki")
     parser.add_argument("--config_path", type=str, default="./config.yaml")
     parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--hessian", type=str, default="kfac")
+    parser.add_argument("--lora", type=str, default="random")
+    parser.add_argument("--save", type=str, default="grad")
     args = parser.parse_args()
 
     set_seed(0)
@@ -26,8 +31,10 @@ def main():
 
     # Set-up
     run = analog.init(args.project, config=args.config_path)
-    analog.watch(model, name_filter=["attn", "mlp"])
-    scheduler = analog.AnaLogScheduler(run, lora=True)
+    run.watch(model, name_filter=["attn", "mlp"])
+    scheduler = analog.AnaLogScheduler(
+        run, lora=args.lora, hessian=args.hessian, save=args.save
+    )
     for _ in scheduler:
         for batch in tqdm(train_loader):
             data_id = tokenizer.batch_decode(batch["input_ids"])

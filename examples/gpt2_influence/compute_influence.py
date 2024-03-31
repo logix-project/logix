@@ -23,7 +23,7 @@ def main():
     # prepare model & data loader
     model, tokenizer = construct_model(resume=True)
     model.eval()
-    test_loader = get_loaders(eval_batch_size=8)[-1]
+    test_loader = get_loaders(eval_batch_size=16)[-1]
     model, test_loader = accelerator.prepare(model, test_loader)
 
     # Set-up AnaLog
@@ -31,12 +31,12 @@ def main():
 
     analog.watch(model, name_filter=["attn", "mlp"])
     analog.initialize_from_log()
-    log_loader = analog.build_log_dataloader()
-    if_computer = analog.add_analysis({"influence": InfluenceFunction})
+    log_loader = analog.build_log_dataloader(batch_size=64)
 
     # Influence analysis
     analog.setup({"log": "grad"})
     analog.eval()
+    if_scores = []
     for batch in test_loader:
         data_id = tokenizer.batch_decode(batch["input_ids"])
         targets = batch.pop("labels")
@@ -55,10 +55,10 @@ def main():
             accelerator.backward(loss)
 
         test_log = analog.get_log()
-        if_computer.compute_influence_all(test_log, log_loader, args.damping)
-        break
-
-    if_computer.save_influence_scores()
+        if_score = run.influence.compute_influence_all(test_log, log_loader)
+        if_scores.append(if_score)
+    if_scores = torch.cat(if_scores, dim=0)
+    torch.save(if_scores, "scores.pt")
 
 
 if __name__ == "__main__":
