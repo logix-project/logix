@@ -50,16 +50,12 @@ from tqdm import tqdm
 
 if not args.resume:
     for epoch in al_scheduler:
-        sample = True if epoch < (len(al_scheduler) - 1) and args.sample else False
         for inputs, targets in tqdm(train_loader):
             data_id = id_gen(inputs)
             with analog(data_id=data_id):
                 inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
                 model.zero_grad()
                 outs = model(inputs)
-                if sample:
-                    probs = torch.nn.functional.softmax(outs, dim=-1)
-                    targets = torch.multinomial(probs, 1).flatten().detach()
                 loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
                 loss.backward()
         analog.finalize()

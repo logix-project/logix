@@ -17,9 +17,9 @@ class AnaLogScheduler:
         self._lora_epoch = -1
         self._analog_state_schedule = []
 
-        self.sanity_check()
+        self.sanity_check(lora, hessian, save)
         self.configure_lora_epoch(lora)
-        self.configure_schedule(ekfac, lora, sample)
+        self.configure_schedule(lora, hessian, save)
 
         self._schedule_iterator = iter(self._analog_state_schedule)
 
@@ -72,4 +72,4 @@ class AnaLogScheduler:
         return self._epoch
 
     def __len__(self):
-        return len(self.analog_state_schedule)
+        return len(self._analog_state_schedule)
