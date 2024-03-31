@@ -88,6 +88,8 @@ def get_color(algo_name: str) -> str:
     elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_expt_name_additional_tag_model_id_10":
         # yellow
         return "#ff7f00"
+    elif algo_name == "nitrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_model_id0":
+        return "#6704FD"
     else:
         return "#000000"
 

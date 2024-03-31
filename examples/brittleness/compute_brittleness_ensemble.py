@@ -13,8 +13,9 @@ from examples.pipeline import (
     get_remove_intervals,
 )
 from examples.utils import save_tensor, set_seed
+from analog import AnaLog
 
-from examples.compute_utils import get_expt_name_by_config
+from examples.compute_utils import get_ensemble_file_name, get_expt_name_by_config
 
 from analog.analog import Config
 
@@ -234,23 +235,35 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("CIFAR Influence Analysis")
     parser.add_argument("--startIdx", type=int, default=0)
     parser.add_argument("--endIdx", type=int, default=10)
-    parser.add_argument("--data_name", type=str)
-    parser.add_argument("--algo_name", type=str)
+    parser.add_argument("--scoreFileName", type=str)
 
+    parser.add_argument("--data", type=str, default="fmnist")
+    parser.add_argument("--damping", type=float, default=1e-10)
+    parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--use_augmented_data", action="store_true")
+    parser.add_argument("--grad_sim", action="store_true")
+    parser.add_argument("--tag", type=str, default="")
+    parser.add_argument("--model_id", type=int, default=0, help="10 for 10 ensemble models, 0-9 for single model")
+
+    algo_name_lst = []
     args = parser.parse_args()
-    algo_name_lst = [
-        args.algo_name,
-    ]
+    if args.scoreFileName is not None:
+        algo_name_lst.append(args.scoreFileName)
+        print(f"scoreFileName is set to {args.scoreFileName}, ignore other options")
+    else:
+        analog = AnaLog(project="brittleness", config="./config.yaml")
+        scoreFileName = get_expt_name_by_config(analog.config, args)
+        algo_name_lst.append(scoreFileName)
 
-    if args.data_name == "mnist" or args.data_name == "fmnist":
+    if args.data == "mnist" or args.data == "fmnist":
         from examples.mnist_influence.train import train
-    elif args.data_name == "cifar10":
+    elif args.data == "cifar10":
         from examples.cifar_influence.train import train
     else:
         raise NotImplementedError()
 
     main(
-        data_name=args.data_name,
+        data_name=args.data,
         algo_name_lst=algo_name_lst,
         startIdx=args.startIdx,
         endIdx=args.endIdx,

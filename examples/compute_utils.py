@@ -14,7 +14,7 @@ def get_expt_name_by_config(analog_config: Config, argparse_args) -> str:
         expt_name += f"{key}{value}_"
     
     #add addparser args
-    argparse_args_excludes = ["data", "resume"]
+    argparse_args_excludes = ["data", "resume", "startIdx", "endIdx", "scoreFileName"]
     for key, value in vars(argparse_args).items():
         if key not in argparse_args_excludes:
             expt_name += f"{key}{value}_"

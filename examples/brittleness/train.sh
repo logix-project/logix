@@ -29,15 +29,17 @@ run_command() {
     echo "Error: Command $@ failed after $max_attempts attempts."
     return 1
 }
-# python train.py --model_id $SLURM_ARRAY_TASK_ID
-
-run_command python compute_brittleness_ensemble.py \
---startIdx $(($SLURM_ARRAY_TASK_ID*10)) \
---endIdx $(($SLURM_ARRAY_TASK_ID*10+10)) \
---data_name cifar10 \
---algo_name initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simTrue_expt_name_additional_tag_model_id_10
 
 # run_command python compute_influence_ensemble.py \
 # --model_id $SLURM_ARRAY_TASK_ID \
 # --data cifar10 \
-# --grad_sim
+# --scoreFileName trak_30
+
+run_command python compute_brittleness_ensemble.py \
+--startIdx $(($SLURM_ARRAY_TASK_ID*10)) \
+--endIdx $(($SLURM_ARRAY_TASK_ID*10+10)) \
+--model_id 0 \
+--data cifar10 \
+# --scoreFileName trak_30 \
+
+#they should have same args, if score file name automatically generated.

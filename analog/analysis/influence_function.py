@@ -47,11 +47,11 @@ class InfluenceFunction(AnalysisBase):
                 grad_covariance = self._state.covariance_state[module_name]["grad"]
                 if damping is None:
                     damping = 0.1 * torch.mean(grad_covariance)
-                grad_covariance += torch.eye(grad_covariance.shape[0]).to(device) * damping
-                inv_grad_covariance = torch.inverse(grad_covariance)
+                grad_covariance_damped = grad_covariance + torch.eye(grad_covariance.shape[0]).to(device) * damping
+                inv_grad_covariance = torch.inverse(grad_covariance_damped)
                 original_shape = src[module_name]["grad"].shape
                 preconditioned[module_name]["grad"] =\
-                    (make_2d(src[module_name]["grad"], None, "grad") 
+                    (make_2d(src[module_name]["grad"], None, "grad")
                      @ inv_grad_covariance)\
                     .reshape(original_shape)
         else:
