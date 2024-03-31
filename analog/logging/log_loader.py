@@ -26,6 +26,7 @@ class LogDataset(Dataset):
         # Find all chunk indices
         self.chunk_indices = find_chunk_indices(self.log_dir)
         self.fetch_data()
+        self.data_id_list = list(self.data_id_to_chunk.keys())
 
     def fetch_data(self):
         # Add metadata and mmap files for all indices.
@@ -43,7 +44,7 @@ class LogDataset(Dataset):
             )
 
     def __getitem__(self, index):
-        data_id = list(self.data_id_to_chunk.keys())[index]
+        data_id = self.data_id_list[index]
         chunk_idx, entry = self.data_id_to_chunk[data_id]
         nested_dict = {}
         mmap = self.memmaps[chunk_idx]

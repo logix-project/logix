@@ -377,7 +377,7 @@ class AnaLog:
 
         # Load LoRA state
         lora_dir = os.path.join(self.log_dir, "lora")
-        if os.path.exists(lora_dir):
+        if os.path.exists(lora_dir) and self.model is not None:
             if not is_lora(self.model):
                 self.add_lora()
             lora_state = torch.load(os.path.join(lora_dir, "lora_state_dict.pt"))
