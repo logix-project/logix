@@ -149,12 +149,8 @@ class InfluenceFunction:
         )
 
         # Assign total_influence values to the corresponding locations
-        src_indices = [
-            self.influence_scores.index.get_loc(src_id) for src_id in src_ids
-        ]
-        tgt_indices = [
-            self.influence_scores.columns.get_loc(tgt_id) for tgt_id in tgt_ids
-        ]
+        src_indices = self.influence_scores.index.get_indexer(src_ids)
+        tgt_indices = self.influence_scores.columns.get_indexer(tgt_ids)
 
         self.influence_scores.iloc[src_indices, tgt_indices] = total_influence.numpy()
 
