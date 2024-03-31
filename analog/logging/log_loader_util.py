@@ -66,7 +66,8 @@ def get_mmap_metadata(
     # Update the mapping from data_id to chunk
     for entry in metadata:
         if entry["data_id"] in data_id_to_chunk:
-            logging.warning(f"duplicated data_id overwrite:{entry['data_id']}")
+            logging.warning(f"duplicated data_id detected: {entry['data_id']}")
+            continue
         data_id_to_chunk[entry["data_id"]] = (chunk_index, entry)
     return data_id_to_chunk
 
