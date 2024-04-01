@@ -5,6 +5,7 @@ import torch
 from einops import einsum, rearrange, reduce
 from analog.config import InfluenceConfig
 from analog.state import AnaLogState
+from analog.monitor_util.timer import DeviceFunctionTimer
 from analog.utils import get_logger, nested_dict
 from analog.analysis.utils import synchronize_device
 from analog.statistic.utils import make_2d
@@ -25,6 +26,7 @@ class InfluenceFunction:
         self.influence_scores = pd.DataFrame()
         self.flatten = config.flatten
 
+    @DeviceFunctionTimer.timer
     @torch.no_grad()
     def precondition(
         self,
@@ -232,6 +234,7 @@ class InfluenceFunction:
             to_cat.append(log.view(bsz, -1))
         return torch.cat(to_cat, dim=1)
 
+    @DeviceFunctionTimer.timer
     def compute_influence_all(
         self,
         src_log: Tuple[str, Dict[str, Dict[str, torch.Tensor]]],

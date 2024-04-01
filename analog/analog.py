@@ -17,6 +17,7 @@ from analog.logging.log_loader_util import collate_nested_dicts
 from analog.lora import LoRAHandler
 from analog.lora.utils import is_lora
 from analog.state import AnaLogState
+from analog.monitor_util.timer import DeviceFunctionTimer
 from analog.utils import (
     get_logger,
     get_rank,
@@ -237,6 +238,7 @@ class AnaLog:
         """
         self.logger.update()
 
+    @DeviceFunctionTimer.timer
     def build_log_dataset(self):
         """
         Constructs the log dataset from the stored logs. This dataset can then be used
@@ -249,6 +251,7 @@ class AnaLog:
         log_dataset = LogDataset(log_dir=self.log_dir, config=self.influence_config)
         return log_dataset
 
+    @DeviceFunctionTimer.timer
     def build_log_dataloader(
         self, batch_size: int = 16, num_workers: int = 0, pin_memory: bool = False
     ):
