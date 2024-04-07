@@ -1,4 +1,4 @@
-root_dir: /data/tir/projects/tir6/general/sangkeuc/hf
+root_dir: ./logix
 logging:
   flush_threshold: 1000000000
   num_workers: 2

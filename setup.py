@@ -11,7 +11,7 @@ python_requires = ">=3.6.0,<3.11.0"
 
 if __name__ == "__main__":
     setup(
-        name="analog",
+        name="logix",
         version="0.0.0",
         packages=find_packages(
             exclude=[
