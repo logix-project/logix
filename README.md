@@ -5,10 +5,7 @@
 </p>
 
 <p align="center">
-  <em>Improve AI safety via data debugging, uncertainty estimation, and more.<br></em>
-</p>
-<p align="center">
-  <em>All you need is <strong>Ana</strong>lyzing neural network training <strong>Log</strong>!</em>
+  <em><strong>LogiX</strong>: Logging for Interpretable and Explainable AI <br></em>
 </p>
 
 <div align="center">
