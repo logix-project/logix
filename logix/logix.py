@@ -16,7 +16,7 @@ from logix.logging.log_loader import LogDataset
 from logix.logging.log_loader_util import collate_nested_dicts
 from logix.lora import LoRAHandler
 from logix.lora.utils import is_lora
-from logix.state import LogiXState
+from logix.state import AnaLogState
 from logix.utils import (
     get_logger,
     get_rank,
@@ -27,7 +27,7 @@ from logix.utils import (
 )
 
 
-class AnaLog:
+class LogiX:
     """
     AnaLog is a front-end interface for logging and analyzing neural networks.
     Using (PyTorch) hooks, it tracks, saves, and computes statistics for activations,
@@ -65,7 +65,7 @@ class AnaLog:
         self.flatten = self.influence_config.flatten
 
         # AnaLog state
-        self.state = LogiXState()
+        self.state = AnaLogState()
         self.binfo = BatchInfo()
 
         # Initialize logger

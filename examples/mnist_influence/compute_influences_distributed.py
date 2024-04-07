@@ -3,7 +3,7 @@ import argparse
 
 import torch
 from accelerate import Accelerator
-from logix import AnaLog
+from logix import LogiX
 from logix.utils import DataIDGenerator, get_world_size, get_rank
 from logix.analysis import InfluenceFunction
 
@@ -44,7 +44,7 @@ def main():
         model, train_loader, query_loader
     )
 
-    analog = AnaLog(project="test", config="config.yaml")
+    analog = LogiX(project="test", config="config.yaml")
 
     analog.watch(model)
     analog.setup({"log": "grad", "statistic": "kfac"})

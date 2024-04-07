@@ -31,7 +31,7 @@ def main():
 
     # AnaLog
     run = logix.init(args.project, config=args.config_path)
-    scheduler = logix.AnaLogScheduler(run, lora=True)
+    scheduler = logix.LogiXScheduler(run, lora=True)
 
     logix.watch(model)
     for _ in scheduler:

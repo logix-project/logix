@@ -5,7 +5,7 @@ import tqdm
 import numpy as np
 import torch
 
-from logix import AnaLog
+from logix import LogiX
 from logix.utils import DataIDGenerator
 from logix.analysis import InfluenceFunction
 from examples.mnist_influence.utils import (
@@ -64,7 +64,7 @@ ood_input_processor = get_ood_input_processor(
 )
 
 # Set-up
-analog = AnaLog(project="test")
+analog = LogiX(project="test")
 
 # Gradient & Hessian logging
 analog.watch(model, lora=False)

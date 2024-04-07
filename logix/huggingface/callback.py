@@ -2,15 +2,15 @@ from typing import Optional
 
 from transformers.trainer import TrainerCallback
 
-from logix import AnaLog, AnaLogScheduler
+from logix import LogiX, LogiXScheduler
 from logix.huggingface.arguments import AnaLogArguments
 
 
 class AnalogCallback(TrainerCallback):
     def __init__(
         self,
-        analog: AnaLog,
-        analog_scheduler: AnaLogScheduler,
+        analog: LogiX,
+        analog_scheduler: LogiXScheduler,
         args: AnaLogArguments,
     ):
         self.analog = analog

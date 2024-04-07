@@ -32,7 +32,7 @@ def main():
     # Set-up
     run = logix.init(args.project, config=args.config_path)
     run.watch(model, name_filter=["attn", "mlp"])
-    scheduler = logix.AnaLogScheduler(
+    scheduler = logix.LogiXScheduler(
         run, lora=args.lora, hessian=args.hessian, save=args.save
     )
     for _ in scheduler:

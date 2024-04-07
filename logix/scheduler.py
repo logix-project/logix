@@ -1,12 +1,12 @@
-from logix import AnaLog
+from logix import LogiX
 from logix.statistic import Covariance
 from logix.utils import get_logger
 
 
-class AnaLogScheduler:
+class LogiXScheduler:
     def __init__(
         self,
-        analog: AnaLog,
+        analog: LogiX,
         lora: str = "none",
         hessian: str = "none",
         save: str = "none",

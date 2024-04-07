@@ -2,7 +2,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from transformers.trainer import *
 
-from logix import AnaLog, AnaLogScheduler
+from logix import LogiX, LogiXScheduler
 from logix.utils import DataIDGenerator
 from logix.huggingface.callback import AnalogCallback
 from logix.huggingface.arguments import AnaLogArguments
@@ -38,8 +38,8 @@ def patch_trainer(TrainerClass):
         ):
             # Initialize AnaLog
             self.analog_args = analog_args
-            self.analog = AnaLog(project=analog_args.project, config=analog_args.config)
-            self.analog_scheduler = AnaLogScheduler(
+            self.analog = LogiX(project=analog_args.project, config=analog_args.config)
+            self.analog_scheduler = LogiXScheduler(
                 self.analog, ekfac=analog_args.ekfac
             )
             self.data_id_generator = DataIDGenerator()

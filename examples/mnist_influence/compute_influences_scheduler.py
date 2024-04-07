@@ -2,7 +2,7 @@ import time
 import argparse
 
 import torch
-from logix import AnaLog, AnaLogScheduler
+from logix import LogiX, LogiXScheduler
 from logix.utils import DataIDGenerator
 from logix.analysis import InfluenceFunction
 
@@ -38,8 +38,8 @@ query_loader = dataloader_fn(
     batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs
 )
 
-analog = AnaLog(project="test", config="./config.yaml")
-al_scheduler = AnaLogScheduler(
+analog = LogiX(project="test", config="./config.yaml")
+al_scheduler = LogiXScheduler(
     analog, lora=args.lora, hessian=args.hessian, save=args.save
 )
 

@@ -85,10 +85,10 @@ class TestSingleCheckpointInfluence(unittest.TestCase):
         )
 
         # Set-up
-        from logix import AnaLog
+        from logix import LogiX
         from logix.utils import DataIDGenerator
 
-        analog = AnaLog(project="test", config="examples/mnist/config.yaml")
+        analog = LogiX(project="test", config="examples/mnist/config.yaml")
 
         # Gradient & Hessian logging
         analog.watch(model, name_filter=["1", "3", "5"])

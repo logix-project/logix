@@ -50,7 +50,7 @@ def main():
     run = logix.init(project="llama_test", config="config.yaml")
     logix.watch(model, name_filter=["layers"])
     logix.add_lora()
-    scheduler = logix.AnaLogScheduler(run, ekfac=True)
+    scheduler = logix.LogiXScheduler(run, ekfac=True)
 
     model.train()
     for epoch in scheduler:
