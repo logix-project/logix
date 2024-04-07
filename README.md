@@ -83,10 +83,10 @@ logix_args = LogIXArguments(project, config, lora=True, ekfac=True)
 LogIXTrainer = patch_trainer(Trainer)
 
 trainer = LogIXTrainer(logix_args=logix_args, # pass LogIXArguments as TrainingArguments
-                        model=model,
-                        train_dataset=train_dataset,
-                        *args,
-                        **kwargs)
+                       model=model,
+                       train_dataset=train_dataset,
+                       *args,
+                       **kwargs)
 
 # Instead of trainer.train(),
 trainer.extract_log()
