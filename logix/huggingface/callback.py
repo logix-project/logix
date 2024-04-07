@@ -2,8 +2,8 @@ from typing import Optional
 
 from transformers.trainer import TrainerCallback
 
-from analog import AnaLog, AnaLogScheduler
-from analog.huggingface.arguments import AnaLogArguments
+from logix import AnaLog, AnaLogScheduler
+from logix.huggingface.arguments import AnaLogArguments
 
 
 class AnalogCallback(TrainerCallback):

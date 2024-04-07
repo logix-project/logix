@@ -3,9 +3,9 @@ import argparse
 
 import torch
 
-from analog import AnaLog, AnaLogScheduler
-from analog.utils import DataIDGenerator
-from analog.analysis import InfluenceFunction
+from logix import AnaLog, AnaLogScheduler
+from logix.utils import DataIDGenerator
+from logix.analysis import InfluenceFunction
 
 from train import (
     get_cifar10_dataloader,

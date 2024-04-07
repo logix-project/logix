@@ -85,8 +85,8 @@ class TestSingleCheckpointInfluence(unittest.TestCase):
         )
 
         # Set-up
-        from analog import AnaLog
-        from analog.utils import DataIDGenerator
+        from logix import AnaLog
+        from logix.utils import DataIDGenerator
 
         analog = AnaLog(project="test", config="examples/mnist/config.yaml")
 
@@ -107,7 +107,7 @@ class TestSingleCheckpointInfluence(unittest.TestCase):
         # Influence Analysis
         log_loader = analog.build_log_dataloader()
 
-        from analog.analysis import InfluenceFunction
+        from logix.analysis import InfluenceFunction
 
         # analog.add_analysis({"influence": InfluenceFunction})
         query_iter = iter(query_loader)

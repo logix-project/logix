@@ -6,7 +6,7 @@ import yaml
 
 import torch
 
-from analog.utils import get_rank
+from logix.utils import get_rank
 
 
 def init_config_from_yaml(config_path: str, project: Optional[str] = None):

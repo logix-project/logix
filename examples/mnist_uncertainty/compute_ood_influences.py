@@ -5,9 +5,9 @@ import tqdm
 import numpy as np
 import torch
 
-from analog import AnaLog
-from analog.utils import DataIDGenerator
-from analog.analysis import InfluenceFunction
+from logix import AnaLog
+from logix.utils import DataIDGenerator
+from logix.analysis import InfluenceFunction
 from examples.mnist_influence.utils import (
     get_mnist_dataloader,
     get_fmnist_dataloader,

@@ -1,7 +1,7 @@
 from typing import Any
 
-from analog.statistic import Covariance, CorrectedEigval
-from analog.utils import get_logger
+from logix.statistic import Covariance, CorrectedEigval
+from logix.utils import get_logger
 
 
 class LogOption:

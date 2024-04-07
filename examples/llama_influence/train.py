@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 import torch
 from accelerate import Accelerator
-import analog
+import logix
 
 from utils import (
     prepare_dataloader,

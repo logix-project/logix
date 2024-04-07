@@ -3,9 +3,9 @@ import argparse
 
 import torch
 from accelerate import Accelerator
-from analog import AnaLog
-from analog.utils import DataIDGenerator, get_world_size, get_rank
-from analog.analysis import InfluenceFunction
+from logix import AnaLog
+from logix.utils import DataIDGenerator, get_world_size, get_rank
+from logix.analysis import InfluenceFunction
 
 from train import (
     get_mnist_dataloader,

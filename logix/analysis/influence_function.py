@@ -3,15 +3,15 @@ import pandas as pd
 import torch
 
 from einops import einsum, rearrange, reduce
-from analog.config import InfluenceConfig
-from analog.state import AnaLogState
-from analog.utils import get_logger, nested_dict
-from analog.analysis.utils import synchronize_device
-from analog.statistic.utils import make_2d
+from logix.config import InfluenceConfig
+from logix.state import LogiXState
+from logix.utils import get_logger, nested_dict
+from logix.analysis.utils import synchronize_device
+from logix.statistic.utils import make_2d
 
 
 class InfluenceFunction:
-    def __init__(self, config: InfluenceConfig, state: AnaLogState):
+    def __init__(self, config: InfluenceConfig, state: LogiXState):
         # state
         self._state = state
 

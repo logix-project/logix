@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from analog import AnaLog
+from logix import AnaLog
 
 
 class Simple2DCNN(nn.Module):

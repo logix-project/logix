@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from transformers import BertForSequenceClassification, BertConfig
 
-from analog import AnaLog
+from logix import AnaLog
 
 
 class TestTransformerGradients(unittest.TestCase):

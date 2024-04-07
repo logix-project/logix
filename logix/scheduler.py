@@ -1,6 +1,6 @@
-from analog import AnaLog
-from analog.statistic import Covariance
-from analog.utils import get_logger
+from logix import AnaLog
+from logix.statistic import Covariance
+from logix.utils import get_logger
 
 
 class AnaLogScheduler:

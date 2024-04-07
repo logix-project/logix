@@ -3,8 +3,8 @@ import math
 import torch
 import torch.nn as nn
 
-from analog.constants import FORWARD, BACKWARD
-from analog.lora.utils import compute_top_k_singular_vectors
+from logix.constants import FORWARD, BACKWARD
+from logix.lora.utils import compute_top_k_singular_vectors
 
 
 class LoraLinear(nn.Module):

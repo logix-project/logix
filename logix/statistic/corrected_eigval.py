@@ -3,15 +3,15 @@ from typing import Optional
 import torch
 import torch.nn as nn
 
-from analog.batch_info import BatchInfo
-from analog.state import AnaLogState
+from logix.batch_info import BatchInfo
+from logix.state import LogiXState
 
 
 class CorrectedEigval:
     @staticmethod
     @torch.no_grad()
     def update(
-        state: AnaLogState,
+        state: LogiXState,
         binfo: BatchInfo,
         module: nn.Module,
         module_name: str,

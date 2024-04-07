@@ -5,8 +5,8 @@ from accelerate import Accelerator
 from tqdm import tqdm
 from transformers import default_data_collator, Trainer, TrainingArguments
 
-import analog
-from analog.huggingface import patch_trainer, AnaLogArguments
+import logix
+from logix.huggingface import patch_trainer, AnaLogArguments
 from gpt_utils import construct_model, get_datasets, set_seed
 
 

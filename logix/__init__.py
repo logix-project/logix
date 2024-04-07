@@ -1,6 +1,6 @@
-from analog.analog import AnaLog
-from analog.scheduler import AnaLogScheduler
-from analog.utils import get_logger
+from logix.logix import AnaLog
+from logix.scheduler import AnaLogScheduler
+from logix.utils import get_logger
 
 
 __version__ = "0.1.0"

@@ -2,10 +2,10 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from transformers.trainer import *
 
-from analog import AnaLog, AnaLogScheduler
-from analog.utils import DataIDGenerator
-from analog.huggingface.callback import AnalogCallback
-from analog.huggingface.arguments import AnaLogArguments
+from logix import AnaLog, AnaLogScheduler
+from logix.utils import DataIDGenerator
+from logix.huggingface.callback import AnalogCallback
+from logix.huggingface.arguments import AnaLogArguments
 
 
 def patch_trainer(TrainerClass):

@@ -8,16 +8,16 @@ from functools import reduce
 import torch
 import torch.nn as nn
 
-from analog.analysis import InfluenceFunction
-from analog.batch_info import BatchInfo
-from analog.config import init_config_from_yaml
-from analog.logging import HookLogger
-from analog.logging.log_loader import LogDataset
-from analog.logging.log_loader_util import collate_nested_dicts
-from analog.lora import LoRAHandler
-from analog.lora.utils import is_lora
-from analog.state import AnaLogState
-from analog.utils import (
+from logix.analysis import InfluenceFunction
+from logix.batch_info import BatchInfo
+from logix.config import init_config_from_yaml
+from logix.logging import HookLogger
+from logix.logging.log_loader import LogDataset
+from logix.logging.log_loader_util import collate_nested_dicts
+from logix.lora import LoRAHandler
+from logix.lora.utils import is_lora
+from logix.state import LogiXState
+from logix.utils import (
     get_logger,
     get_rank,
     get_repr_dim,
@@ -65,7 +65,7 @@ class AnaLog:
         self.flatten = self.influence_config.flatten
 
         # AnaLog state
-        self.state = AnaLogState()
+        self.state = LogiXState()
         self.binfo = BatchInfo()
 
         # Initialize logger

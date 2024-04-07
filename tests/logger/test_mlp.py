@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import BertConfig
 
-from analog import AnaLog
+from logix import AnaLog
 
 
 def create_mlp(input_size, hidden_size, num_classes):

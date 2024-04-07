@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 import torch.nn.functional as F
 from accelerate import Accelerator
-import analog
+import logix
 
 from utils import construct_model, get_loaders, set_seed
 
@@ -30,10 +30,10 @@ def main():
     model, train_loader = accelerator.prepare(model, train_loader)
 
     # AnaLog
-    run = analog.init(args.project, config=args.config_path)
-    scheduler = analog.AnaLogScheduler(run, lora=True)
+    run = logix.init(args.project, config=args.config_path)
+    scheduler = logix.AnaLogScheduler(run, lora=True)
 
-    analog.watch(model)
+    logix.watch(model)
     for _ in scheduler:
         for batch in tqdm(train_loader, desc="Hessian logging"):
             data_id = tokenizer.batch_decode(batch["input_ids"])
@@ -47,7 +47,7 @@ def main():
                     logits, labels, reduction="sum", ignore_index=-100
                 )
                 accelerator.backward(loss)
-        analog.finalize()
+        logix.finalize()
 
 
 if __name__ == "__main__":

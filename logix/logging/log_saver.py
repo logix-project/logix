@@ -1,8 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor
 import torch
 
-from analog.utils import nested_dict, to_numpy, get_rank
-from analog.logging.mmap import MemoryMapHandler
+from logix.utils import nested_dict, to_numpy, get_rank
+from logix.logging.mmap import MemoryMapHandler
 
 
 class LogSaver:
