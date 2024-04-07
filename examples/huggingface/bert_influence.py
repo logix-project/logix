@@ -27,7 +27,7 @@ def main():
     model.eval()
     train_dataset = get_datasets(args.data_name)[-1]
 
-    analog_args = LogiXArgument(
+    logix_args = LogiXArgument(
         project=args.project,
         config=args.config_path,
         lora=True,
@@ -48,7 +48,7 @@ def main():
         train_dataset=train_dataset,
         data_collator=default_data_collator,
         args=training_args,
-        logix_args=analog_args,
+        logix_args=logix_args,
     )
     trainer.influence()
 

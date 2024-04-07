@@ -1,4 +1,4 @@
-# usage: python qualitative_analysis.py --score_path if_analog.pt --score_path2 files/results/0/wiki_if.pt
+# usage: python qualitative_analysis.py --score_path if_logix.pt --score_path2 files/results/0/wiki_if.pt
 import argparse
 from transformers import AutoTokenizer
 

@@ -27,9 +27,7 @@ def main():
     model.eval()
     train_dataset = get_datasets(args.data_name)[1]
 
-    analog_args = LogiXArgument(
-        project=args.project, config=args.config_path, lora=True
-    )
+    logix_args = LogiXArgument(project=args.project, config=args.config_path, lora=True)
     training_args = TrainingArguments(
         output_dir="./output",
         num_train_epochs=1,
@@ -44,7 +42,7 @@ def main():
         train_dataset=train_dataset,
         data_collator=default_data_collator,
         args=training_args,
-        logix_args=analog_args,
+        logix_args=logix_args,
     )
     trainer.extract_log()
 

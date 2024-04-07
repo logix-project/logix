@@ -30,9 +30,9 @@ class TestTransformerGradients(unittest.TestCase):
         self.func_model.eval()
 
     def test_per_sample_gradient(self):
-        # Instantiate AnaLog
-        analog = LogiX(project="test")
-        analog.watch(self.model)
+        # Instantiate LogiX
+        logix = LogiX(project="test")
+        logix.watch(self.model)
 
         # Input and target for batch size of 4
         input_ids = torch.randint(0, 32, (4, 10))  # Dummy token IDs
@@ -62,23 +62,23 @@ class TestTransformerGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        analog.setup({"log": "grad"})
-        with analog(data_id=input):
+        logix.setup({"log": "grad"})
+        with logix(data_id=input):
             self.model.zero_grad()
             output = self.model(input_ids, attention_mask).logits
             loss = F.cross_entropy(output, labels, reduction="sum")
             loss.backward()
-        _, analog_grads_dict = analog.get_log()
+        _, logix_grads_dict = logix.get_log()
 
-        for module_name in analog_grads_dict:
-            analog_grad = analog_grads_dict[module_name]["grad"]
+        for module_name in logix_grads_dict:
+            logix_grad = logix_grads_dict[module_name]["grad"]
             func_grad = grads_dict[module_name + ".weight"]
-            self.assertTrue(torch.allclose(analog_grad, func_grad, atol=1e-6))
+            self.assertTrue(torch.allclose(logix_grad, func_grad, atol=1e-6))
 
     def test_per_sample_gradient_mask(self):
-        # Instantiate AnaLog
-        analog = LogiX(project="test")
-        analog.watch(self.model)
+        # Instantiate LogiX
+        logix = LogiX(project="test")
+        logix.watch(self.model)
 
         # Input and target for batch size of 4
         input_ids = torch.randint(0, 32, (4, 10))  # Dummy token IDs
@@ -115,23 +115,23 @@ class TestTransformerGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        analog.setup({"log": "grad"})
-        with analog(data_id=input, mask=attention_mask):
+        logix.setup({"log": "grad"})
+        with logix(data_id=input, mask=attention_mask):
             self.model.zero_grad()
             output = self.model(input_ids, attention_mask).logits
             loss = F.cross_entropy(output, labels, reduction="sum")
             loss.backward()
-        _, analog_grads_dict = analog.get_log()
+        _, logix_grads_dict = logix.get_log()
 
-        for module_name in analog_grads_dict:
-            analog_grad = analog_grads_dict[module_name]["grad"]
+        for module_name in logix_grads_dict:
+            logix_grad = logix_grads_dict[module_name]["grad"]
             func_grad = grads_dict[module_name + ".weight"]
-            self.assertTrue(torch.allclose(analog_grad, func_grad, atol=1e-6))
+            self.assertTrue(torch.allclose(logix_grad, func_grad, atol=1e-6))
 
     def test_per_sample_gradient_mask_with_gradient_checkpoint(self):
-        # Instantiate AnaLog
-        analog = LogiX(project="test")
-        analog.watch(self.model)
+        # Instantiate LogiX
+        logix = LogiX(project="test")
+        logix.watch(self.model)
 
         self.model.gradient_checkpointing_enable(
             gradient_checkpointing_kwargs={"use_reentrant": False}
@@ -172,18 +172,18 @@ class TestTransformerGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        analog.setup({"log": "grad"})
-        with analog(data_id=input, mask=attention_mask):
+        logix.setup({"log": "grad"})
+        with logix(data_id=input, mask=attention_mask):
             self.model.zero_grad()
             output = self.model(input_ids, attention_mask).logits
             loss = F.cross_entropy(output, labels, reduction="sum")
             loss.backward()
-        _, analog_grads_dict = analog.get_log()
+        _, logix_grads_dict = logix.get_log()
 
-        for module_name in analog_grads_dict:
-            analog_grad = analog_grads_dict[module_name]["grad"]
+        for module_name in logix_grads_dict:
+            logix_grad = logix_grads_dict[module_name]["grad"]
             func_grad = grads_dict[module_name + ".weight"]
-            self.assertTrue(torch.allclose(analog_grad, func_grad, atol=1e-6))
+            self.assertTrue(torch.allclose(logix_grad, func_grad, atol=1e-6))
 
 
 if __name__ == "__main__":

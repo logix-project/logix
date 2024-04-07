@@ -46,9 +46,9 @@ class Test2DCNNGradients(unittest.TestCase):
         self.func_model.eval()
 
     def test_per_sample_gradient(self):
-        # Instantiate AnaLog
-        analog = LogiX(project="test")
-        analog.watch(self.model)
+        # Instantiate LogiX
+        logix = LogiX(project="test")
+        logix.watch(self.model)
 
         # Input and target for batch size of 4
         inputs = torch.randn(
@@ -76,18 +76,18 @@ class Test2DCNNGradients(unittest.TestCase):
         )(self.func_params, self.func_buffers, batch)
 
         # Forward pass with original model
-        analog.setup({"log": "grad"})
-        with analog(data_id=inputs):
+        logix.setup({"log": "grad"})
+        with logix(data_id=inputs):
             self.model.zero_grad()
             output = self.model(inputs)
             loss = F.cross_entropy(output, labels, reduction="sum")
             loss.backward()
-        _, analog_grads_dict = analog.get_log()
+        _, logix_grads_dict = logix.get_log()
 
-        for module_name in analog_grads_dict:
-            analog_grad = analog_grads_dict[module_name]["grad"]
-            func_grad = grads_dict[module_name + ".weight"].view(analog_grad.shape)
-            self.assertTrue(torch.allclose(analog_grad, func_grad, atol=1e-6))
+        for module_name in logix_grads_dict:
+            logix_grad = logix_grads_dict[module_name]["grad"]
+            func_grad = grads_dict[module_name + ".weight"].view(logix_grad.shape)
+            self.assertTrue(torch.allclose(logix_grad, func_grad, atol=1e-6))
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ _, eval_train_loader, test_loader = get_loaders(
 )
 
 # score
-score_path = "if_analog.pt"
+score_path = "if_logix.pt"
 scores = torch.load(score_path, map_location="cpu")
 print(scores.shape)
 

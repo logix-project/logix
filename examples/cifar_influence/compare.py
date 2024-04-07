@@ -2,14 +2,14 @@ from scipy.stats import pearsonr
 import torch
 
 
-analog_kfac = torch.load("if_baseline.pt")
-analog_lora_pca = torch.load("if_analog_pca.pt")
+logix_kfac = torch.load("if_baseline.pt")
+logix_lora_pca = torch.load("if_logix_pca.pt")
 print(
-    "[KFAC (analog) vs LoRA-pca (analog)] pearson:",
-    pearsonr(analog_kfac, analog_lora_pca),
+    "[KFAC (logix) vs LoRA-pca (logix)] pearson:",
+    pearsonr(logix_kfac, logix_lora_pca),
 )
-analog_lora_random = torch.load("if_analog_lora.pt")
+logix_lora_random = torch.load("if_logix_lora.pt")
 print(
-    "[KFAC (analog) vs LoRA-random (analog)] pearson:",
-    pearsonr(analog_kfac, analog_lora_random),
+    "[KFAC (logix) vs LoRA-random (logix)] pearson:",
+    pearsonr(logix_kfac, logix_lora_random),
 )

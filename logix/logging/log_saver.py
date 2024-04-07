@@ -98,7 +98,7 @@ class LogSaver:
 
     def finalize(self):
         """
-        Dump everything in the buffer to disk when `analog.finalize()` is called.
+        Dump everything in the buffer to disk when `logix.finalize()` is called.
         """
         self._flush_serialized(self.log_dir)
 

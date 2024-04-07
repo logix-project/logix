@@ -134,7 +134,7 @@ class Config:
     project: str
     log_dir: str = field(init=False)
     root_dir: str = field(
-        default="./analog", metadata={"help": "Root directory for logging."}
+        default="./logix", metadata={"help": "Root directory for logging."}
     )
     logging: Union[Dict[str, Any], LoggingConfig] = field(
         default_factory=LoggingConfig, metadata={"help": "Logging configuration."}

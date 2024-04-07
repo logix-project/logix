@@ -35,10 +35,10 @@ query_loader = dataloader_fn(
     batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs
 )
 
-analog = LogiX(project="test", config="config.yaml")
+logix = LogiX(project="test", config="config.yaml")
 
-analog.watch(model)
-analog.setup({"statistic": "kfac"})
+logix.watch(model)
+logix.setup({"statistic": "kfac"})
 id_gen = DataIDGenerator()
 
 if not args.resume:
@@ -47,27 +47,27 @@ if not args.resume:
     for epoch in range(2):
         for inputs, targets in train_loader:
             data_id = id_gen(inputs)
-            with analog(data_id=data_id):
+            with logix(data_id=data_id):
                 inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
                 model.zero_grad()
                 outs = model(inputs)
                 loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
                 loss.backward()
-        analog.finalize()
+        logix.finalize()
         if epoch == 0:
-            analog.setup({"log": "grad", "save": "grad", "statistic": "kfac"})
-            analog.add_lora()
+            logix.setup({"log": "grad", "save": "grad", "statistic": "kfac"})
+            logix.add_lora()
 else:
-    analog.add_lora()
-    analog.initialize_from_log()
+    logix.add_lora()
+    logix.initialize_from_log()
 
-log_loader = analog.build_log_dataloader()
+log_loader = logix.build_log_dataloader()
 
-# analog.add_analysis({"influence": InfluenceFunction})
+# logix.add_analysis({"influence": InfluenceFunction})
 query_iter = iter(query_loader)
-analog.setup({"log": "grad"})
-analog.eval()
-with analog(data_id=["test"]):
+logix.setup({"log": "grad"})
+logix.eval()
+with logix(data_id=["test"]):
     test_input, test_target = next(query_iter)
     test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
     model.zero_grad()
@@ -76,15 +76,15 @@ with analog(data_id=["test"]):
         test_out, test_target, reduction="sum"
     )
     test_loss.backward()
-test_log = analog.get_log()
+test_log = logix.get_log()
 start = time.time()
-if_scores = analog.influence.compute_influence_all(
+if_scores = logix.influence.compute_influence_all(
     test_log, log_loader, damping=args.damping
 )
 _, top_influential_data = torch.topk(if_scores, k=10)
 
 # Save
 if_scores = if_scores.cpu().numpy().tolist()[0]
-torch.save(if_scores, "if_analog_lora64_pca.pt")
+torch.save(if_scores, "if_logix_lora64_pca.pt")
 print("Computation time:", time.time() - start)
 print("Top influential data indices:", top_influential_data.cpu().numpy().tolist())

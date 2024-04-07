@@ -35,7 +35,7 @@ class LogiXScheduler:
             self._lora_epoch = 1
 
     def configure_schedule(self, lora: str, hessian: str, save: str):
-        # (log, hessian, save) for logix 
+        # (log, hessian, save) for logix
         if lora == "pca":
             self._logix_state_schedule.append({"statistic": "kfac"})
 
