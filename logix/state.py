@@ -4,10 +4,10 @@ import os
 import torch
 import torch.distributed as dist
 
-from analog.utils import nested_dict, get_world_size, get_rank
+from logix.utils import nested_dict, get_world_size, get_rank
 
 
-class AnaLogState:
+class LogiXState:
     """
     AnaLogState stores all these relevant log states that are used for
     communication between different handlers. All states in AnaLogState

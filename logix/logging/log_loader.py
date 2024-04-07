@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from analog.logging.log_loader_util import (
+from logix.logging.log_loader_util import (
     get_entry_metadata,
     get_flatten_item,
     get_mmap_data,

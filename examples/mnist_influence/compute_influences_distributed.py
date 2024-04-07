@@ -3,9 +3,9 @@ import argparse
 
 import torch
 from accelerate import Accelerator
-from analog import AnaLog
-from analog.utils import DataIDGenerator, get_world_size, get_rank
-from analog.analysis import InfluenceFunction
+from logix import LogiX
+from logix.utils import DataIDGenerator, get_world_size, get_rank
+from logix.analysis import InfluenceFunction
 
 from train import (
     get_mnist_dataloader,
@@ -44,10 +44,10 @@ def main():
         model, train_loader, query_loader
     )
 
-    analog = AnaLog(project="test", config="config.yaml")
+    logix = LogiX(project="test", config="config.yaml")
 
-    analog.watch(model)
-    analog.setup({"log": "grad", "statistic": "kfac"})
+    logix.watch(model)
+    logix.setup({"log": "grad", "statistic": "kfac"})
     id_gen = DataIDGenerator()
 
     if not args.resume:
@@ -56,27 +56,27 @@ def main():
         for epoch in range(2):
             for inputs, targets in train_loader:
                 data_id = id_gen(inputs)
-                with analog(data_id=data_id):
+                with logix(data_id=data_id):
                     model.zero_grad()
                     outs = model(inputs)
                     loss = torch.nn.functional.cross_entropy(
                         outs, targets, reduction="sum"
                     )
                     loss.backward()
-            analog.finalize()
+            logix.finalize()
             if epoch == 0:
-                analog.setup({"save": "grad", "log": "grad", "statistic": "kfac"})
-                analog.add_lora()
+                logix.setup({"save": "grad", "log": "grad", "statistic": "kfac"})
+                logix.add_lora()
     else:
-        analog.add_lora()
-        analog.initialize_from_log()
+        logix.add_lora()
+        logix.initialize_from_log()
 
-    log_loader = analog.build_log_dataloader()
-    analog.eval()
+    log_loader = logix.build_log_dataloader()
+    logix.eval()
 
-    analog.add_analysis({"influence": InfluenceFunction})
+    logix.add_analysis({"influence": InfluenceFunction})
     query_iter = iter(query_loader)
-    with analog(data_id=["test"]):
+    with logix(data_id=["test"]):
         test_input, test_target = next(query_iter)
         model.zero_grad()
         test_out = model(test_input)
@@ -84,9 +84,9 @@ def main():
             test_out, test_target, reduction="sum"
         )
         test_loss.backward()
-    test_log = analog.get_log()
+    test_log = logix.get_log()
     start = time.time()
-    if_scores = analog.influence.compute_influence_all(
+    if_scores = logix.influence.compute_influence_all(
         test_log, log_loader, damping=args.damping
     )
     _, top_influential_data = torch.topk(if_scores, k=10)

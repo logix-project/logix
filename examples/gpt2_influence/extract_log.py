@@ -4,8 +4,8 @@ from tqdm import tqdm
 import torch
 import torch.nn.functional as F
 from accelerate import Accelerator
-import analog
-from analog.statistic import Covariance
+import logix
+from logix.statistic import Covariance
 
 from utils import construct_model, get_loaders, set_seed
 
@@ -30,9 +30,9 @@ def main():
     model, train_loader = accelerator.prepare(model, train_loader)
 
     # Set-up
-    run = analog.init(args.project, config=args.config_path)
+    run = logix.init(args.project, config=args.config_path)
     run.watch(model, name_filter=["attn", "mlp"])
-    scheduler = analog.AnaLogScheduler(
+    scheduler = logix.LogiXScheduler(
         run, lora=args.lora, hessian=args.hessian, save=args.save
     )
     for _ in scheduler:
@@ -51,7 +51,7 @@ def main():
                     ignore_index=-100,
                 )
                 accelerator.backward(loss)
-        analog.finalize()
+        logix.finalize()
 
 
 if __name__ == "__main__":

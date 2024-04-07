@@ -3,9 +3,9 @@ import argparse
 
 import torch
 
-from analog import AnaLog, AnaLogScheduler
-from analog.utils import DataIDGenerator
-from analog.analysis import InfluenceFunction
+from logix import LogiX, LogiXScheduler
+from logix.utils import DataIDGenerator
+from logix.analysis import InfluenceFunction
 
 from train import (
     get_cifar10_dataloader,
@@ -38,35 +38,35 @@ query_loader = dataloader_fn(
     batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs, augment=False
 )
 
-analog = AnaLog(project="test", config="./config.yaml")
-analog_scheduler = AnaLogScheduler(analog, lora=True)
+logix = LogiX(project="test", config="./config.yaml")
+logix_scheduler = LogiXScheduler(logix, lora=True)
 
 # Gradient & Hessian logging
-analog.watch(model)
+logix.watch(model)
 
 if True:
     id_gen = DataIDGenerator()
-    for epoch in analog_scheduler:
+    for epoch in logix_scheduler:
         for inputs, targets in train_loader:
             data_id = id_gen(inputs)
-            with analog(data_id=data_id):
+            with logix(data_id=data_id):
                 inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
                 model.zero_grad()
                 outs = model(inputs)
                 loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
                 loss.backward()
-        analog.finalize()
+        logix.finalize()
 else:
-    analog.add_lora()
-    analog.initialize_from_log()
+    logix.add_lora()
+    logix.initialize_from_log()
 
 # Influence Analysis
-log_loader = analog.build_log_dataloader()
+log_loader = logix.build_log_dataloader()
 
-analog.eval()
-analog.add_analysis({"influence": InfluenceFunction})
+logix.eval()
+logix.add_analysis({"influence": InfluenceFunction})
 query_iter = iter(query_loader)
-with analog(log=["grad"]) as al:
+with logix(log=["grad"]) as al:
     test_input, test_target = next(query_iter)
     test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
     model.zero_grad()
@@ -77,11 +77,11 @@ with analog(log=["grad"]) as al:
     test_loss.backward()
     test_log = al.get_log()
 start = time.time()
-if_scores = analog.influence.compute_influence_all(
+if_scores = logix.influence.compute_influence_all(
     test_log, log_loader, damping=args.damping
 )
 
 # Save
 if_scores = if_scores.numpy().tolist()
-torch.save(if_scores, "if_analog_pca.pt")
+torch.save(if_scores, "if_logix_pca.pt")
 print("Computation time:", time.time() - start)

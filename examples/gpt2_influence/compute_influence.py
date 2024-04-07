@@ -3,8 +3,8 @@ import argparse
 import torch
 import torch.nn.functional as F
 from accelerate import Accelerator
-import analog
-from analog.analysis import InfluenceFunction
+import logix
+from logix.analysis import InfluenceFunction
 from tqdm import tqdm
 
 from utils import construct_model, get_loaders, set_seed
@@ -27,15 +27,15 @@ def main():
     model, test_loader = accelerator.prepare(model, test_loader)
 
     # Set-up AnaLog
-    run = analog.init(args.project, config=args.config_path)
+    run = logix.init(args.project, config=args.config_path)
 
-    analog.watch(model, name_filter=["attn", "mlp"])
-    analog.initialize_from_log()
-    log_loader = analog.build_log_dataloader(batch_size=64)
+    logix.watch(model, name_filter=["attn", "mlp"])
+    logix.initialize_from_log()
+    log_loader = logix.build_log_dataloader(batch_size=64)
 
     # Influence analysis
-    analog.setup({"log": "grad"})
-    analog.eval()
+    logix.setup({"log": "grad"})
+    logix.eval()
     if_scores = []
     for batch in test_loader:
         data_id = tokenizer.batch_decode(batch["input_ids"])
@@ -54,7 +54,7 @@ def main():
             )
             accelerator.backward(loss)
 
-        test_log = analog.get_log()
+        test_log = logix.get_log()
         if_score = run.influence.compute_influence_all(test_log, log_loader)
         if_scores.append(if_score)
     if_scores = torch.cat(if_scores, dim=0)

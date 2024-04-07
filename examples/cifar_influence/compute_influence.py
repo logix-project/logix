@@ -2,9 +2,9 @@ import time
 import argparse
 import torch
 
-from analog import AnaLog
-from analog.utils import DataIDGenerator
-from analog.analysis import InfluenceFunction
+from logix import LogiX
+from logix.utils import DataIDGenerator
+from logix.analysis import InfluenceFunction
 
 from train import (
     get_cifar10_dataloader,
@@ -36,33 +36,33 @@ query_loader = dataloader_fn(
     batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs, augment=False
 )
 
-analog = AnaLog(project="test", config="./config.yaml")
+logix = LogiX(project="test", config="./config.yaml")
 
 # Gradient & Hessian logging
-analog.watch(model)
-analog.setup({"log": "grad", "save": "grad", "statistic": "kfac"})
+logix.watch(model)
+logix.setup({"log": "grad", "save": "grad", "statistic": "kfac"})
 
 if not args.resume:
     id_gen = DataIDGenerator()
     for inputs, targets in train_loader:
         data_id = id_gen(inputs)
-        with analog(data_id=data_id):
+        with logix(data_id=data_id):
             inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
             model.zero_grad()
             outs = model(inputs)
             loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
             loss.backward()
-    analog.finalize()
+    logix.finalize()
 else:
-    analog.initialize_from_log()
+    logix.initialize_from_log()
 
 # Influence Analysis
-analog.eval()
-log_loader = analog.build_log_dataloader()
+logix.eval()
+log_loader = logix.build_log_dataloader()
 
-analog.add_analysis({"influence": InfluenceFunction})
+logix.add_analysis({"influence": InfluenceFunction})
 query_iter = iter(query_loader)
-with analog(log=["grad"]) as al:
+with logix(log=["grad"]) as al:
     test_input, test_target = next(query_iter)
     test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
     model.zero_grad()
@@ -73,7 +73,7 @@ with analog(log=["grad"]) as al:
     test_loss.backward()
     test_log = al.get_log()
 start = time.time()
-if_scores = analog.influence.compute_influence_all(
+if_scores = logix.influence.compute_influence_all(
     test_log, log_loader, damping=args.damping
 )
 

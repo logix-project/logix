@@ -85,34 +85,34 @@ class TestSingleCheckpointInfluence(unittest.TestCase):
         )
 
         # Set-up
-        from analog import AnaLog
-        from analog.utils import DataIDGenerator
+        from logix import LogiX
+        from logix.utils import DataIDGenerator
 
-        analog = AnaLog(project="test", config="examples/mnist/config.yaml")
+        logix = LogiX(project="test", config="examples/mnist/config.yaml")
 
         # Gradient & Hessian logging
-        analog.watch(model, name_filter=["1", "3", "5"])
+        logix.watch(model, name_filter=["1", "3", "5"])
         id_gen = DataIDGenerator()
         for inputs, targets in train_loader:
             data_id = id_gen(inputs)
-            analog.setup({"log": "grad", "save": "grad", "statistic": "kfac"})
-            with analog(data_id=data_id):
+            logix.setup({"log": "grad", "save": "grad", "statistic": "kfac"})
+            with logix(data_id=data_id):
                 inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
                 model.zero_grad()
                 outs = model(inputs)
                 loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
                 loss.backward()
-        analog.finalize()
+        logix.finalize()
 
         # Influence Analysis
-        log_loader = analog.build_log_dataloader()
+        log_loader = logix.build_log_dataloader()
 
-        from analog.analysis import InfluenceFunction
+        from logix.analysis import InfluenceFunction
 
-        # analog.add_analysis({"influence": InfluenceFunction})
+        # logix.add_analysis({"influence": InfluenceFunction})
         query_iter = iter(query_loader)
-        analog.eval()
-        with analog(data_id=["test"]) as al:
+        logix.eval()
+        with logix(data_id=["test"]) as al:
             test_input, test_target = next(query_iter)
             test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
             model.zero_grad()
@@ -122,4 +122,4 @@ class TestSingleCheckpointInfluence(unittest.TestCase):
             )
             test_loss.backward()
             test_log = al.get_log()
-        analog.influence.compute_influence_all(test_log, log_loader)
+        logix.influence.compute_influence_all(test_log, log_loader)

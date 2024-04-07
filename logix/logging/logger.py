@@ -4,20 +4,20 @@ from typing import Optional, Dict, Tuple, Any
 import torch
 import torch.nn as nn
 
-from analog.batch_info import BatchInfo
-from analog.config import LoggingConfig
-from analog.state import AnaLogState
-from analog.logging.option import LogOption
-from analog.logging.log_saver import LogSaver
-from analog.logging.utils import compute_per_sample_gradient
-from analog.utils import get_logger
+from logix.batch_info import BatchInfo
+from logix.config import LoggingConfig
+from logix.state import LogiXState
+from logix.logging.option import LogOption
+from logix.logging.log_saver import LogSaver
+from logix.logging.utils import compute_per_sample_gradient
+from logix.utils import get_logger
 
 
 class HookLogger:
     def __init__(
         self,
         config: LoggingConfig,
-        state: AnaLogState,
+        state: LogiXState,
         binfo: BatchInfo,
     ) -> None:
         """

@@ -2,10 +2,10 @@ from typing import List, Dict, Any
 
 import torch.nn as nn
 
-from analog.state import AnaLogState
-from analog.lora.modules import LoraLinear, LoraConv2d, LoraEmbedding
-from analog.lora.utils import find_parameter_sharing_group, _get_submodules
-from analog.utils import get_logger, module_check
+from logix.state import LogiXState
+from logix.lora.modules import LoraLinear, LoraConv2d, LoraEmbedding
+from logix.lora.utils import find_parameter_sharing_group, _get_submodules
+from logix.utils import get_logger, module_check
 
 
 class LoRAHandler:
@@ -15,7 +15,7 @@ class LoRAHandler:
 
     _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d}
 
-    def __init__(self, config: Dict[str, Any], state: AnaLogState):
+    def __init__(self, config: Dict[str, Any], state: LogiXState):
         self._state = state
 
         self.init_strategy = config.init

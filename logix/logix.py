@@ -8,16 +8,16 @@ from functools import reduce
 import torch
 import torch.nn as nn
 
-from analog.analysis import InfluenceFunction
-from analog.batch_info import BatchInfo
-from analog.config import init_config_from_yaml
-from analog.logging import HookLogger
-from analog.logging.log_loader import LogDataset
-from analog.logging.log_loader_util import collate_nested_dicts
-from analog.lora import LoRAHandler
-from analog.lora.utils import is_lora
-from analog.state import AnaLogState
-from analog.utils import (
+from logix.analysis import InfluenceFunction
+from logix.batch_info import BatchInfo
+from logix.config import init_config_from_yaml
+from logix.logging import HookLogger
+from logix.logging.log_loader import LogDataset
+from logix.logging.log_loader_util import collate_nested_dicts
+from logix.lora import LoRAHandler
+from logix.lora.utils import is_lora
+from logix.state import LogiXState
+from logix.utils import (
     get_logger,
     get_rank,
     get_repr_dim,
@@ -27,9 +27,9 @@ from analog.utils import (
 )
 
 
-class AnaLog:
+class LogiX:
     """
-    AnaLog is a front-end interface for logging and analyzing neural networks.
+    LogiX is a front-end interface for logging and analyzing neural networks.
     Using (PyTorch) hooks, it tracks, saves, and computes statistics for activations,
     gradients, and other tensors with its logger. Once logging is finished, it provides
     an interface for computing influence scores and other analysis.
@@ -64,8 +64,8 @@ class AnaLog:
 
         self.flatten = self.influence_config.flatten
 
-        # AnaLog state
-        self.state = AnaLogState()
+        # LogiX state
+        self.state = LogiXState()
         self.binfo = BatchInfo()
 
         # Initialize logger
@@ -178,7 +178,7 @@ class AnaLog:
 
         # Clear state and logger
         if clear:
-            msg = "AnaLog will clear the previous Hessian, Storage, and Logging "
+            msg = "LogiX will clear the previous Hessian, Storage, and Logging "
             msg += "handlers after adding LoRA for gradient compression.\n"
             get_logger().info(msg)
             self.clear()
@@ -208,7 +208,7 @@ class AnaLog:
             mask (torch.Tensor, optional): Mask for the data.
 
         Returns:
-            self: Returns the instance of the AnaLog object.
+            self: Returns the instance of the LogiX object.
         """
         self.binfo.clear()
         self.binfo.data_id = data_id
@@ -220,7 +220,7 @@ class AnaLog:
         """
         Sets up the context manager.
 
-        This method is automatically called when the `with` statement is used with an `AnaLog` object.
+        This method is automatically called when the `with` statement is used with an `LogiX` object.
         It sets up the logging environment based on the provided parameters.
         """
         self.logger.clear(hook=True, module=False, buffer=False)
@@ -338,7 +338,7 @@ class AnaLog:
 
     def save_config(self) -> None:
         """
-        Save AnaLog state to disk.
+        Save LogiX state to disk.
         """
         config_file = os.path.join(self.log_dir, "config.yaml")
         config_dict = asdict(self.config)
@@ -357,7 +357,7 @@ class AnaLog:
         """
         state_dict = self.model.state_dict()
         lora_state_dict = {
-            name: param for name, param in state_dict.items() if "analog_lora" in name
+            name: param for name, param in state_dict.items() if "logix_lora" in name
         }
         if len(lora_state_dict) > 0:
             log_dir = os.path.join(self.log_dir, "lora")
@@ -369,7 +369,7 @@ class AnaLog:
         """
         Load all states from disk.
         """
-        # Load analog config
+        # Load logix config
         assert os.path.exists(self.log_dir), f"{self.log_dir} does not exist!"
 
         config_file = os.path.join(self.log_dir, "config.yaml")
@@ -416,13 +416,13 @@ class AnaLog:
 
     def eval(self) -> None:
         """
-        Set the state of AnaLog for testing.
+        Set the state of LogiX for testing.
         """
         self.logger.opt.eval()
 
     def clear(self) -> None:
         """
-        Clear everything in AnaLog.
+        Clear everything in LogiX.
         """
         self.state.clear()
         self.logger.clear()

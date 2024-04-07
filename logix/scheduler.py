@@ -1,27 +1,27 @@
-from analog import AnaLog
-from analog.statistic import Covariance
-from analog.utils import get_logger
+from logix import LogiX
+from logix.statistic import Covariance
+from logix.utils import get_logger
 
 
-class AnaLogScheduler:
+class LogiXScheduler:
     def __init__(
         self,
-        analog: AnaLog,
+        logix: LogiX,
         lora: str = "none",
         hessian: str = "none",
         save: str = "none",
     ):
-        self.analog = analog
+        self.logix = logix
 
         self._epoch = -1
         self._lora_epoch = -1
-        self._analog_state_schedule = []
+        self._logix_state_schedule = []
 
         self.sanity_check(lora, hessian, save)
         self.configure_lora_epoch(lora)
         self.configure_schedule(lora, hessian, save)
 
-        self._schedule_iterator = iter(self._analog_state_schedule)
+        self._schedule_iterator = iter(self._logix_state_schedule)
 
     def sanity_check(self, lora: str, hessian: str, save: str):
         assert lora in ["none", "random", "pca"]
@@ -35,12 +35,12 @@ class AnaLogScheduler:
             self._lora_epoch = 1
 
     def configure_schedule(self, lora: str, hessian: str, save: str):
-        # (log, hessian, save) for analog
+        # (log, hessian, save) for logix
         if lora == "pca":
-            self._analog_state_schedule.append({"statistic": "kfac"})
+            self._logix_state_schedule.append({"statistic": "kfac"})
 
         if hessian == "ekfac":
-            self._analog_state_schedule.append({"statistic": "kfac"})
+            self._logix_state_schedule.append({"statistic": "kfac"})
 
         last_state = {}
         # log
@@ -58,18 +58,18 @@ class AnaLogScheduler:
         # save
         if save in ["grad"]:
             last_state["save"] = save
-        self._analog_state_schedule.append(last_state)
+        self._logix_state_schedule.append(last_state)
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        analog_state = next(self._schedule_iterator)
+        logix_state = next(self._schedule_iterator)
         self._epoch += 1
         if self._epoch == self._lora_epoch:
-            self.analog.add_lora()
-        self.analog.setup(analog_state)
+            self.logix.add_lora()
+        self.logix.setup(logix_state)
         return self._epoch
 
     def __len__(self):
-        return len(self._analog_state_schedule)
+        return len(self._logix_state_schedule)

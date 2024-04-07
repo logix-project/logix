@@ -2,15 +2,15 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from transformers.trainer import *
 
-from analog import AnaLog, AnaLogScheduler
-from analog.utils import DataIDGenerator
-from analog.huggingface.callback import AnalogCallback
-from analog.huggingface.arguments import AnaLogArguments
+from logix import LogiX, LogiXScheduler
+from logix.utils import DataIDGenerator
+from logix.huggingface.callback import LogiXCallback
+from logix.huggingface.arguments import LogiXArgument
 
 
 def patch_trainer(TrainerClass):
     """
-    Patch the (variant of) Huggingface Trainer class with the AnaLog functionalities.
+    Patch the (variant of) Huggingface Trainer class with the LogiX functionalities.
 
     Args:
         TrainerClass: The Trainer class to patch
@@ -19,7 +19,7 @@ def patch_trainer(TrainerClass):
     class PatchedTrainer(TrainerClass):
         def __init__(
             self,
-            analog_args: Optional[AnaLogArguments] = None,
+            logix_args: Optional[LogiXArgument] = None,
             model: Union[PreTrainedModel, nn.Module] = None,
             args: TrainingArguments = None,
             data_collator: Optional[DataCollator] = None,
@@ -36,28 +36,26 @@ def patch_trainer(TrainerClass):
                 Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
             ] = None,
         ):
-            # Initialize AnaLog
-            self.analog_args = analog_args
-            self.analog = AnaLog(project=analog_args.project, config=analog_args.config)
-            self.analog_scheduler = AnaLogScheduler(
-                self.analog, ekfac=analog_args.ekfac
-            )
+            # Initialize LogiX
+            self.logix_args = logix_args
+            self.logix = LogiX(project=logix_args.project, config=logix_args.config)
+            self.logix_scheduler = LogiXScheduler(self.logix, ekfac=logix_args.ekfac)
             self.data_id_generator = DataIDGenerator()
-            analog_callback = AnalogCallback(
-                self.analog, self.analog_scheduler, self.analog_args
+            logix_callback = LogiXCallback(
+                self.logix, self.logix_scheduler, self.logix_args
             )
 
-            self.analog_input_key = analog_args.input_key
-            self.analog_label_key = analog_args.label_key
-            self.analog_attention_key = analog_args.attention_key
-            self.analog_ignore_idx = analog_args.ignore_idx
-            self.data_id_logic = analog_args.data_id
+            self.logix_input_key = logix_args.input_key
+            self.logix_label_key = logix_args.label_key
+            self.logix_attention_key = logix_args.attention_key
+            self.logix_ignore_idx = logix_args.ignore_idx
+            self.data_id_logic = logix_args.data_id
 
             # Patch TrainingArguments
             if args is None:
                 output_dir = "tmp_trainer"
                 args = TrainingArguments(output_dir=output_dir)
-            args.num_train_epochs = len(self.analog_scheduler)
+            args.num_train_epochs = len(self.logix_scheduler)
             args.report_to = []
 
             super().__init__(
@@ -70,26 +68,26 @@ def patch_trainer(TrainerClass):
                 model_init,
                 compute_metrics,
                 (
-                    [analog_callback]
+                    [logix_callback]
                     if callbacks is None
-                    else [analog_callback] + callbacks
+                    else [logix_callback] + callbacks
                 ),
                 optimizers,
                 preprocess_logits_for_metrics,
             )
 
         def extract_log(self, *args, **kwargs):
-            self.analog_args.mode = "log"
+            self.logix_args.mode = "log"
             self.train(*args, **kwargs)
 
         def influence(self, *args, **kwargs):
-            self.analog_args.mode = "influence"
+            self.logix_args.mode = "influence"
             self.train(*args, **kwargs)
 
-            return self.analog.influence.get_influence_scores()
+            return self.logix.influence.get_influence_scores()
 
         def self_influence(self, *args, **kwargs):
-            self.analog_args.mode = "self_influence"
+            self.logix_args.mode = "self_influence"
             self.train(*args, **kwargs)
 
             return
@@ -143,10 +141,10 @@ def patch_trainer(TrainerClass):
             inputs = self._prepare_inputs(inputs)
 
             data_id = self.get_data_id(inputs)
-            mask = inputs.get(self.analog_attention_key, None)
+            mask = inputs.get(self.logix_attention_key, None)
             sum_scale = self.get_sum_scale(inputs)
 
-            with self.analog(data_id=data_id, mask=mask):
+            with self.logix(data_id=data_id, mask=mask):
                 if is_sagemaker_mp_enabled():
                     loss_mb = smp_forward_backward(
                         model, inputs, self.args.gradient_accumulation_steps
@@ -172,7 +170,7 @@ def patch_trainer(TrainerClass):
             return loss.detach() / self.args.gradient_accumulation_steps
 
         def get_data_id(self, inputs):
-            ipt = inputs.get(self.analog_input_key)
+            ipt = inputs.get(self.logix_input_key)
             if self.data_id_logic == "detokenize":
                 assert self.tokenizer is not None
                 return self.tokenizer.batch_decode(ipt, skip_special_tokens=True)
@@ -180,7 +178,7 @@ def patch_trainer(TrainerClass):
                 return self.data_id_generator(ipt)
 
         def get_sum_scale(self, inputs):
-            labels = inputs.get(self.analog_label_key)
-            return (labels != self.analog_ignore_idx).sum().item()
+            labels = inputs.get(self.logix_label_key)
+            return (labels != self.logix_ignore_idx).sum().item()
 
     return PatchedTrainer

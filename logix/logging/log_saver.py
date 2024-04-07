@@ -1,8 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor
 import torch
 
-from analog.utils import nested_dict, to_numpy, get_rank
-from analog.logging.mmap import MemoryMapHandler
+from logix.utils import nested_dict, to_numpy, get_rank
+from logix.logging.mmap import MemoryMapHandler
 
 
 class LogSaver:
@@ -98,7 +98,7 @@ class LogSaver:
 
     def finalize(self):
         """
-        Dump everything in the buffer to disk when `analog.finalize()` is called.
+        Dump everything in the buffer to disk when `logix.finalize()` is called.
         """
         self._flush_serialized(self.log_dir)
 

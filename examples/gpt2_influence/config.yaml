@@ -1,4 +1,4 @@
-root_dir: ./analog
+root_dir: ./logix
 logging:
   flush_threshold: 1000000000
 lora:

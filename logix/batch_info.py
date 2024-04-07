@@ -1,4 +1,4 @@
-from analog.utils import nested_dict
+from logix.utils import nested_dict
 
 
 class BatchInfo:

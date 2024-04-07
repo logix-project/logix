@@ -5,9 +5,9 @@ import tqdm
 import numpy as np
 import torch
 
-from analog import AnaLog
-from analog.utils import DataIDGenerator
-from analog.analysis import InfluenceFunction
+from logix import LogiX
+from logix.utils import DataIDGenerator
+from logix.analysis import InfluenceFunction
 from examples.mnist_influence.utils import (
     get_mnist_dataloader,
     get_fmnist_dataloader,
@@ -64,28 +64,28 @@ ood_input_processor = get_ood_input_processor(
 )
 
 # Set-up
-analog = AnaLog(project="test")
+logix = LogiX(project="test")
 
 # Gradient & Hessian logging
-analog.watch(model, lora=False)
+logix.watch(model, lora=False)
 id_gen = DataIDGenerator()
 for inputs, targets in id_train_loader:
     data_id = id_gen(inputs)
-    with analog(data_id=data_id, log=["grad"], hessian=True, save=True):
+    with logix(data_id=data_id, log=["grad"], hessian=True, save=True):
         inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
         model.zero_grad()
         outs = model(inputs)
         loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
         loss.backward()
-analog.finalize()
+logix.finalize()
 
 # Influence Analysis
-analog.add_analysis({"influence": InfluenceFunction})
+logix.add_analysis({"influence": InfluenceFunction})
 
 print("Computing OOD self-influence scores...")
 ood_self_influence_scores = []
 for ood_test_input, ood_test_target in tqdm.tqdm(ood_query_loader):
-    with analog(log=["grad"]) as al:
+    with logix(log=["grad"]) as al:
         ood_test_input = ood_input_processor(ood_test_input)
         ood_test_input, ood_test_target = (
             ood_test_input.to(DEVICE),
@@ -99,7 +99,7 @@ for ood_test_input, ood_test_target in tqdm.tqdm(ood_query_loader):
         ood_test_loss.backward()
         ood_test_log = al.get_log()
     start = time.time()
-    if_scores = analog.influence.compute_self_influence(
+    if_scores = logix.influence.compute_self_influence(
         ood_test_log, damping=args.damping
     )
     ood_self_influence_scores.append(if_scores.numpy().flatten())
@@ -107,7 +107,7 @@ for ood_test_input, ood_test_target in tqdm.tqdm(ood_query_loader):
 print("Computing ID self-influence scores...")
 id_self_influence_scores = []
 for id_test_input, id_test_target in tqdm.tqdm(id_query_loader):
-    with analog(log=["grad"]) as al:
+    with logix(log=["grad"]) as al:
         id_test_input, id_test_target = id_test_input.to(DEVICE), id_test_target.to(
             DEVICE
         )
@@ -119,7 +119,7 @@ for id_test_input, id_test_target in tqdm.tqdm(id_query_loader):
         id_test_loss.backward()
         id_test_log = al.get_log()
     start = time.time()
-    if_scores = analog.influence.compute_self_influence(
+    if_scores = logix.influence.compute_self_influence(
         id_test_log, damping=args.damping
     )
     id_self_influence_scores.append(if_scores.numpy().flatten())

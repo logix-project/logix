@@ -6,32 +6,32 @@ kfac = torch.load("if_kfac.pt")
 kfac_true = torch.load("if_kfac_true.pt")
 ekfac = torch.load("if_ekfac.pt")
 ekfac_true = torch.load("if_ekfac_true.pt")
-analog_kfac = torch.load("if_analog.pt")
-analog_lora = torch.load("if_analog_lora64_pca.pt")
-analog_ekfac = torch.load("if_analog_ekfac.pt")
-analog_scheduler = torch.load("if_analog_scheduler.pt")
-print("[KFAC (base) vs KFAC (analog)] pearson:", pearsonr(kfac, analog_kfac))
-print("[KFAC (base) vs LoRA (analog)] pearson:", pearsonr(kfac, analog_lora))
-print("[EKFAC (base) vs EKFAC (analog)] pearson:", pearsonr(ekfac, analog_ekfac))
-print("[EKFAC (base) vs KFAC (analog)] pearson:", pearsonr(ekfac, analog_kfac))
-print("[EKFAC (base) vs LoRA (analog)] pearson:", pearsonr(ekfac, analog_lora))
+logix_kfac = torch.load("if_logix.pt")
+logix_lora = torch.load("if_logix_lora64_pca.pt")
+logix_ekfac = torch.load("if_logix_ekfac.pt")
+logix_scheduler = torch.load("if_logix_scheduler.pt")
+print("[KFAC (base) vs KFAC (logix)] pearson:", pearsonr(kfac, logix_kfac))
+print("[KFAC (base) vs LoRA (logix)] pearson:", pearsonr(kfac, logix_lora))
+print("[EKFAC (base) vs EKFAC (logix)] pearson:", pearsonr(ekfac, logix_ekfac))
+print("[EKFAC (base) vs KFAC (logix)] pearson:", pearsonr(ekfac, logix_kfac))
+print("[EKFAC (base) vs LoRA (logix)] pearson:", pearsonr(ekfac, logix_lora))
 print(
-    "[Scheduler (analog) vs EKFAC (analog)] pearson:",
-    pearsonr(analog_scheduler, analog_ekfac),
+    "[Scheduler (logix) vs EKFAC (logix)] pearson:",
+    pearsonr(logix_scheduler, logix_ekfac),
 )
 print(
-    "[Scheduler (analog) vs KFAC (analog)] pearson:",
-    pearsonr(analog_scheduler, analog_kfac),
+    "[Scheduler (logix) vs KFAC (logix)] pearson:",
+    pearsonr(logix_scheduler, logix_kfac),
 )
 print(
-    "[Scheduler (analog) vs LoRA (analog)] pearson:",
-    pearsonr(analog_scheduler, analog_lora),
+    "[Scheduler (logix) vs LoRA (logix)] pearson:",
+    pearsonr(logix_scheduler, logix_lora),
 )
 print(
-    "[Scheduler (analog) vs KFAC_TRUE (base)] pearson:",
-    pearsonr(analog_scheduler, kfac_true),
+    "[Scheduler (logix) vs KFAC_TRUE (base)] pearson:",
+    pearsonr(logix_scheduler, kfac_true),
 )
 print(
-    "[Scheduler (analog) vs EKAFC_TRUE (base)] pearson:",
-    pearsonr(analog_scheduler, ekfac_true),
+    "[Scheduler (logix) vs EKAFC_TRUE (base)] pearson:",
+    pearsonr(logix_scheduler, ekfac_true),
 )

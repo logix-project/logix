@@ -5,8 +5,8 @@ from accelerate import Accelerator
 from tqdm import tqdm
 from transformers import default_data_collator, Trainer, TrainingArguments
 
-import analog
-from analog.huggingface import patch_trainer, AnaLogArguments
+import logix
+from logix.huggingface import patch_trainer, LogiXArgument
 from gpt_utils import construct_model, get_datasets, set_seed
 
 
@@ -25,7 +25,7 @@ def main():
     model.eval()
     train_dataset = get_datasets()[-1]
 
-    analog_args = AnaLogArguments(
+    logix_args = LogiXArgument(
         project=args.project,
         config=args.config_path,
         lora=True,
@@ -48,7 +48,7 @@ def main():
         train_dataset=train_dataset,
         data_collator=default_data_collator,
         args=training_args,
-        analog_args=analog_args,
+        logix_args=logix_args,
     )
     if_scores = trainer.influence()
     if_scores.to_csv("scores.csv", index=True, header=True)

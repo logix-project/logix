@@ -8,7 +8,7 @@ from torch.utils.data import default_collate
 import torch
 from functools import reduce
 
-from analog.logging.mmap import MemoryMapHandler
+from logix.logging.mmap import MemoryMapHandler
 
 
 def extract_rank_and_chunk(filename):

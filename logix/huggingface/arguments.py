@@ -5,9 +5,9 @@ import torch.nn as nn
 
 
 @dataclass
-class AnaLogArguments:
+class LogiXArgument:
     project: str = field(
-        default="tmp_analog", metadata={"help": "The name of the project."}
+        default="tmp_logix", metadata={"help": "The name of the project."}
     )
     config: str = field(
         default="config.yaml", metadata={"help": "The path to the config file."}

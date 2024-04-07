@@ -5,7 +5,7 @@ from tqdm import tqdm
 import torch
 from transformers import AutoTokenizer
 from accelerate import Accelerator
-import analog
+import logix
 
 from utils import (
     prepare_dataloader,
@@ -47,10 +47,10 @@ def main():
     accelerator = Accelerator(mixed_precision=config.precision)
     model, train_dataloader = accelerator.prepare(model, train_dataloader)
 
-    run = analog.init(project="llama_test", config="config.yaml")
-    analog.watch(model, name_filter=["layers"])
-    analog.add_lora()
-    scheduler = analog.AnaLogScheduler(run, ekfac=True)
+    run = logix.init(project="llama_test", config="config.yaml")
+    logix.watch(model, name_filter=["layers"])
+    logix.add_lora()
+    scheduler = logix.LogiXScheduler(run, ekfac=True)
 
     model.train()
     for epoch in scheduler:
@@ -61,7 +61,7 @@ def main():
                 out = model(**batch)
                 loss = loss_fn(out.logits, batch["labels"], reduction="sum")
                 accelerator.backward(loss)
-        analog.finalize()
+        logix.finalize()
 
 
 if __name__ == "__main__":
