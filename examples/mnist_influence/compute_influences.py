@@ -2,7 +2,7 @@ import time
 import argparse
 
 import torch
-from logix import LogiX
+from logix import LogIX
 from logix.utils import DataIDGenerator
 
 from train import (
@@ -34,7 +34,7 @@ query_loader = dataloader_fn(
     batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs
 )
 
-logix = LogiX(project="test")
+logix = LogIX(project="test")
 
 # Gradient & Hessian logging
 logix.watch(model)

@@ -16,7 +16,7 @@ from logix.logging.log_loader import LogDataset
 from logix.logging.log_loader_util import collate_nested_dicts
 from logix.lora import LoRAHandler
 from logix.lora.utils import is_lora
-from logix.state import LogiXState
+from logix.state import LogIXState
 from logix.utils import (
     get_logger,
     get_rank,
@@ -27,9 +27,9 @@ from logix.utils import (
 )
 
 
-class LogiX:
+class LogIX:
     """
-    LogiX is a front-end interface for logging and analyzing neural networks.
+    LogIX is a front-end interface for logging and analyzing neural networks.
     Using (PyTorch) hooks, it tracks, saves, and computes statistics for activations,
     gradients, and other tensors with its logger. Once logging is finished, it provides
     an interface for computing influence scores and other analysis.
@@ -64,8 +64,8 @@ class LogiX:
 
         self.flatten = self.influence_config.flatten
 
-        # LogiX state
-        self.state = LogiXState()
+        # LogIX state
+        self.state = LogIXState()
         self.binfo = BatchInfo()
 
         # Initialize logger
@@ -178,7 +178,7 @@ class LogiX:
 
         # Clear state and logger
         if clear:
-            msg = "LogiX will clear the previous Hessian, Storage, and Logging "
+            msg = "LogIX will clear the previous Hessian, Storage, and Logging "
             msg += "handlers after adding LoRA for gradient compression.\n"
             get_logger().info(msg)
             self.clear()
@@ -208,7 +208,7 @@ class LogiX:
             mask (torch.Tensor, optional): Mask for the data.
 
         Returns:
-            self: Returns the instance of the LogiX object.
+            self: Returns the instance of the LogIX object.
         """
         self.binfo.clear()
         self.binfo.data_id = data_id
@@ -220,7 +220,7 @@ class LogiX:
         """
         Sets up the context manager.
 
-        This method is automatically called when the `with` statement is used with an `LogiX` object.
+        This method is automatically called when the `with` statement is used with an `LogIX` object.
         It sets up the logging environment based on the provided parameters.
         """
         self.logger.clear(hook=True, module=False, buffer=False)
@@ -338,7 +338,7 @@ class LogiX:
 
     def save_config(self) -> None:
         """
-        Save LogiX state to disk.
+        Save LogIX state to disk.
         """
         config_file = os.path.join(self.log_dir, "config.yaml")
         config_dict = asdict(self.config)
@@ -416,13 +416,13 @@ class LogiX:
 
     def eval(self) -> None:
         """
-        Set the state of LogiX for testing.
+        Set the state of LogIX for testing.
         """
         self.logger.opt.eval()
 
     def clear(self) -> None:
         """
-        Clear everything in LogiX.
+        Clear everything in LogIX.
         """
         self.state.clear()
         self.logger.clear()

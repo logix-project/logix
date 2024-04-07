@@ -5,7 +5,7 @@ import torch.nn as nn
 
 
 @dataclass
-class LogiXArgument:
+class LogIXArgument:
     project: str = field(
         default="tmp_logix", metadata={"help": "The name of the project."}
     )

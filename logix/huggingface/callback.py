@@ -2,16 +2,16 @@ from typing import Optional
 
 from transformers.trainer import TrainerCallback
 
-from logix import LogiX, LogiXScheduler
-from logix.huggingface.arguments import LogiXArgument
+from logix import LogIX, LogIXScheduler
+from logix.huggingface.arguments import LogIXArgument
 
 
-class LogiXCallback(TrainerCallback):
+class LogIXCallback(TrainerCallback):
     def __init__(
         self,
-        logix: LogiX,
-        logix_scheduler: LogiXScheduler,
-        args: LogiXArgument,
+        logix: LogIX,
+        logix_scheduler: LogIXScheduler,
+        args: LogIXArgument,
     ):
         self.logix = logix
         self.logix_scheduler = iter(logix_scheduler)

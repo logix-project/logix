@@ -4,14 +4,14 @@ import torch
 
 from einops import einsum, rearrange, reduce
 from logix.config import InfluenceConfig
-from logix.state import LogiXState
+from logix.state import LogIXState
 from logix.utils import get_logger, nested_dict
 from logix.analysis.utils import synchronize_device
 from logix.statistic.utils import make_2d
 
 
 class InfluenceFunction:
-    def __init__(self, config: InfluenceConfig, state: LogiXState):
+    def __init__(self, config: InfluenceConfig, state: LogIXState):
         # state
         self._state = state
 

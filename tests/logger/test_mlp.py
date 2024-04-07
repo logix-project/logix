@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import BertConfig
 
-from logix import LogiX
+from logix import LogIX
 
 
 def create_mlp(input_size, hidden_size, num_classes):
@@ -38,8 +38,8 @@ class TestMLPGradients(unittest.TestCase):
         self.func_model.eval()
 
     def test_per_sample_gradient(self):
-        # Instantiate LogiX
-        logix = LogiX(project="test")
+        # Instantiate LogIX
+        logix = LogIX(project="test")
         logix.watch(self.model)
 
         # Input and target for batch size of 4
@@ -82,8 +82,8 @@ class TestMLPGradients(unittest.TestCase):
     def test_per_sample_gradient_with_gradient_checkpoint(self):
         from torch.utils.checkpoint import checkpoint_sequential
 
-        # Instantiate LogiX
-        logix = LogiX(project="test")
+        # Instantiate LogIX
+        logix = LogIX(project="test")
         logix.watch(self.model)
 
         # Input and target for batch size of 4
@@ -126,8 +126,8 @@ class TestMLPGradients(unittest.TestCase):
             self.assertTrue(torch.allclose(logix_grad, func_grad, atol=1e-6))
 
     def test_per_sample_gradient_with_compile(self):
-        # Instantiate LogiX
-        logix = LogiX(project="test")
+        # Instantiate LogIX
+        logix = LogIX(project="test")
         logix.watch(self.model)
 
         compiled_model = torch.compile(self.model)

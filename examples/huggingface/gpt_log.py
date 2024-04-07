@@ -6,7 +6,7 @@ from tqdm import tqdm
 from transformers import default_data_collator, Trainer, TrainingArguments
 
 import logix
-from logix.huggingface import patch_trainer, LogiXArgument
+from logix.huggingface import patch_trainer, LogIXArgument
 from gpt_utils import construct_model, get_datasets, set_seed
 
 
@@ -25,7 +25,7 @@ def main():
     model.eval()
     train_dataset = get_datasets()[0]
 
-    logix_args = LogiXArgument(
+    logix_args = LogIXArgument(
         project=args.project,
         config=args.config_path,
         lora=True,

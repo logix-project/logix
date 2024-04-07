@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from logix import LogiX
+from logix import LogIX
 
 
 class Simple2DCNN(nn.Module):
@@ -46,8 +46,8 @@ class Test2DCNNGradients(unittest.TestCase):
         self.func_model.eval()
 
     def test_per_sample_gradient(self):
-        # Instantiate LogiX
-        logix = LogiX(project="test")
+        # Instantiate LogIX
+        logix = LogIX(project="test")
         logix.watch(self.model)
 
         # Input and target for batch size of 4

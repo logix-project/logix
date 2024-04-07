@@ -4,14 +4,14 @@ import torch
 import torch.nn as nn
 
 from logix.batch_info import BatchInfo
-from logix.state import LogiXState
+from logix.state import LogIXState
 
 
 class CorrectedEigval:
     @staticmethod
     @torch.no_grad()
     def update(
-        state: LogiXState,
+        state: LogIXState,
         binfo: BatchInfo,
         module: nn.Module,
         module_name: str,

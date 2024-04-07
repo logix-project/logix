@@ -7,7 +7,7 @@ import torch.distributed as dist
 from logix.utils import nested_dict, get_world_size, get_rank
 
 
-class LogiXState:
+class LogIXState:
     """
     AnaLogState stores all these relevant log states that are used for
     communication between different handlers. All states in AnaLogState

@@ -6,7 +6,7 @@ import torch.nn as nn
 
 from logix.batch_info import BatchInfo
 from logix.config import LoggingConfig
-from logix.state import LogiXState
+from logix.state import LogIXState
 from logix.logging.option import LogOption
 from logix.logging.log_saver import LogSaver
 from logix.logging.utils import compute_per_sample_gradient
@@ -17,7 +17,7 @@ class HookLogger:
     def __init__(
         self,
         config: LoggingConfig,
-        state: LogiXState,
+        state: LogIXState,
         binfo: BatchInfo,
     ) -> None:
         """

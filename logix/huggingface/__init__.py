@@ -1,2 +1,2 @@
 from .patch import patch_trainer
-from .arguments import LogiXArgument
+from .arguments import LogIXArgument

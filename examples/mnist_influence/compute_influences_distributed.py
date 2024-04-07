@@ -3,7 +3,7 @@ import argparse
 
 import torch
 from accelerate import Accelerator
-from logix import LogiX
+from logix import LogIX
 from logix.utils import DataIDGenerator, get_world_size, get_rank
 from logix.analysis import InfluenceFunction
 
@@ -44,7 +44,7 @@ def main():
         model, train_loader, query_loader
     )
 
-    logix = LogiX(project="test", config="config.yaml")
+    logix = LogIX(project="test", config="config.yaml")
 
     logix.watch(model)
     logix.setup({"log": "grad", "statistic": "kfac"})

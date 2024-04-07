@@ -2,7 +2,7 @@ import time
 import argparse
 import torch
 
-from logix import LogiX
+from logix import LogIX
 from logix.utils import DataIDGenerator
 from logix.analysis import InfluenceFunction
 
@@ -36,7 +36,7 @@ query_loader = dataloader_fn(
     batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs, augment=False
 )
 
-logix = LogiX(project="test", config="./config.yaml")
+logix = LogIX(project="test", config="./config.yaml")
 
 # Gradient & Hessian logging
 logix.watch(model)

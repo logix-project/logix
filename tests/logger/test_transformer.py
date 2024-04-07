@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from transformers import BertForSequenceClassification, BertConfig
 
-from logix import LogiX
+from logix import LogIX
 
 
 class TestTransformerGradients(unittest.TestCase):
@@ -30,8 +30,8 @@ class TestTransformerGradients(unittest.TestCase):
         self.func_model.eval()
 
     def test_per_sample_gradient(self):
-        # Instantiate LogiX
-        logix = LogiX(project="test")
+        # Instantiate LogIX
+        logix = LogIX(project="test")
         logix.watch(self.model)
 
         # Input and target for batch size of 4
@@ -76,8 +76,8 @@ class TestTransformerGradients(unittest.TestCase):
             self.assertTrue(torch.allclose(logix_grad, func_grad, atol=1e-6))
 
     def test_per_sample_gradient_mask(self):
-        # Instantiate LogiX
-        logix = LogiX(project="test")
+        # Instantiate LogIX
+        logix = LogIX(project="test")
         logix.watch(self.model)
 
         # Input and target for batch size of 4
@@ -129,8 +129,8 @@ class TestTransformerGradients(unittest.TestCase):
             self.assertTrue(torch.allclose(logix_grad, func_grad, atol=1e-6))
 
     def test_per_sample_gradient_mask_with_gradient_checkpoint(self):
-        # Instantiate LogiX
-        logix = LogiX(project="test")
+        # Instantiate LogIX
+        logix = LogIX(project="test")
         logix.watch(self.model)
 
         self.model.gradient_checkpointing_enable(

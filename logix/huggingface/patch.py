@@ -2,15 +2,15 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from transformers.trainer import *
 
-from logix import LogiX, LogiXScheduler
+from logix import LogIX, LogIXScheduler
 from logix.utils import DataIDGenerator
-from logix.huggingface.callback import LogiXCallback
-from logix.huggingface.arguments import LogiXArgument
+from logix.huggingface.callback import LogIXCallback
+from logix.huggingface.arguments import LogIXArgument
 
 
 def patch_trainer(TrainerClass):
     """
-    Patch the (variant of) Huggingface Trainer class with the LogiX functionalities.
+    Patch the (variant of) Huggingface Trainer class with the LogIX functionalities.
 
     Args:
         TrainerClass: The Trainer class to patch
@@ -19,7 +19,7 @@ def patch_trainer(TrainerClass):
     class PatchedTrainer(TrainerClass):
         def __init__(
             self,
-            logix_args: Optional[LogiXArgument] = None,
+            logix_args: Optional[LogIXArgument] = None,
             model: Union[PreTrainedModel, nn.Module] = None,
             args: TrainingArguments = None,
             data_collator: Optional[DataCollator] = None,
@@ -36,12 +36,12 @@ def patch_trainer(TrainerClass):
                 Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
             ] = None,
         ):
-            # Initialize LogiX
+            # Initialize LogIX
             self.logix_args = logix_args
-            self.logix = LogiX(project=logix_args.project, config=logix_args.config)
-            self.logix_scheduler = LogiXScheduler(self.logix, ekfac=logix_args.ekfac)
+            self.logix = LogIX(project=logix_args.project, config=logix_args.config)
+            self.logix_scheduler = LogIXScheduler(self.logix, ekfac=logix_args.ekfac)
             self.data_id_generator = DataIDGenerator()
-            logix_callback = LogiXCallback(
+            logix_callback = LogIXCallback(
                 self.logix, self.logix_scheduler, self.logix_args
             )
 
