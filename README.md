@@ -18,7 +18,7 @@
 </div>
 
 ```bash
-git clone https://github.com/sangkeun00/logix.git; cd logix; pip install . # Install
+pip install logix-ai
 ```
 
 ## Usage
@@ -56,8 +56,6 @@ analysis the user may want. We have currently implemented influence function, wh
 for both training data attribution and uncertainty quantification for AI safety.
 
 ```python
-from logix.analysis import InfluenceFunction
-
 logix.eval() # enter analysis mode
 log_loader = logix.build_log_dataloader() # return PyTorch DataLoader for log data
 
