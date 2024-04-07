@@ -6,7 +6,7 @@ from tqdm import tqdm
 from transformers import default_data_collator, Trainer, TrainingArguments
 
 import logix
-from logix.huggingface import patch_trainer, AnaLogArguments
+from logix.huggingface import patch_trainer, LogiXArgument
 from bert_utils import construct_model, get_datasets, set_seed
 
 
@@ -27,7 +27,7 @@ def main():
     model.eval()
     train_dataset = get_datasets(args.data_name)[-1]
 
-    analog_args = AnaLogArguments(
+    analog_args = LogiXArgument(
         project=args.project,
         config=args.config_path,
         lora=True,
@@ -48,7 +48,7 @@ def main():
         train_dataset=train_dataset,
         data_collator=default_data_collator,
         args=training_args,
-        analog_args=analog_args,
+        logix_args=analog_args,
     )
     trainer.influence()
 
