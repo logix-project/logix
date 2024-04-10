@@ -51,7 +51,7 @@ class LogDataset(Dataset):
         offset = entry["offset"]
         if self.flatten:
             return data_id, get_flatten_item(
-                mmap, index, entry["block_size"], entry["dtype"]
+                mmap, offset, entry["block_size"], entry["dtype"]
             )
         dtype = entry["dtype"]
         for i in range(len(entry["path"])):
