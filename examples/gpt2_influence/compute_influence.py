@@ -26,7 +26,7 @@ def main():
     test_loader = get_loaders(eval_batch_size=16)[-1]
     model, test_loader = accelerator.prepare(model, test_loader)
 
-    # Set-up AnaLog
+    # Set-up LogIX
     run = logix.init(args.project, config=args.config_path)
 
     logix.watch(model, name_filter=["attn", "mlp"])
@@ -59,6 +59,7 @@ def main():
         if_scores.append(if_score)
     if_scores = torch.cat(if_scores, dim=0)
     torch.save(if_scores, "scores.pt")
+    run.influence.save_influence_scores()
 
 
 if __name__ == "__main__":

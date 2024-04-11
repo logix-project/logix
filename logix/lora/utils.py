@@ -7,7 +7,7 @@ def is_lora(model):
     """
     Check if LoRA is enabled for the model.
     """
-    return any("analog_lora_B" in name for name, module in model.named_modules())
+    return any("logix_lora_B" in name for name, module in model.named_modules())
 
 
 def compute_top_k_singular_vectors(matrix, k):
@@ -24,7 +24,7 @@ def find_parameter_sharing_group(
     module_name: str, parameter_sharing_groups: List[str] = None
 ):
     if parameter_sharing_groups is None:
-        return "analog_lora_none"
+        return "logix_lora_none"
 
     found_groups = [psg for psg in parameter_sharing_groups if psg in module_name]
     assert (

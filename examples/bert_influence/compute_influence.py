@@ -27,7 +27,7 @@ def main():
     accelerator = Accelerator()
     model, test_loader = accelerator.prepare(model, test_loader)
 
-    # Set-up AnaLog
+    # Set-up LogIX
     run = logix.init(args.project, config=args.config_path)
 
     logix.watch(model)

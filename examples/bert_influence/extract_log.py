@@ -29,7 +29,7 @@ def main():
     accelerator = Accelerator()
     model, train_loader = accelerator.prepare(model, train_loader)
 
-    # AnaLog
+    # LogIX
     run = logix.init(args.project, config=args.config_path)
     scheduler = logix.LogIXScheduler(run, lora=True)
 

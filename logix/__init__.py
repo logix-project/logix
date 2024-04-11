@@ -9,7 +9,7 @@ _LOGIX_INSTANCE = None
 
 
 def init(project: str, config: str = "./config.yaml"):
-    """Initialize AnaLog.
+    """Initialize LogIX.
 
     Args:
         project (str): The name of the project.

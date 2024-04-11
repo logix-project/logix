@@ -138,7 +138,7 @@ def module_check(
         return False
     if name_filter and not any(keyword in module_name for keyword in name_filter):
         return False
-    if is_lora and "analog_lora_B" not in module_name:
+    if is_lora and "logix_lora_B" not in module_name:
         return False
     return True
 

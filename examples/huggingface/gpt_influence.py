@@ -41,8 +41,8 @@ def main():
         report_to="none",
     )
 
-    AnaLogTrainer = patch_trainer(Trainer)
-    trainer = AnaLogTrainer(
+    LogIXTrainer = patch_trainer(Trainer)
+    trainer = LogIXTrainer(
         model=model,
         tokenizer=tokenizer,
         train_dataset=train_dataset,

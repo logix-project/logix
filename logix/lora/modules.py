@@ -22,21 +22,19 @@ class LoraLinear(nn.Module):
 
         self.rank = min(rank, in_features, out_features)
 
-        self.analog_lora_A = nn.Linear(in_features, self.rank, bias=False)
-        self.analog_lora_B = shared_module or nn.Linear(
-            self.rank, self.rank, bias=False
-        )
-        self.analog_lora_C = nn.Linear(self.rank, out_features, bias=False)
+        self.logix_lora_A = nn.Linear(in_features, self.rank, bias=False)
+        self.logix_lora_B = shared_module or nn.Linear(self.rank, self.rank, bias=False)
+        self.logix_lora_C = nn.Linear(self.rank, out_features, bias=False)
 
-        nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
-        nn.init.zeros_(self.analog_lora_B.weight)
-        nn.init.kaiming_uniform_(self.analog_lora_C.weight, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self.logix_lora_A.weight, a=math.sqrt(5))
+        nn.init.zeros_(self.logix_lora_B.weight)
+        nn.init.kaiming_uniform_(self.logix_lora_C.weight, a=math.sqrt(5))
 
         self._linear = linear
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         result = self._linear(input)
-        result += self.analog_lora_C(self.analog_lora_B(self.analog_lora_A(input)))
+        result += self.logix_lora_C(self.logix_lora_B(self.logix_lora_A(input)))
 
         return result
 
@@ -55,8 +53,8 @@ class LoraLinear(nn.Module):
             top_r_singular_vector_backward,
             top_r_singular_value_backward,
         ) = compute_top_k_singular_vectors(covariance[BACKWARD], self.rank)
-        self.analog_lora_A.weight.data.copy_(top_r_singular_vector_forward.T)
-        self.analog_lora_C.weight.data.copy_(top_r_singular_vector_backward)
+        self.logix_lora_A.weight.data.copy_(top_r_singular_vector_forward.T)
+        self.logix_lora_C.weight.data.copy_(top_r_singular_vector_backward)
 
 
 class LoraConv2d(nn.Module):
@@ -77,23 +75,23 @@ class LoraConv2d(nn.Module):
 
         self.rank = min(rank, in_channels, out_channels)
 
-        self.analog_lora_A = nn.Conv2d(
+        self.logix_lora_A = nn.Conv2d(
             in_channels, self.rank, kernel_size, stride, padding, bias=False
         )
-        self.analog_lora_B = shared_module or nn.Conv2d(
+        self.logix_lora_B = shared_module or nn.Conv2d(
             self.rank, self.rank, 1, bias=False
         )
-        self.analog_lora_C = nn.Conv2d(self.rank, out_channels, 1, bias=False)
+        self.logix_lora_C = nn.Conv2d(self.rank, out_channels, 1, bias=False)
 
-        nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
-        nn.init.zeros_(self.analog_lora_B.weight)
-        nn.init.kaiming_uniform_(self.analog_lora_C.weight, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self.logix_lora_A.weight, a=math.sqrt(5))
+        nn.init.zeros_(self.logix_lora_B.weight)
+        nn.init.kaiming_uniform_(self.logix_lora_C.weight, a=math.sqrt(5))
 
         self._conv = conv
 
     def forward(self, input) -> torch.Tensor:
         result = self._conv(input)
-        result += self.analog_lora_C(self.analog_lora_B(self.analog_lora_A(input)))
+        result += self.logix_lora_C(self.logix_lora_B(self.logix_lora_A(input)))
 
         return result
 
@@ -112,12 +110,12 @@ class LoraConv2d(nn.Module):
             top_r_singular_vector_backward,
             top_r_singular_value_backward,
         ) = compute_top_k_singular_vectors(covariance[BACKWARD], self.rank)
-        shape_A = self.analog_lora_A.weight.shape
-        shape_C = self.analog_lora_C.weight.shape
-        self.analog_lora_A.weight.data.copy_(
+        shape_A = self.logix_lora_A.weight.shape
+        shape_C = self.logix_lora_C.weight.shape
+        self.logix_lora_A.weight.data.copy_(
             top_r_singular_vector_forward.T.view(shape_A)
         )
-        self.analog_lora_C.weight.data.copy_(
+        self.logix_lora_C.weight.data.copy_(
             top_r_singular_vector_backward.view(shape_C)
         )
 
@@ -139,21 +137,19 @@ class LoraEmbedding(nn.Module):
 
         self.rank = min(rank, num_embeddings, embedding_dim)
 
-        self.analog_lora_A = nn.Embedding(num_embeddings, self.rank)
-        self.analog_lora_B = shared_module or nn.Linear(
-            self.rank, self.rank, bias=False
-        )
-        self.analog_lora_C = nn.Linear(self.rank, embedding_dim, bias=False)
+        self.logix_lora_A = nn.Embedding(num_embeddings, self.rank)
+        self.logix_lora_B = shared_module or nn.Linear(self.rank, self.rank, bias=False)
+        self.logix_lora_C = nn.Linear(self.rank, embedding_dim, bias=False)
 
-        nn.init.kaiming_uniform_(self.analog_lora_A.weight, a=math.sqrt(5))
-        nn.init.zeros_(self.analog_lora_B.weight)
-        nn.init.kaiming_uniform_(self.analog_lora_C.weight, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self.logix_lora_A.weight, a=math.sqrt(5))
+        nn.init.zeros_(self.logix_lora_B.weight)
+        nn.init.kaiming_uniform_(self.logix_lora_C.weight, a=math.sqrt(5))
 
         self._embedding = embedding
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         result = self._embedding(input)
-        result += self.analog_lora_C(self.analog_lora_B(self.analog_lora_A(input)))
+        result += self.logix_lora_C(self.logix_lora_B(self.logix_lora_A(input)))
 
         return result
 

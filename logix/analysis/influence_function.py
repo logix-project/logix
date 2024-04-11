@@ -48,20 +48,22 @@ class InfluenceFunction:
 
         preconditioned = nested_dict()
         if "grad" in cov_state[list(src.keys())[0]]:
+            cov_inverse = self._state.get_covariance_inverse_state()
             for module_name in src.keys():
                 device = src[module_name]["grad"].device
-                grad_cov = cov_state[module_name]["grad"]
-                damping_final = (
-                    damping
-                    if damping is not None
-                    else 0.1 * torch.trace(grad_cov) / grad_cov.shape[0]
-                )
-                inv_grad_cov = torch.inverse(
-                    grad_cov + torch.eye(grad_cov.shape[0]).to(device) * damping_final
-                )
+                # grad_cov = cov_state[module_name]["grad"]
+                # damping_final = (
+                #     damping
+                #     if damping is not None
+                #     else 0.1 * torch.trace(grad_cov) / grad_cov.shape[0]
+                # )
+                # inv_grad_cov = torch.inverse(
+                #     grad_cov + torch.eye(grad_cov.shape[0]).to(device) * damping_final
+                # )
+                grad_cov_inverse = cov_inverse[module_name]["grad"].to(device=device)
                 original_shape = src[module_name]["grad"].shape
                 preconditioned[module_name]["grad"] = (
-                    make_2d(src[module_name]["grad"], None, "grad") @ inv_grad_cov
+                    make_2d(src[module_name]["grad"], None, "grad") @ grad_cov_inverse
                 ).reshape(original_shape)
         else:
             cov_eigval, cov_eigvec = self._state.get_covariance_svd_state()
