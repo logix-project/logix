@@ -103,13 +103,12 @@ def get_entry_metadata(entries):
     return blocksize, dtype
 
 
-def get_flatten_item(mmap, index, block_size, dtype="float32"):
-    offset = index * block_size
+def get_flatten_item(mmap, offset, block_size, dtype="float32"):
     array = np.ndarray(
         block_size,
         dtype,
         buffer=mmap,
-        offset=offset * np.dtype(dtype).itemsize,
+        offset=offset,
         order="C",
     )
     return torch.from_numpy(array)

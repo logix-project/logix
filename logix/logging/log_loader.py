@@ -48,12 +48,11 @@ class LogDataset(Dataset):
         chunk_idx, entry = self.data_id_to_chunk[data_id]
         nested_dict = {}
         mmap = self.memmaps[chunk_idx]
+        offset = entry["offset"]
         if self.flatten:
             return data_id, get_flatten_item(
-                mmap, index, entry["block_size"], entry["dtype"]
+                mmap, offset, entry["block_size"], entry["dtype"]
             )
-
-        offset = entry["offset"]
         dtype = entry["dtype"]
         for i in range(len(entry["path"])):
             path = entry["path"][i]
