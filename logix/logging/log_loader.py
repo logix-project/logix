@@ -59,7 +59,7 @@ class LogDataset(Dataset):
             shape = tuple(entry["shape"][i])
             tensor = torch.from_numpy(
                 np.ndarray(shape, dtype, buffer=mmap, offset=offset, order="C")
-            )
+            ).clone()
 
             current_level = nested_dict
             for key in path[:-1]:

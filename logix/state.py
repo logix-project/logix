@@ -94,9 +94,9 @@ class LogIXState:
             for mode, covariance in module_state.items():
                 self.covariance_inverse_state[module_name][mode] = torch.inverse(
                     covariance
-                    + 0.01
+                    + 0.1
                     * torch.trace(covariance)
-                    * torch.eye(covariance.shape[0])
+                    * torch.eye(covariance.shape[0]).to(device=covariance.device)
                     / covariance.shape[0]
                 )
 
