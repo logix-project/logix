@@ -4,7 +4,7 @@ lora:
   init: random
   rank: 64
 logging_options:
-  use_lora: false
+  use_lora: true
   use_full_covariance: false
   sample: false
   ekfac: false

@@ -82,52 +82,48 @@ def get_color(algo_name: str) -> str:
     elif algo_name == "lora64random_full_covariance_aug_10":
         #red
         return "#e31a1c"
-    elif algo_name == "use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_expt_name_additional_tag_model_id_10":
+    elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id10":
         # blue
         return "#1f78b4"
-    elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_expt_name_additional_tag_model_id_10":
+    elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id_10":
         # yellow
         return "#ff7f00"
-    elif algo_name == "nitrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_model_id0":
+    elif algo_name == "nitrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
         return "#6704FD"
+    elif algo_name == "initrandom_rank64_use_loraFalse_use_full_covarianceFalse_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
+        return "#FF0000"
+    elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
+        return "#00FF00"
+    elif algo_name == "trak_30":
+        return "#a6cee3"
+    elif algo_name == "trak_30_model0":
+        return "#1f78b4"
+    elif algo_name == "trak_30_model0_epoch25":
+        return "#89f7fe"
+    elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceFalse_sampleFalse_ekfacTrue_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
+        return "#729c9c"
     else:
         return "#000000"
 
 
 def get_name(algo_name: str) -> str:
-    if "_expt_name_additional_tag_model_id_10" in algo_name:
-        # remove it
-        ind = algo_name.index("_expt_name_additional_tag_model_id_10")
-        algo_name = algo_name[:ind]
-
-    if "_10" in algo_name:
-        #remove the _10
-        ind = algo_name.index("_10")
-        algo_name = algo_name[:ind] + algo_name[ind+3:]
-
-    if algo_name in ALGORITHMS_TO_NAME.keys():
-        return ALGORITHMS_TO_NAME[algo_name]
-    elif "if_d" in algo_name:
-        return "IF"
-    elif "prototype_if_tracin" in algo_name:
-        return "IF TracIn"
-    elif (
-        "prototype_if_average" in algo_name or "prototype_adam_if_average" in algo_name
-    ):
-        return r"UNIF ($L=1$)"
-    elif "unif_average" in algo_name:
-        return r"UNIF ($L=1$)"
-    elif (
-        "prototype_if_segment" in algo_name
-        or "prototype_if_normalized_segment" in algo_name
-        or "prototype_adam_if_segment" in algo_name
-        or "prototype_if_new_segment" in algo_name
-    ):
-        return r"IF Segment"
-    elif "unif_segment" in algo_name:
-        return r"UNIF ($L=3$)"
+    if algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id_10":
+        return "loraEnsembleFullCov"
+    elif algo_name == "initrandom_rank64_use_loraFalse_use_full_covarianceFalse_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
+        return "noLoraSingle"
+    elif algo_name ==  "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
+        return "loraSingleFullCov"
+    elif algo_name == "trak_30_model0":
+        return "trakSingle3Epochs"
+    elif algo_name == "trak_30_model0_epoch25":
+        return "trakSingleLastEpoch"
+    elif algo_name == "trak_30":
+        return "trakEnsemble"
+    elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceFalse_sampleFalse_ekfacTrue_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
+        return "loraSingleEkfac"
     else:
-        return algo_name.upper()
+        return algo_name
+         
 
 
 def init_plotting(
