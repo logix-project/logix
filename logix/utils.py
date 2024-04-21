@@ -150,6 +150,27 @@ def nested_dict():
     return defaultdict(nested_dict)
 
 
+def merge_log_dict(merged_log_dict, log_dict):
+    for key, value in log_dict.items():
+        if isinstance(value, dict):
+            merge_log_dict(merged_log_dict[key], value)
+        else:
+            if key not in merged_log_dict:
+                merged_log_dict[key] = value
+            else:
+                merged_log_dict[key] = torch.cat([merged_log_dict[key], value], dim=0)
+
+
+def merge_logs(log_list):
+    merged_data_id = []
+    merged_log_dict = nested_dict()
+
+    for data_id, log_dict in log_list:
+        merged_data_id.extend(data_id)
+        merge_log_dict(merged_log_dict, log_dict)
+    return merged_data_id, merged_log_dict
+
+
 class DataIDGenerator:
     """
     Generate unique IDs for data.

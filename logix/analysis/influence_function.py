@@ -1,5 +1,6 @@
 from typing import Dict, Optional, Tuple
 import pandas as pd
+from tqdm import tqdm
 import torch
 
 from einops import einsum, rearrange, reduce
@@ -165,20 +166,20 @@ class InfluenceFunction:
         assert total_influence.shape[0] == len(src_ids)
         assert total_influence.shape[1] == len(tgt_ids)
         # Ensure src_ids and tgt_ids are in the DataFrame's index and columns
-        self.influence_scores = self.influence_scores.reindex(
-            index=self.influence_scores.index.union(src_ids),
-            columns=self.influence_scores.columns.union(tgt_ids),
-        )
+        # self.influence_scores = self.influence_scores.reindex(
+        #    index=self.influence_scores.index.union(src_ids),
+        #    columns=self.influence_scores.columns.union(tgt_ids),
+        # )
 
         # Assign total_influence values to the corresponding locations
-        src_indices = [
-            self.influence_scores.index.get_loc(src_id) for src_id in src_ids
-        ]
-        tgt_indices = [
-            self.influence_scores.columns.get_loc(tgt_id) for tgt_id in tgt_ids
-        ]
+        # src_indices = [
+        #    self.influence_scores.index.get_loc(src_id) for src_id in src_ids
+        # ]
+        # tgt_indices = [
+        #    self.influence_scores.columns.get_loc(tgt_id) for tgt_id in tgt_ids
+        # ]
 
-        self.influence_scores.iloc[src_indices, tgt_indices] = total_influence.numpy()
+        # self.influence_scores.iloc[src_indices, tgt_indices] = total_influence.numpy()
 
         return total_influence
 
@@ -257,12 +258,14 @@ class InfluenceFunction:
             src_log = self.precondition(src_log, damping)
 
         if_scores_total = []
-        for tgt_log in loader:
+        tgt_ids_total = []
+        for tgt_log in tqdm(loader, desc="Influence"):
             if_scores = self.compute_influence(
                 src_log, tgt_log, mode=mode, precondition=False, damping=damping
             )
             if_scores_total.append(if_scores)
-        return torch.cat(if_scores_total, dim=-1)
+            tgt_ids_total.extend(tgt_log[0])
+        return torch.cat(if_scores_total, dim=-1), tgt_ids_total
 
     def get_influence_scores(self):
         """
