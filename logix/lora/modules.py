@@ -53,7 +53,6 @@ class LoraLinear(nn.Module):
             top_r_singular_vector_backward,
             top_r_singular_value_backward,
         ) = compute_top_k_singular_vectors(covariance[BACKWARD], self.rank)
-        print(covariance[BACKWARD], top_r_singular_vector_backward)
         self.logix_lora_A.weight.data.copy_(top_r_singular_vector_forward.T)
         self.logix_lora_C.weight.data.copy_(top_r_singular_vector_backward)
 
