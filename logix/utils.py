@@ -1,6 +1,6 @@
 import sys
 import logging as default_logging
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple, Dict
 from collections import defaultdict
 
 import hashlib
@@ -90,7 +90,7 @@ def get_rank(group=None) -> int:
         return 0
 
 
-def get_repr_dim(named_modules):
+def get_repr_dim(named_modules) -> Tuple[List[str], List[int]]:
     repr_dims = []
     paths = []
     for k, v in named_modules.items():
@@ -150,7 +150,7 @@ def nested_dict():
     return defaultdict(nested_dict)
 
 
-def merge_log_dict(merged_log_dict, log_dict):
+def merge_log_dict(merged_log_dict, log_dict) -> None:
     for key, value in log_dict.items():
         if isinstance(value, dict):
             merge_log_dict(merged_log_dict[key], value)
@@ -169,6 +169,42 @@ def merge_logs(log_list):
         merged_data_id.extend(data_id)
         merge_log_dict(merged_log_dict, log_dict)
     return merged_data_id, merged_log_dict
+
+
+def flatten_log(log, path) -> torch.Tensor:
+    flat_log_list = []
+    for module, log_type in path:
+        log = log[module][log_type]
+        bsz = log.shape[0]
+        flat_log_list.append(log.view(bsz, -1))
+    flat_log = torch.cat(flat_log_list, dim=1)
+
+    return flat_log
+
+
+def unflatten_log(log, path):
+    raise NotImplementedError
+
+
+def synchronize_device(
+    src: Dict[str, Dict[str, torch.Tensor]],
+    tgt: Dict[str, Dict[str, torch.Tensor]],
+    device: Optional[torch.device] = None,
+) -> None:
+    """
+    Synchronize the device of two tensor dicts.
+
+    Args:
+        src (Dict[str, Dict[str, torch.Tensor]]): Source tensors
+        tgt (Dict[str, Dict[str, torch.Tensor]]): Target tensors
+        device (Optional[torch.device]): Device to synchronize to
+    """
+
+    for module_name, module_dict in tgt.items():
+        for log in module_dict.keys():
+            if device is None:
+                device = src[module_name][log].device
+            tgt[module_name][log] = tgt[module_name][log].to(device=device)
 
 
 class DataIDGenerator:

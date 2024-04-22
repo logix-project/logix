@@ -111,7 +111,7 @@ def get_flatten_item(mmap, offset, block_size, dtype="float32"):
         offset=offset,
         order="C",
     )
-    return torch.from_numpy(array)
+    return torch.from_numpy(array).clone()
 
 
 def _init_collate_structure(nested_dict):

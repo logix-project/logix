@@ -13,7 +13,7 @@ from logix.batch_info import BatchInfo
 from logix.config import init_config_from_yaml
 from logix.logging import HookLogger
 from logix.logging.log_loader import LogDataset
-from logix.logging.log_loader_util import collate_nested_dicts
+from logix.logging.log_loader_utils import collate_nested_dicts
 from logix.lora import LoRAHandler
 from logix.lora.utils import is_lora
 from logix.state import LogIXState
