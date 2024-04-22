@@ -52,8 +52,6 @@ def main():
         run.influence.compute_influence_all(test_log, log_loader, damping=args.damping)
         break
 
-    run.influence.save_influence_scores()
-
 
 if __name__ == "__main__":
     main()

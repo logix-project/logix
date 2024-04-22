@@ -25,6 +25,11 @@ def main():
         type=str,
         default="/data/tir/projects/tir3/users/sangkeuc/huggingface",
     )
+    parser.add_argument(
+        "--save_dir",
+        type=str,
+        default="/data/tir/projects/tir3/users/sangkeuc/gpt/results",
+    )
     parser.add_argument("--model_name", type=str, default="gpt2")
     parser.add_argument("--hessian", type=str, default="kfac")
     parser.add_argument("--lora", type=str, default="random")
@@ -65,9 +70,6 @@ def main():
     # Influence analysis
     logix.setup({"log": "grad"})
     logix.eval()
-    if_scores = []
-    train_ids = None
-    test_ids = []
     merged_test_logs = []
     for idx, batch in enumerate(tqdm(data_loader)):
         data_id = tokenizer.batch_decode(batch["input_ids"], skip_special_tokens=True)
@@ -91,27 +93,17 @@ def main():
 
         if idx == 7 or idx == len(data_loader) - 1:
             merged_test_log = merge_logs(merged_test_logs)
-            if_score, train_ids_batch = run.influence.compute_influence_all(
-                merged_test_log, log_loader
-            )
-            if_scores.append(if_score)
-            if train_ids is None:
-                train_ids = train_ids_batch
-            else:
-                assert train_ids == train_ids_batch
-            test_ids.extend(merged_test_log[0])
-            if_scores = torch.cat(if_scores, dim=0)
+            result = run.influence.compute_influence_all(merged_test_log, log_loader)
             merged_test_logs = []
             break
-    base_dir = "/data/tir/projects/tir3/users/sangkeuc/gpt/results/"
     save_dir = os.path.join(
-        base_dir, f"{args.split}_{model_name_strip}_{args.lora}_{args.hessian}"
+        args.save_dir, f"{args.split}_{model_name_strip}_{args.lora}_{args.hessian}"
     )
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    torch.save(if_scores, os.path.join(save_dir, "scores.pt"))
-    torch.save(train_ids, os.path.join(save_dir, "train_ids.pt"))
-    torch.save(test_ids, os.path.join(save_dir, "test_ids.pt"))
+    torch.save(result["influence"], os.path.join(save_dir, "scores.pt"))
+    torch.save(result["src_ids"], os.path.join(save_dir, "train_ids.pt"))
+    torch.save(result["tgt_ids"], os.path.join(save_dir, "test_ids.pt"))
 
 
 if __name__ == "__main__":

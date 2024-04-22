@@ -2,18 +2,18 @@ import time
 import argparse
 
 import torch
-
-from logix import LogIX, LogIXScheduler
+from logix import LogIX
 from logix.utils import DataIDGenerator
 from logix.analysis import InfluenceFunction
 
 from train import (
-    get_cifar10_dataloader,
-    construct_rn9,
+    get_mnist_dataloader,
+    get_fmnist_dataloader,
+    construct_mlp,
 )
 
-parser = argparse.ArgumentParser("CIFAR Influence Analysis")
-parser.add_argument("--data", type=str, default="cifar10", help="cifar10/100")
+parser = argparse.ArgumentParser("MNIST Influence Analysis")
+parser.add_argument("--data", type=str, default="mnist", help="mnist or fmnist")
 parser.add_argument("--eval-idxs", type=int, nargs="+", default=[0])
 parser.add_argument("--damping", type=float, default=1e-5)
 parser.add_argument("--resume", action="store_true")
@@ -21,32 +21,30 @@ args = parser.parse_args()
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-model = construct_rn9().to(DEVICE)
-
-# Get a single checkpoint (first model_id and last epoch).
+model = construct_mlp().to(DEVICE)
 model.load_state_dict(
-    torch.load(f"checkpoints/{args.data}_0_epoch_23.pt", map_location="cpu")
+    torch.load(f"checkpoints/{args.data}_0_epoch_9.pt", map_location="cpu")
 )
 model.eval()
 
-dataloader_fn = get_cifar10_dataloader
+dataloader_fn = get_mnist_dataloader if args.data == "mnist" else get_fmnist_dataloader
 train_loader = dataloader_fn(
-    batch_size=512, split="train", shuffle=False, subsample=True, augment=False
+    batch_size=512, split="train", shuffle=False, subsample=True
 )
 query_loader = dataloader_fn(
-    batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs, augment=False
+    batch_size=1, split="valid", shuffle=False, indices=args.eval_idxs
 )
 
-logix = LogIX(project="test", config="./config.yaml")
-logix_scheduler = LogIXScheduler(logix, lora=True)
+logix = LogIX(project="test")
+logix.setup({"log": "grad", "statistic": "kfac"})
 
 # Gradient & Hessian logging
 logix.watch(model)
-
-if True:
-    id_gen = DataIDGenerator()
-    for epoch in logix_scheduler:
+id_gen = DataIDGenerator()
+if not args.resume:
+    for epoch in range(2):
+        if epoch == 1:
+            logix.setup({"log": "grad", "statistic": "ekfac", "save": "grad"})
         for inputs, targets in train_loader:
             data_id = id_gen(inputs)
             with logix(data_id=data_id):
@@ -57,16 +55,15 @@ if True:
                 loss.backward()
         logix.finalize()
 else:
-    logix.add_lora()
     logix.initialize_from_log()
 
 # Influence Analysis
 log_loader = logix.build_log_dataloader()
 
-logix.eval()
-logix.add_analysis({"influence": InfluenceFunction})
 query_iter = iter(query_loader)
-with logix(log=["grad"]) as al:
+logix.setup({"log": "grad"})
+logix.eval()
+with logix(data_id=["test"]) as al:
     test_input, test_target = next(query_iter)
     test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
     model.zero_grad()
@@ -77,11 +74,13 @@ with logix(log=["grad"]) as al:
     test_loss.backward()
     test_log = al.get_log()
 start = time.time()
-if_scores = logix.influence.compute_influence_all(
+result = logix.influence.compute_influence_all(
     test_log, log_loader, damping=args.damping
 )
+_, top_influential_data = torch.topk(result["influence"], k=10)
 
 # Save
-if_scores = if_scores.numpy().tolist()
-torch.save(if_scores, "if_logix_pca.pt")
+if_scores = result["influence"].cpu().numpy().tolist()[0]
+torch.save(if_scores, "if_logix_ekfac.pt")
 print("Computation time:", time.time() - start)
+print("Top influential data indices:", top_influential_data.cpu().numpy().tolist())

@@ -1,5 +1,4 @@
 from typing import Dict, Optional, Tuple
-import pandas as pd
 from tqdm import tqdm
 import torch
 
@@ -21,9 +20,6 @@ class InfluenceFunction:
         self.mode = config.mode
         self.damping = config.damping
         self.relative_damping = config.relative_damping
-
-        # influence scores
-        self.influence_scores = pd.DataFrame()
         self.flatten = config.flatten
 
     @torch.no_grad()
@@ -52,15 +48,6 @@ class InfluenceFunction:
             cov_inverse = self._state.get_covariance_inverse_state()
             for module_name in src.keys():
                 device = src[module_name]["grad"].device
-                # grad_cov = cov_state[module_name]["grad"]
-                # damping_final = (
-                #     damping
-                #     if damping is not None
-                #     else 0.1 * torch.trace(grad_cov) / grad_cov.shape[0]
-                # )
-                # inv_grad_cov = torch.inverse(
-                #     grad_cov + torch.eye(grad_cov.shape[0]).to(device) * damping_final
-                # )
                 grad_cov_inverse = cov_inverse[module_name]["grad"].to(device=device)
                 original_shape = src[module_name]["grad"].shape
                 preconditioned[module_name]["grad"] = (
@@ -126,6 +113,7 @@ class InfluenceFunction:
         """
         assert mode in ["dot", "l2", "cosine"], f"Invalid mode: {mode}"
 
+        result = {}
         if precondition:
             src_log = self.precondition(src_log, damping)
 
@@ -160,28 +148,15 @@ class InfluenceFunction:
                 tgt_log, precondition=True, damping=damping
             )
             total_influence = 2 * total_influence - tgt_norm.unsqueeze(0)
-        total_influence = total_influence.cpu()
 
-        # Log influence scores to pd.DataFrame
         assert total_influence.shape[0] == len(src_ids)
         assert total_influence.shape[1] == len(tgt_ids)
-        # Ensure src_ids and tgt_ids are in the DataFrame's index and columns
-        # self.influence_scores = self.influence_scores.reindex(
-        #    index=self.influence_scores.index.union(src_ids),
-        #    columns=self.influence_scores.columns.union(tgt_ids),
-        # )
 
-        # Assign total_influence values to the corresponding locations
-        # src_indices = [
-        #    self.influence_scores.index.get_loc(src_id) for src_id in src_ids
-        # ]
-        # tgt_indices = [
-        #    self.influence_scores.columns.get_loc(tgt_id) for tgt_id in tgt_ids
-        # ]
+        result["src_ids"] = src_ids
+        result["tgt_ids"] = tgt_ids
+        result["influence"] = total_influence.cpu()
 
-        # self.influence_scores.iloc[src_indices, tgt_indices] = total_influence.numpy()
-
-        return total_influence
+        return result
 
     def _dot_product_logs(self, src_module, tgt_module):
         assert src_module.shape[1:] == tgt_module.shape[1:]
@@ -208,7 +183,9 @@ class InfluenceFunction:
             precondition (Optional[bool], optional): Whether to precondition the gradients. Defaults to True.
             damping (Optional[float], optional): Damping parameter for preconditioning. Defaults to None.
         """
-        src = src_log[1]
+        result = {}
+
+        src_ids, src = src_log
         tgt = self.precondition(src_log, damping)[1] if precondition else src
 
         # Compute self-influence scores
@@ -225,15 +202,20 @@ class InfluenceFunction:
             module_influence = reduce(src_module * tgt_module, "n a b -> n", "sum")
             total_influence += module_influence.reshape(-1)
 
-        return total_influence
+        result["src_ids"] = src_ids
+        result["influence"] = total_influence.cpu()
+
+        return result
 
     def flatten_log(self, src):
-        to_cat = []
+        flat_log_list = []
         for module, log_type in self._state.get_state("model_module")["path"]:
             log = src[module][log_type]
             bsz = log.shape[0]
-            to_cat.append(log.view(bsz, -1))
-        return torch.cat(to_cat, dim=1)
+            flat_log_list.append(log.view(bsz, -1))
+        flat_log = torch.cat(flat_log_list, dim=1)
+
+        return flat_log
 
     def compute_influence_all(
         self,
@@ -244,7 +226,8 @@ class InfluenceFunction:
         damping: Optional[float] = None,
     ):
         """
-        Compute influence scores against all train data in the log. This can be used
+        Compute influence scores against all train
+        ata in the log. This can be used
         for training data attribution.
 
         Args:
@@ -257,28 +240,19 @@ class InfluenceFunction:
         if precondition:
             src_log = self.precondition(src_log, damping)
 
-        if_scores_total = []
-        tgt_ids_total = []
-        for tgt_log in tqdm(loader, desc="Influence"):
-            if_scores = self.compute_influence(
+        result_all = None
+        for tgt_log in tqdm(loader, desc="Compute IF"):
+            result = self.compute_influence(
                 src_log, tgt_log, mode=mode, precondition=False, damping=damping
             )
-            if_scores_total.append(if_scores)
-            tgt_ids_total.extend(tgt_log[0])
-        return torch.cat(if_scores_total, dim=-1), tgt_ids_total
 
-    def get_influence_scores(self):
-        """
-        Return influence scores as a pd.DataFrame.
-        """
-        return self.influence_scores
+            # Merge results
+            if result_all is None:
+                result_all = result
+            else:
+                result_all["tgt_ids"].extend(result["tgt_ids"])
+                result_all["influence"] = torch.cat(
+                    [result_all["influence"], result["influence"]], dim=1
+                )
 
-    def save_influence_scores(self, filename="influence_scores.csv"):
-        """
-        Save influence scores as a csv file.
-
-        Args:
-            filename (str, optional): save filename. Defaults to "influence_scores.csv".
-        """
-        self.influence_scores.to_csv(filename, index=True, header=True)
-        get_logger().info(f"Influence scores saved to {filename}")
+        return result_all
