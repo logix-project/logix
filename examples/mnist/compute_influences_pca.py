@@ -57,6 +57,9 @@ if not args.resume:
         if epoch == 0:
             logix.setup({"log": "grad", "save": "grad", "statistic": "kfac"})
             logix.add_lora()
+            # for n, p in model.named_parameters():
+            #     if "logix" in n:
+            #         print(n, p)
 else:
     logix.add_lora()
     logix.initialize_from_log()
