@@ -96,9 +96,11 @@ def main():
             result = run.influence.compute_influence_all(merged_test_log, log_loader)
             merged_test_logs = []
             break
-    save_dir = os.path.join(
-        args.save_dir, f"{args.split}_{model_name_strip}_{args.lora}_{args.hessian}"
-    )
+
+    post_fix = f"{args.split}_{model_name_strip}_{args.lora}_{args.hessian}"
+    if args.mlp_only:
+        post_fix += "_mlp"
+    save_dir = os.path.join(args.save_dir, post_fix)
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     torch.save(result["influence"], os.path.join(save_dir, "scores.pt"))

@@ -1,12 +1,22 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, List
 from tqdm import tqdm
 import torch
 
-from einops import einsum, rearrange, reduce
+from einops import reduce
 from logix.config import InfluenceConfig
 from logix.state import LogIXState
-from logix.utils import get_logger, nested_dict
-from logix.analysis.utils import synchronize_device
+from logix.utils import (
+    get_logger,
+    nested_dict,
+    flatten_log,
+    unflatten_log,
+    synchronize_device,
+)
+from logix.analysis.influence_function_utils import (
+    precondition_kfac,
+    precondition_raw,
+    cross_dot_product,
+)
 from logix.statistic.utils import make_2d
 
 
@@ -27,7 +37,8 @@ class InfluenceFunction:
         self,
         src_log: Dict[str, Dict[str, torch.Tensor]],
         damping: Optional[float] = None,
-    ):
+        hessian: Optional[str] = "auto",
+    ) -> Tuple[List[str], Dict[str, Dict[str, torch.Tensor]]]:
         """
         Precondition gradients using the Hessian.
 
@@ -35,6 +46,8 @@ class InfluenceFunction:
             src_log (Dict[str, Dict[str, torch.Tensor]]): Log of source gradients
             damping (Optional[float], optional): Damping parameter for preconditioning. Defaults to None.
         """
+        assert hessian in ["auto", "kfac", "raw"]
+
         src_ids, src = src_log
         cov_state = self._state.get_covariance_state()
         if len(set(src.keys()) - set(cov_state.keys())) != 0:
@@ -43,54 +56,16 @@ class InfluenceFunction:
             )
             return src_log
 
-        preconditioned = nested_dict()
-        if "grad" in cov_state[list(src.keys())[0]]:
-            cov_inverse = self._state.get_covariance_inverse_state()
-            for module_name in src.keys():
-                device = src[module_name]["grad"].device
-                grad_cov_inverse = cov_inverse[module_name]["grad"].to(device=device)
-                original_shape = src[module_name]["grad"].shape
-                preconditioned[module_name]["grad"] = (
-                    make_2d(src[module_name]["grad"], None, "grad") @ grad_cov_inverse
-                ).reshape(original_shape)
-        else:
-            cov_eigval, cov_eigvec = self._state.get_covariance_svd_state()
-            for module_name in src.keys():
-                src_grad = src[module_name]["grad"]
-                device = src_grad.device
+        precondition_fn = precondition_kfac
+        if hessian == "raw" or (
+            hessian == "auto" and "grad" in cov_state[list(src.keys())[0]]
+        ):
+            precondition_fn = precondition_raw
+        preconditioned_grad = precondition_fn(
+            src=src, state=self._state, damping=damping
+        )
 
-                module_eigvec = cov_eigvec[module_name]
-                fwd_eigvec = module_eigvec["forward"].to(device=device)
-                bwd_eigvec = module_eigvec["backward"].to(device=device)
-
-                # Reconstruct the full eigenvalue matrix with the damping factor added
-                module_eigval = cov_eigval[module_name]
-                if isinstance(module_eigval, torch.Tensor):
-                    full_eigval = module_eigval.to(device=device)
-                else:
-                    assert "forward" in module_eigval and "backward" in module_eigval
-                    fwd_eigval = module_eigval["forward"]
-                    bwd_eigval = module_eigval["backward"]
-                    full_eigval = torch.outer(bwd_eigval, fwd_eigval).to(device=device)
-                if damping is None:
-                    damping = 0.1 * torch.mean(full_eigval)
-                full_eigval += damping
-
-                # Precondition the gradient using eigenvectors and eigenvalues
-                rotated_grad = einsum(
-                    bwd_eigvec.t(),
-                    src_grad,
-                    fwd_eigvec,
-                    "a b, batch b c, c d -> batch a d",
-                )
-                prec_rotated_grad = rotated_grad / full_eigval
-                preconditioned[module_name]["grad"] = einsum(
-                    bwd_eigvec,
-                    prec_rotated_grad,
-                    fwd_eigvec.t(),
-                    "a b, batch b c, c d -> batch a d",
-                )
-        return (src_ids, preconditioned)
+        return (src_ids, preconditioned_grad)
 
     @torch.no_grad()
     def compute_influence(
@@ -99,6 +74,7 @@ class InfluenceFunction:
         tgt_log: Tuple[str, Dict[str, Dict[str, torch.Tensor]]],
         mode: Optional[str] = "dot",
         precondition: Optional[bool] = True,
+        precondition_hessian: Optional[str] = "auto",
         damping: Optional[float] = None,
     ):
         """
@@ -115,26 +91,29 @@ class InfluenceFunction:
 
         result = {}
         if precondition:
-            src_log = self.precondition(src_log, damping)
+            src_log = self.precondition(
+                src_log=src_log, damping=damping, hessian=precondition_hessian
+            )
 
         src_ids, src = src_log
         tgt_ids, tgt = tgt_log
         total_influence = 0
 
+        # Compute influence scores. By default, we should compute the basic influence
+        # scores, which is essentially the inner product between the source and target
+        # gradients. If mode is cosine, we should normalize the influence score by the
+        # L2 norm of the target gardients. If mode is l2, we should subtract the L2
+        # norm of the target gradients.
         if self.flatten:
-            src = self.flatten_log(src)
+            src = flatten_log(
+                log=src, path=self._state.get_state("model_module")["path"]
+            )
             tgt = tgt.to(device=src.device)
-            total_influence += self._dot_product_logs(src, tgt)
-
-        if not self.flatten:
+            total_influence += cross_dot_product(src, tgt)
+        else:
             synchronize_device(src, tgt)
-            # Compute influence scores. By default, we should compute the basic influence
-            # scores, which is essentially the inner product between the source and target
-            # gradients. If mode is cosine, we should normalize the influence score by the
-            # L2 norm of the target gardients. If mode is l2, we should subtract the L2
-            # norm of the target gradients.
             for module_name in src.keys():
-                total_influence += self._dot_product_logs(
+                total_influence += cross_dot_product(
                     src[module_name]["grad"], tgt[module_name]["grad"]
                 )
 
@@ -158,16 +137,6 @@ class InfluenceFunction:
 
         return result
 
-    def _dot_product_logs(self, src_module, tgt_module):
-        assert src_module.shape[1:] == tgt_module.shape[1:]
-        src_module_expanded = rearrange(src_module, "n ... -> n 1 ...")
-        tgt_module_expanded = rearrange(tgt_module, "m ... -> 1 m ...")
-        return reduce(
-            src_module_expanded * tgt_module_expanded,
-            "n m ... -> n m",
-            "sum",
-        )
-
     @torch.no_grad()
     def compute_self_influence(
         self,
@@ -186,16 +155,15 @@ class InfluenceFunction:
         result = {}
 
         src_ids, src = src_log
+        if not isinstance(src, dict):
+            assert isinstance(src, torch.Tensor)
+            src = unflatten_log(
+                log=src, path=self._state.get_state("model_module")["path"]
+            )
         tgt = self.precondition(src_log, damping)[1] if precondition else src
 
         # Compute self-influence scores
         total_influence = 0
-
-        if self.flatten:
-            src = self.flatten_log(src)
-            tgt = self.flatten_log(tgt)
-            total_influence += self._dot_product_logs(src, tgt)
-
         for module_name in src.keys():
             src_module = src[module_name]["grad"]
             tgt_module = tgt[module_name]["grad"] if tgt is not None else src_module
@@ -207,16 +175,6 @@ class InfluenceFunction:
 
         return result
 
-    def flatten_log(self, src):
-        flat_log_list = []
-        for module, log_type in self._state.get_state("model_module")["path"]:
-            log = src[module][log_type]
-            bsz = log.shape[0]
-            flat_log_list.append(log.view(bsz, -1))
-        flat_log = torch.cat(flat_log_list, dim=1)
-
-        return flat_log
-
     def compute_influence_all(
         self,
         src_log: Tuple[str, Dict[str, Dict[str, torch.Tensor]]],
@@ -226,8 +184,7 @@ class InfluenceFunction:
         damping: Optional[float] = None,
     ):
         """
-        Compute influence scores against all train
-        ata in the log. This can be used
+        Compute influence scores against all traininig data in the log. This can be used
         for training data attribution.
 
         Args:
