@@ -50,7 +50,7 @@ def precondition_kfac(
             "a b, batch b c, c d -> batch a d",
         )
 
-        return preconditioned
+    return preconditioned
 
 
 def precondition_raw(
