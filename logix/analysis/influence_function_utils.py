@@ -71,7 +71,7 @@ def precondition_raw(
     return preconditioned
 
 
-def cross_dot_product(src: torch.Tensor, tgt: torch.Tensor):
+def cross_dot_product(src: torch.Tensor, tgt: torch.Tensor) -> torch.Tensor:
     assert src.shape[1:] == tgt.shape[1:]
     src_expanded = rearrange(src, "n ... -> n 1 ...")
     tgt_expanded = rearrange(tgt, "m ... -> 1 m ...")
@@ -82,3 +82,17 @@ def cross_dot_product(src: torch.Tensor, tgt: torch.Tensor):
     )
 
     return dot_product_result
+
+
+def merge_influence_results(result_all, result) -> None:
+    result_all["tgt_ids"].extend(result["tgt_ids"])
+    if isinstance(result["influence"], dict):
+        for key in result_all["influence"].keys():
+            result_all["influence"][key] = torch.cat(
+                [result_all["influence"][key], result["influence"][key]], dim=1
+            )
+    else:
+        assert isinstance(result["influence"], torch.Tensor)
+        result_all["influence"] = torch.cat(
+            [result_all["influence"], result["influence"]], dim=1
+        )
