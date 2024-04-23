@@ -18,7 +18,6 @@ from logix.analysis.influence_function_utils import (
     cross_dot_product,
     merge_influence_results,
 )
-from logix.statistic.utils import make_2d
 
 
 class InfluenceFunction:

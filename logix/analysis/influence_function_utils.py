@@ -4,6 +4,7 @@ import torch
 from einops import einsum, reduce, rearrange
 
 from logix.state import LogIXState
+from logix.statistic.utils import make_2d
 from logix.utils import nested_dict
 
 
