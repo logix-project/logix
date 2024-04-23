@@ -59,7 +59,7 @@ for both training data attribution and uncertainty quantification for AI safety.
 logix.eval() # enter analysis mode
 log_loader = logix.build_log_dataloader() # return PyTorch DataLoader for log data
 
-with logix(data_id=test_input):
+with run(data_id=test_input):
     test_out = model(test_input)
     test_loss = loss_fn(test_out, test_target, reduction="sum")
     test_loss.backward()

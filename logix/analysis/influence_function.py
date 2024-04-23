@@ -198,7 +198,7 @@ class InfluenceFunction:
             tgt = self.precondition(src_log, hessian=hessian, damping=damping)[1]
 
         # Initialize influence scores
-        tota_influence = {"total": 0}
+        total_influence = {"total": 0}
         for influence_group in influence_groups or []:
             total_influence[influence_group] = 0
 
