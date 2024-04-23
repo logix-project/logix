@@ -3,7 +3,6 @@ from tqdm import tqdm
 import torch
 
 from einops import reduce
-from logix.config import InfluenceConfig
 from logix.state import LogIXState
 from logix.utils import (
     get_logger,
@@ -21,16 +20,9 @@ from logix.analysis.influence_function_utils import (
 
 
 class InfluenceFunction:
-    def __init__(self, config: InfluenceConfig, state: LogIXState):
+    def __init__(self, state: LogIXState):
         # state
         self._state = state
-
-        # config
-        self.log_dir = config.log_dir
-        self.mode = config.mode
-        self.damping = config.damping
-        self.relative_damping = config.relative_damping
-        self.flatten = config.flatten
 
     @torch.no_grad()
     def precondition(
@@ -46,7 +38,7 @@ class InfluenceFunction:
             src_log (Dict[str, Dict[str, torch.Tensor]]): Log of source gradients
             damping (Optional[float], optional): Damping parameter for preconditioning. Defaults to None.
         """
-        assert hessian in ["auto", "kfac", "raw"]
+        assert hessian in ["auto", "kfac", "raw"], f"Invalid hessian {hessian}"
 
         src_ids, src = src_log
         cov_state = self._state.get_covariance_state()
@@ -109,7 +101,8 @@ class InfluenceFunction:
         # gradients. If mode is cosine, we should normalize the influence score by the
         # L2 norm of the target gardients. If mode is l2, we should subtract the L2
         # norm of the target gradients.
-        if self.flatten:
+        if not isinstance(tgt, dict):
+            assert isinstance(tgt, torch.Tensor)
             src = flatten_log(
                 log=src, path=self._state.get_state("model_module")["path"]
             )

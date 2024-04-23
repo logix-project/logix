@@ -9,15 +9,15 @@ import torch
 from logix.utils import get_rank
 
 
-def init_config_from_yaml(config_path: str, project: Optional[str] = None):
+def init_config_from_yaml(project: str, logix_config: str):
     config_dict = {}
-    if os.path.exists(config_path):
-        with open(config_path, "r", encoding="utf-8") as config_file:
+    if logix_config is not None:
+        assert os.path.exists(logix_config), f"{logix_config} doesn't exist!"
+        with open(logix_config, "r", encoding="utf-8") as config_file:
             config_dict = yaml.safe_load(config_file)
 
-    if project is not None:
-        config_dict["project"] = project
-    assert "project" in config_dict, "Project name must be provided."
+    assert project is not None
+    config_dict["project"] = project
 
     return Config(**config_dict)
 
@@ -139,9 +139,6 @@ class Config:
     logging: Union[Dict[str, Any], LoggingConfig] = field(
         default_factory=LoggingConfig, metadata={"help": "Logging configuration."}
     )
-    influence: Union[Dict[str, Any], InfluenceConfig] = field(
-        default_factory=InfluenceConfig, metadata={"help": "Influence configuration."}
-    )
     lora: Union[Dict[str, Any], LoRAConfig] = field(
         default_factory=LoRAConfig, metadata={"help": "LoRA configuration."}
     )
@@ -149,8 +146,6 @@ class Config:
     def __post_init__(self):
         if isinstance(self.logging, dict):
             self.logging = LoggingConfig(**self.logging)
-        if isinstance(self.influence, dict):
-            self.influence = InfluenceConfig(**self.influence)
         if isinstance(self.lora, dict):
             self.lora = LoRAConfig(**self.lora)
 
@@ -162,23 +157,21 @@ class Config:
         Set single logging directory for all components.
         """
         self.log_dir = os.path.join(self.root_dir, self.project)
+        self.logging.log_dir = self.log_dir
 
         if not os.path.exists(self.log_dir) and get_rank() == 0:
             os.makedirs(self.log_dir)
 
-        self.logging.log_dir = self.log_dir
-        self.influence.log_dir = self.log_dir
-
-    def load_config(self, config_path: str) -> None:
+    def load_config(self, logix_config: str) -> None:
         """
         Load configuration from the saved YAML file.
 
         Args:
-            config_path: Path to the saved YAML file.
+            logix_config: Path to the saved YAML file.
         """
-        assert os.path.exists(config_path), "Configuration file not found."
+        assert os.path.exists(logix_config), "Configuration file not found."
         config_dict = {}
-        with open(config_path, "r", encoding="utf-8") as config_file:
+        with open(logix_config, "r", encoding="utf-8") as config_file:
             config_dict = yaml.safe_load(config_file)
 
         load_config_from_dict(self, config_dict)

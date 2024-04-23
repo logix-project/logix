@@ -15,13 +15,13 @@ from logix.logging.log_loader_utils import (
 
 
 class LogDataset(Dataset):
-    def __init__(self, log_dir, config):
+    def __init__(self, log_dir, flatten):
         self.chunk_indices = None
         self.memmaps = []
 
         self.data_id_to_chunk = OrderedDict()
         self.log_dir = log_dir
-        self.flatten = config.flatten
+        self.flatten = flatten
 
         # Find all chunk indices
         self.chunk_indices = find_chunk_indices(self.log_dir)

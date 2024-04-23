@@ -10,7 +10,7 @@ import torch.nn as nn
 
 from logix.analysis import InfluenceFunction
 from logix.batch_info import BatchInfo
-from logix.config import init_config_from_yaml
+from logix.config import init_config_from_yaml, LoggingConfig, LoRAConfig
 from logix.logging import HookLogger
 from logix.logging.log_loader import LogDataset
 from logix.logging.log_loader_utils import collate_nested_dicts
@@ -49,20 +49,18 @@ class LogIX:
     def __init__(
         self,
         project: str,
-        config: str = "",
+        config: Optional[str] = None,
+        logging_config: Optional[LoggingConfig] = None,
     ) -> None:
         self.project = project
 
         self.model = None
 
         # Config
-        self.config = init_config_from_yaml(config_path=config, project=project)
-        self.logging_config = self.config.logging
-        self.lora_config = self.config.lora
-        self.influence_config = self.config.influence
+        self.config = init_config_from_yaml(project=project, logix_config=config)
+        if logging_config is not None:
+            self.set_logging_config(logging_config)
         self.log_dir = self.config.log_dir
-
-        self.flatten = self.influence_config.flatten
 
         # LogIX state
         self.state = LogIXState()
@@ -70,7 +68,7 @@ class LogIX:
 
         # Initialize logger
         self.logger = HookLogger(
-            config=self.logging_config, state=self.state, binfo=self.binfo
+            config=self.get_logging_config(), state=self.state, binfo=self.binfo
         )
 
         # Log data
@@ -78,9 +76,7 @@ class LogIX:
         self.log_dataloader = None
 
         # Analysis
-        self.influence = InfluenceFunction(
-            config=self.influence_config, state=self.state
-        )
+        self.influence = InfluenceFunction(state=self.state)
 
         self.type_filter = None
         self.name_filter = None
@@ -125,8 +121,11 @@ class LogIX:
             ):
                 self.logger.add_module(name, module)
             elif len(list(module.children())) == 0:
+                # disable gradient compute for non-tracked modules. This will save a
+                # significant amount of GPU memory and compute for large models
                 for p in module.parameters():
                     p.requires_grad = False
+
         module_path, repr_dim = get_repr_dim(self.logger.modules_to_name)
         print_tracked_modules(reduce(lambda x, y: x + y, repr_dim))
         self.state.set_state("model_module", path=module_path, path_dim=repr_dim)
@@ -148,6 +147,9 @@ class LogIX:
         model: Optional[nn.Module] = None,
         watch: bool = True,
         clear: bool = True,
+        type_filter: Optional[List[nn.Module]] = None,
+        name_filter: Optional[List[str]] = None,
+        lora_config: Optional[LoRAConfig] = None,
     ) -> None:
         """
         Adds an LoRA variant for gradient compression. Note that the added LoRA module
@@ -168,16 +170,19 @@ class LogIX:
                 Whether to clear the internal states after adding LoRA. Defaults to
                 `True`.
         """
+        if lora_config is not None:
+            self.set_lora_config(lora_config)
+
         if not hasattr(self, "lora_handler"):
-            self.lora_handler = LoRAHandler(self.lora_config, self.state)
+            self.lora_handler = LoRAHandler(self.get_lora_config(), self.state)
 
         if model is None:
             model = self.model
 
         self.lora_handler.add_lora(
             model=model,
-            type_filter=self.type_filter,
-            name_filter=self.name_filter,
+            type_filter=type_filter or self.type_filter,
+            name_filter=name_filter or self.name_filter,
         )
 
         # Clear state and logger
@@ -241,7 +246,7 @@ class LogIX:
         """
         self.logger.update()
 
-    def build_log_dataset(self) -> torch.utils.data.Dataset:
+    def build_log_dataset(self, flatten: bool = False) -> torch.utils.data.Dataset:
         """
         Constructs the log dataset from the stored logs. This dataset can then be used
         for analysis or visualization.
@@ -251,13 +256,15 @@ class LogIX:
                 An instance of LogDataset containing the logged data.
         """
         if self.log_dataset is None:
-            self.log_dataset = LogDataset(
-                log_dir=self.log_dir, config=self.influence_config
-            )
+            self.log_dataset = LogDataset(log_dir=self.log_dir, flatten=flatten)
         return self.log_dataset
 
     def build_log_dataloader(
-        self, batch_size: int = 16, num_workers: int = 0, pin_memory: bool = False
+        self,
+        batch_size: int = 16,
+        num_workers: int = 0,
+        pin_memory: bool = False,
+        flatten: bool = False,
     ) -> torch.utils.data.DataLoader:
         """
         Constructs a DataLoader for the log dataset. This is useful for batch processing
@@ -268,10 +275,8 @@ class LogIX:
                 A DataLoader instance for the log dataset.
         """
         if self.log_dataloader is None:
-            log_dataset = self.build_log_dataset()
-            collate_fn = None
-            if not self.flatten:
-                collate_fn = collate_nested_dicts
+            log_dataset = self.build_log_dataset(flatten=flatten)
+            collate_fn = None if flatten else collate_nested_dicts
             self.log_dataloader = torch.utils.data.DataLoader(
                 log_dataset,
                 batch_size=batch_size,
@@ -453,3 +458,16 @@ class LogIX:
         """
         self.state.clear()
         self.logger.clear()
+
+    def set_logging_config(self, logging_config: LoggingConfig) -> None:
+        logging_config.log_dir = self.config.log_dir
+        self.config.logging = logging_config
+
+    def set_lora_config(self, lora_config: LoRAConfig) -> None:
+        self.config.lora = lora_config
+
+    def get_logging_config(self) -> LoggingConfig:
+        return self.config.logging
+
+    def get_lora_config(self) -> LoRAConfig:
+        return self.config.lora
