@@ -1,12 +1,7 @@
-storage:
-  type: default
 lora:
   init: random
   rank: 64
-logging_options:
-  use_lora: true
-  use_full_covariance: false
-  sample: false
-  ekfac: false
-other_options:
-  save_gradient: False
+scheduler:
+  lora: random
+  hessian: ekfac
+  save: none

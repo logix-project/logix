@@ -174,3 +174,7 @@ cython_debug/
 !tests/examples/checkpoints/*.pt
 
 files/
+
+# Generated Config files.
+examples/**/*.yaml
+**/config.yaml

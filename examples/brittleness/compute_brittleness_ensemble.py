@@ -13,11 +13,9 @@ from examples.pipeline import (
     get_remove_intervals,
 )
 from examples.utils import save_tensor, set_seed
-from analog import AnaLog
+from logix import LogIX
 
 from examples.compute_utils import get_ensemble_file_name, get_expt_name_by_config
-
-from analog.analog import Config
 
 BASE_PATH = "../files/ensemble_brittleness_results"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -237,7 +235,7 @@ if __name__ == "__main__":
     parser.add_argument("--endIdx", type=int, default=10)
     parser.add_argument("--scoreFileName", type=str)
 
-    parser.add_argument("--data", type=str, default="fmnist")
+    parser.add_argument("--data", type=str, default="cifar10")
     parser.add_argument("--damping", type=float, default=None)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--use_augmented_data", action="store_true")
@@ -251,14 +249,14 @@ if __name__ == "__main__":
         algo_name_lst.append(args.scoreFileName)
         print(f"scoreFileName is set to {args.scoreFileName}, ignore other options")
     else:
-        analog = AnaLog(project="brittleness", config="./config.yaml")
-        scoreFileName = get_expt_name_by_config(analog.config, args)
+        logix = LogIX(project="brittleness", config="./config.yaml")
+        scoreFileName = get_expt_name_by_config(logix.config, args)
         algo_name_lst.append(scoreFileName)
 
     if args.data == "mnist" or args.data == "fmnist":
-        from examples.mnist_influence.train import train
+        from examples.mnist.train import train
     elif args.data == "cifar10":
-        from examples.cifar_influence.train import train
+        from examples.cifar.train import train
     else:
         raise NotImplementedError()
 

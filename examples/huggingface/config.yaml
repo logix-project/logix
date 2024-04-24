@@ -1,6 +1,9 @@
-root_dir: ./analog
+root_dir: ./logix
 logging:
   flush_threshold: 1000000000
+  num_workers: 2
 lora:
   init: random
   rank: 64
+influence:
+  flatten: true

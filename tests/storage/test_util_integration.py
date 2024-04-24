@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import os
 import shutil
-from analog.logging.mmap import MemoryMapHandler
+from logix.logging.mmap import MemoryMapHandler
 
 
 def generate_random_arrays(size=10):
@@ -48,12 +48,11 @@ class TestMemoryMapHandler(unittest.TestCase):
         shutil.rmtree(cls.test_dir)
 
     def test_write_and_read(self):
-        data_buffer = [
-            (i, {"dummy_data": arr}) for i, arr in enumerate(generate_random_arrays())
-        ]
+        rand_arr = generate_random_arrays()
+        data_buffer = [(i, {"dummy_data": arr}) for i, arr in enumerate(rand_arr)]
         filename = "test_data"
-
-        MemoryMapHandler.write(self.test_dir, filename, data_buffer)
+        order = [["dummy_data"]]
+        MemoryMapHandler.write(self.test_dir, filename, data_buffer, order)
 
         mmap = None
         with MemoryMapHandler.read(self.test_dir, filename) as mm:
@@ -64,12 +63,15 @@ class TestMemoryMapHandler(unittest.TestCase):
 
         for item in metadata:
             offset = item["offset"]
-            size = item["size"]
-            shape = tuple(item["shape"])
+            shape = []
+            for path in item["shape"]:
+                shape.append(path)
+            shape = tuple(shape) if len(shape) > 1 else shape[0]
             dtype = np.dtype(item["dtype"])
+            block_size = item["block_size"]
             expected_data = data_buffer[item["data_id"]][1]["dummy_data"]
             read_data = np.frombuffer(
-                mmap, dtype=dtype, count=size // dtype.itemsize, offset=offset
+                mmap, dtype=dtype, count=block_size, offset=offset
             ).reshape(shape)
             # Test if expected value and read value equals
             self.assertTrue(np.array_equal(read_data, expected_data), "Data mismatch")
@@ -78,13 +80,11 @@ class TestMemoryMapHandler(unittest.TestCase):
         expected_files_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "test_mmap_data"
         )
-
+        static_arr = generate_static_arrays()
         filename = "test_data"
-        data_buffer = [
-            (i, {"dummy_data": arr}) for i, arr in enumerate(generate_static_arrays())
-        ]
-
-        MemoryMapHandler.write(expected_files_path, filename, data_buffer)
+        data_buffer = [(i, {"dummy_data": arr}) for i, arr in enumerate(static_arr)]
+        order = [["dummy_data"]]
+        MemoryMapHandler.write(expected_files_path, filename, data_buffer, order)
         mmap = None
         with MemoryMapHandler.read(expected_files_path, filename) as mm:
             mmap = mm
@@ -96,14 +96,17 @@ class TestMemoryMapHandler(unittest.TestCase):
             expected_mmap = mm
         for item in metadata:
             offset = item["offset"]
-            size = item["size"]
-            shape = tuple(item["shape"])
+            shape = []
+            for path in item["shape"]:
+                shape.append(path)
+            shape = tuple(shape) if len(shape) > 1 else shape[0]
             dtype = np.dtype(item["dtype"])
+            block_size = item["block_size"]
             test_data = np.frombuffer(
-                mmap, dtype=dtype, count=size // dtype.itemsize, offset=offset
+                mmap, dtype=dtype, count=block_size, offset=offset
             ).reshape(shape)
             expected_data = np.frombuffer(
-                mmap, dtype=dtype, count=size // dtype.itemsize, offset=offset
+                mmap, dtype=dtype, count=block_size, offset=offset
             ).reshape(shape)
             self.assertTrue(np.allclose(test_data, expected_data), "Data mismatch")
         cleanup(expected_files_path, filename)

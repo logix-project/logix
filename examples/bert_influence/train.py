@@ -25,7 +25,7 @@ os.makedirs("files/checkpoints", exist_ok=True)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 train_loader, _, valid_loader = get_loaders(data_name=args.data_name)
 model, tokenizer = construct_model(data_name=args.data_name)
-model.to(device)
+model = model.to(device)
 
 
 def train(
