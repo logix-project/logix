@@ -17,7 +17,7 @@ from examples.compute_utils import get_ensemble_file_name, get_expt_name_by_conf
 
 parser = argparse.ArgumentParser("CIFAR Influence Analysis")
 parser.add_argument("--data", type=str, default="cifar10")
-parser.add_argument("--damping", type=float, default=1e-10)
+parser.add_argument("--damping", type=float, default=None)
 parser.add_argument("--resume", action="store_true")
 parser.add_argument("--use_augmented_data", action="store_true")
 parser.add_argument("--grad_sim", action="store_true")

@@ -11,12 +11,13 @@ def get_expt_name_by_config(analog_config: Config, argparse_args) -> str:
         expt_name += f"{key}{value}_"
 
     for key, value in analog_config.logging_options.items():
-        expt_name += f"{key}{value}_"
+        if value is not False:
+            expt_name += f"{key}{value}_"
     
     #add addparser args
     argparse_args_excludes = ["data", "resume", "startIdx", "endIdx", "scoreFileName"]
     for key, value in vars(argparse_args).items():
-        if key not in argparse_args_excludes:
+        if key not in argparse_args_excludes and value is not False:
             expt_name += f"{key}{value}_"
 
     return expt_name[:-1]

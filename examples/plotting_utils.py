@@ -88,7 +88,7 @@ def get_color(algo_name: str) -> str:
     elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id_10":
         # yellow
         return "#ff7f00"
-    elif algo_name == "nitrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
+    elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
         return "#6704FD"
     elif algo_name == "initrandom_rank64_use_loraFalse_use_full_covarianceFalse_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
         return "#FF0000"
@@ -98,10 +98,20 @@ def get_color(algo_name: str) -> str:
         return "#a6cee3"
     elif algo_name == "trak_30_model0":
         return "#1f78b4"
-    elif algo_name == "trak_30_model0_epoch25":
-        return "#89f7fe"
+    elif algo_name == "Trak_30_model0_epoch25_our_ckpt":
+        return "#e31a1c"
     elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceFalse_sampleFalse_ekfacTrue_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
         return "#729c9c"
+    elif algo_name == "initrandom_rank64_use_loraTrue_ekfacTrue_damping1e-10_tag_model_id0_logit_lossTrue":
+        return "#b2df8a"
+    elif algo_name == "trak_30_single":
+        return "#1f78b4"
+    elif algo_name == "initrandom_rank64_damping1e-10_tag_model_id0":
+        return "#ff7f00"
+    elif algo_name == "initrandom_rank64_use_loraTrue_ekfacTrue_damping1e-10_tag_model_id0":
+        return "#729c9c"
+    elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_dampingNone_tag_model_id0":
+        return "#e31a1c"
     else:
         return "#000000"
 
@@ -112,15 +122,25 @@ def get_name(algo_name: str) -> str:
     elif algo_name == "initrandom_rank64_use_loraFalse_use_full_covarianceFalse_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
         return "noLoraSingle"
     elif algo_name ==  "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
-        return "loraSingleFullCov"
+        return "loraSingleFullCovDamp1e-10"
     elif algo_name == "trak_30_model0":
         return "trakSingle3Epochs"
-    elif algo_name == "trak_30_model0_epoch25":
+    elif algo_name == "Trak_30_model0_epoch25_our_ckpt":
         return "trakSingleLastEpoch"
     elif algo_name == "trak_30":
         return "trakEnsemble"
     elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceFalse_sampleFalse_ekfacTrue_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
         return "loraSingleEkfac"
+    elif algo_name == "initrandom_rank64_use_loraTrue_ekfacTrue_damping1e-10_tag_model_id0_logit_lossTrue":
+        return "logitLoss"
+    elif algo_name == "trak_30_single":
+        return "trakSingle"
+    elif algo_name == "initrandom_rank64_damping1e-10_tag_model_id0":
+        return "noLoraSingle"
+    elif algo_name == "initrandom_rank64_use_loraTrue_ekfacTrue_damping1e-10_tag_model_id0":
+        return "loraSingleEkfac"
+    elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_dampingNone_tag_model_id0":
+        return "loraSingleFullCovDampNone"
     else:
         return algo_name
          

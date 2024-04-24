@@ -238,7 +238,7 @@ if __name__ == "__main__":
     parser.add_argument("--scoreFileName", type=str)
 
     parser.add_argument("--data", type=str, default="fmnist")
-    parser.add_argument("--damping", type=float, default=1e-10)
+    parser.add_argument("--damping", type=float, default=None)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--use_augmented_data", action="store_true")
     parser.add_argument("--grad_sim", action="store_true")
