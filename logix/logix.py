@@ -81,6 +81,10 @@ class LogIX:
         self.type_filter = None
         self.name_filter = None
 
+        # Deferred Imports to avoid circular imports
+        from logix.scheduler import LogIXScheduler
+        self.scheduler = LogIXScheduler(self)
+
     def watch(
         self,
         model: nn.Module,
