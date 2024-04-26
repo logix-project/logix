@@ -7,6 +7,9 @@ class LogIXScheduler:
     def __init__(
         self,
         logix: LogIX,
+        lora: str = "none",
+        hesseian: str = "none",
+        save: str = "none",
     ):
         self.logix = logix
 

@@ -1,4 +1,3 @@
-import argparse
 import os.path
 from typing import List, Optional
 
@@ -6,31 +5,38 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from examples.brittleness.pipeline import (
-    construct_model,
-    get_hyperparameters,
-    get_loaders,
-    get_remove_intervals,
-    get_accuracy,
-)
-from examples.utils import save_tensor, set_seed
-from logix import LogIX
+from experiments.glue.pipeline import construct_model, get_hyperparameters, get_loaders
+from experiments.glue.scripts.train import train
+from experiments.utils import save_tensor, set_seed
 
-from examples.compute_utils import get_ensemble_file_name, get_expt_name_by_config
-
-BASE_PATH = "../files/ensemble_brittleness_results"
+BASE_PATH = "../files/brittleness_results"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"DEVICE: {DEVICE}")
+
+
+def get_accuracy(model: nn.Module, loader: torch.utils.data.DataLoader) -> torch.Tensor:
+    model.eval()
+    with torch.no_grad():
+        acc_lst = []
+        for batch in loader:
+            outputs = model(
+                batch["input_ids"].to(device=DEVICE),
+                batch["token_type_ids"].to(device=DEVICE),
+                batch["attention_mask"].to(device=DEVICE),
+            )
+            labels = batch["labels"].to(device=DEVICE)
+            accs = (outputs.argmax(-1) == labels).float().cpu()
+            acc_lst.append(accs)
+        all_accs = torch.cat(acc_lst)
+    return all_accs
 
 
 def train_with_indices(
     data_name: str, model_id: int, idxs_to_keep: Optional[List[int]] = None
 ) -> nn.Module:
     hyper_dict = get_hyperparameters(data_name)
-    print(hyper_dict)
     lr = hyper_dict["lr"]
     wd = hyper_dict["wd"]
-    epochs = int(hyper_dict["epochs"])
 
     if idxs_to_keep is None:
         train_loader, _, _ = get_loaders(data_name=data_name)
@@ -40,9 +46,12 @@ def train_with_indices(
             train_indices=idxs_to_keep,
         )
     set_seed(model_id + 1234)
-    model = construct_model(name=data_name).to(device=DEVICE)
+    model = construct_model(data_name=data_name).to(device=DEVICE)
     model = train(
-        model=model, loader=train_loader, lr=lr, weight_decay=wd, epochs=epochs
+        model=model,
+        loader=train_loader,
+        lr=lr,
+        weight_decay=wd,
     )
     return model
 
@@ -71,7 +80,7 @@ def train_with_configurations(
             model = train_with_indices(
                 data_name=data_name, idxs_to_keep=idxs_to_keep, model_id=seed
             )
-            valid_results = get_accuracy(data_name, model, valid_loader)
+            valid_results = get_accuracy(model, valid_loader)
             valid_acc_lst.append(valid_results[mask].sum())
             raw_valid_acc_lst.append(valid_results)
 
@@ -92,7 +101,7 @@ def get_file_name(expt_name: str, data_name: str) -> str:
     return f"{BASE_PATH}/data_{data_name}/{expt_name}.pt"
 
 
-def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
+def main(data_name: str, algo_name_lst: List[str], model_id: int) -> None:
     os.makedirs(BASE_PATH, exist_ok=True)
     os.makedirs(f"{BASE_PATH}/data_{data_name.lower()}/", exist_ok=True)
 
@@ -104,7 +113,9 @@ def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
     num_train = len(eval_train_loader.dataset)
 
     seed_ids = list(range(3))
-    remove_intervals = get_remove_intervals(data_name)
+    # remove_intervals = [200, 400, 600, 800, 1000, 1200]
+    remove_intervals = [20, 40, 60, 80, 100, 120]
+
     expt_name = "base"
     file_name = get_file_name(expt_name=expt_name, data_name=data_name.lower())
     if os.path.exists(file_name):
@@ -117,7 +128,7 @@ def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
             model = train_with_indices(
                 data_name=data_name.lower(), idxs_to_keep=None, model_id=seed
             )
-            valid_results = get_accuracy(data_name, model, valid_loader)
+            valid_results = get_accuracy(model, valid_loader)
             valid_acc_lst.append(valid_results.sum())
             valid_raw_acc_lst.append(valid_results)
 
@@ -131,17 +142,16 @@ def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
         }
         save_tensor(tensor=base_results, file_name=file_name, overwrite=False)
     mask = base_results["mask"]
-    print(mask)
+    print(mask.sum())
 
     expt_name = "random"
     print(expt_name)
     file_name = get_file_name(expt_name=expt_name, data_name=data_name.lower())
-    file_name = f"{file_name[:-3]}_{startIdx}_{endIdx}.pt"
     if os.path.exists(file_name):
         print(f"Found existing results at {file_name}.")
     else:
         total_success_lst = []
-        for i in range(startIdx, endIdx):
+        for i in range(valid_target_num):
             print(f"{i}th validation data point.")
             if mask[i]:
                 random_idxs = list(np.random.permutation(list(range(num_train))))
@@ -168,30 +178,26 @@ def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
         print(algo_name)
         expt_name = algo_name
         file_name = get_file_name(expt_name=expt_name, data_name=data_name.lower())
-        file_name = f"{file_name[:-3]}_{startIdx}_{endIdx}.pt"
         if os.path.exists(file_name):
             print(f"Found existing results at {file_name}.")
         else:
             if "prototype" in algo_name:
-                # algo_scores = torch.load(
-                #     f"../files/prototype_results/data_{data_name.lower()}/model_{model_id}/{algo_name}.pt",
-                #     map_location="cpu",
-                # )
-                raise NotImplementedError()
-            elif "unif" in algo_name:
-                # algo_scores = torch.load(
-                #     f"../files/unif_results/data_{data_name.lower()}/model_{model_id}/{algo_name}.pt",
-                #     map_location="cpu",
-                # )
-                raise NotImplementedError()
-            else:
-                ensemble_alpha = "0.5" if "trak" in algo_name else "0.0"
                 algo_scores = torch.load(
-                    f"../files/ensemble_results/data_{data_name}/alpha_{ensemble_alpha}/{algo_name}.pt",
+                    f"../files/prototype_results/data_{data_name.lower()}/model_{model_id}/{algo_name}.pt",
+                    map_location="cpu",
+                )
+            elif "unif" in algo_name:
+                algo_scores = torch.load(
+                    f"../files/unif_results/data_{data_name.lower()}/model_{model_id}/{algo_name}.pt",
+                    map_location="cpu",
+                )
+            else:
+                algo_scores = torch.load(
+                    f"../files/results/data_{data_name.lower()}/model_{model_id}/{algo_name}.pt",
                     map_location="cpu",
                 )
             total_success_lst = []
-            for i in range(startIdx, endIdx):
+            for i in range(valid_target_num):
                 print(f"{i}th validation data point.")
                 if mask[i]:
                     top_idxs = torch.argsort(algo_scores[i], descending=True)
@@ -218,41 +224,14 @@ def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser("CIFAR Influence Analysis")
-    parser.add_argument("--startIdx", type=int, default=0)
-    parser.add_argument("--endIdx", type=int, default=10)
-    parser.add_argument("--scoreFileName", type=str)
-
-    parser.add_argument("--data", type=str, default="cifar10")
-    parser.add_argument("--damping", type=float, default=None)
-    parser.add_argument("--resume", action="store_true")
-    parser.add_argument("--use_augmented_data", action="store_true")
-    parser.add_argument("--grad_sim", action="store_true")
-    parser.add_argument("--tag", type=str, default="")
-    parser.add_argument("--model_id", type=int, default=0, help="10 for 10 ensemble models, 0-9 for single model")
-
-    algo_name_lst = []
-    args = parser.parse_args()
-    if args.scoreFileName is not None:
-        algo_name_lst.append(args.scoreFileName)
-        print(f"scoreFileName is set to {args.scoreFileName}, ignore other options")
-    else:
-        logix = LogIX(project="brittleness", config="./config.yaml")
-        scoreFileName = get_expt_name_by_config(logix.config, args)
-        algo_name_lst.append(scoreFileName)
-
-    if args.data == "mnist" or args.data == "fmnist":
-        from examples.mnist.train import train
-    elif args.data == "cifar10":
-        from examples.cifar.train import train
-    elif args.data == "rte":
-        from examples.glue.scripts.rte_train import train
-    else:
-        raise NotImplementedError()
-
-    main(
-        data_name=args.data,
-        algo_name_lst=algo_name_lst,
-        startIdx=args.startIdx,
-        endIdx=args.endIdx,
-    )
+    algo_name_lst = [
+        # "representation_similarity_dot",
+        # "tracin_dot",
+        # "tracin_cos",
+        "trak",
+        # "if_d1e-08",
+        # "unif_average",
+        "unif_segment",
+    ]
+    main(data_name="rte", algo_name_lst=algo_name_lst, model_id=0)
+    # main(data_name="qnli", algo_name_lst=algo_name_lst, model_id=0)

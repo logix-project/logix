@@ -9,11 +9,11 @@ def get_ensemble_file_name(
 def get_expt_name_by_config(logix_config: Config, argparse_args) -> str:
     expt_name = ""
     for key, value in asdict(logix_config.lora).items():
-        if value is not False and value is not None:
+        if value is not False and value is not None and value != 'none':
             expt_name += f"{key}{value}_"
 
     for key, value in asdict(logix_config.scheduler).items():
-        if value is not False and value is not None:
+        if value is not False and value is not None and value != 'none':
             expt_name += f"{key}{value}_"
     
     #add addparser args

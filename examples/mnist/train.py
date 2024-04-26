@@ -22,7 +22,7 @@ import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
 from torch.optim import SGD
 
-from examples.pipeline import construct_model, get_hyperparameters, get_loaders
+from examples.brittleness.pipeline import construct_model, get_hyperparameters, get_loaders
 from examples.utils import clear_gpu_cache, save_tensor, set_seed
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")

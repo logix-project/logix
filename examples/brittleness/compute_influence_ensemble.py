@@ -9,7 +9,7 @@ import copy
 from logix import LogIX, LogIXScheduler
 from logix.utils import DataIDGenerator
 from logix.analysis import InfluenceFunction
-from examples.pipeline import construct_model, get_hyperparameters, get_loaders, get_eval_train_loader_with_aug
+from examples.brittleness.pipeline import construct_model, get_hyperparameters, get_loaders, get_eval_train_loader_with_aug
 
 from tqdm import tqdm
 
@@ -133,4 +133,4 @@ else:
         if_scores_total.append(if_score['influence'])
     if_scores = torch.cat(if_scores_total, dim=-1)
 
-cutorch.save(if_scores, file_name)
+torch.save(if_scores, file_name)
