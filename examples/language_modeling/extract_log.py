@@ -26,12 +26,15 @@ def main():
         default="/data/tir/projects/tir3/users/sangkeuc/huggingface",
     )
     parser.add_argument("--model_name", type=str, default="gpt2")
+    parser.add_argument("--data_path", type=str, default="wikitext")
+    parser.add_argument("--data_name", type=str, default=None)
     parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--hessian", type=str, default="kfac")
+    parser.add_argument("--hessian", type=str, default="raw")
     parser.add_argument("--lora", type=str, default="random")
     parser.add_argument("--save", type=str, default="grad")
     parser.add_argument("--mlp_only", action="store_true")
     args = parser.parse_args()
+    print(args)
 
     set_seed(0)
     accelerator = Accelerator()
@@ -41,6 +44,8 @@ def main():
     tokenizer = get_tokenizer(model_name=args.model_name, cache_dir=args.cache_dir)
     data_loader = get_loader(
         model_name=args.model_name,
+        data_path=args.data_path,
+        data_name=args.data_name,
         tokenizer=tokenizer,
         batch_size=args.batch_size,
         cache_dir=args.cache_dir,

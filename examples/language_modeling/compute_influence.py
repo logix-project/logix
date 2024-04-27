@@ -30,23 +30,35 @@ def main():
         type=str,
         default="/data/tir/projects/tir3/users/sangkeuc/gpt/results",
     )
-    parser.add_argument("--model_name", type=str, default="gpt2")
-    parser.add_argument("--hessian", type=str, default="kfac")
-    parser.add_argument("--lora", type=str, default="random")
-    parser.add_argument("--split", type=str, default="valid")
-    parser.add_argument("--mlp_only", action="store_true")
+    parser.add_argument("--model_name", type=str, default="gpt2-xl")
+    parser.add_argument("--data_path", type=str, default="wikitext")
+    parser.add_argument("--data_name", type=str, default=None)
     parser.add_argument("--batch_size", type=int, default=1)
+    parser.add_argument("--hessian", type=str, default="raw")
+    parser.add_argument("--lora", type=str, default="random")
+    parser.add_argument("--split", type=str, default="train")
+    parser.add_argument("--mlp_only", action="store_true")
+    parser.add_argument("--layerwise", action="store_true")
     parser.add_argument("--damping", type=float, default=1e-5)
     args = parser.parse_args()
 
     set_seed(0)
     accelerator = Accelerator()
+    influence_groups = None
+    if args.layerwise:
+        layer_id = "h" if args.model_name == "gpt2-xl" else "layers"
+        layer_num = 48 if args.model_name == "gpt2-xl" else 32
+    influence_groups = [f".{layer_id}.{i}." for i in range(layer_num)]
 
     # prepare model & data loader
     model = get_model(model_name=args.model_name, cache_dir=args.cache_dir)
-    tokenizer = get_tokenizer(model_name=args.model_name, cache_dir=args.cache_dir)
+    tokenizer = get_tokenizer(
+        model_name=args.model_name, cache_dir=args.cache_dir, add_padding_token=True
+    )
     data_loader = get_loader(
         model_name=args.model_name,
+        data_path=args.data_path,
+        data_name=args.data_name,
         tokenizer=tokenizer,
         batch_size=args.batch_size,
         cache_dir=args.cache_dir,
@@ -91,9 +103,11 @@ def main():
         test_log = logix.get_log()
         merged_test_logs.append(copy.deepcopy(test_log))
 
-        if idx == 7 or idx == len(data_loader) - 1:
+        if idx == 12 or idx == len(data_loader) - 1:
             merged_test_log = merge_logs(merged_test_logs)
-            result = run.influence.compute_influence_all(merged_test_log, log_loader)
+            result = run.influence.compute_influence_all(
+                merged_test_log, log_loader, influence_groups=influence_groups
+            )
             merged_test_logs = []
             break
 
@@ -104,8 +118,8 @@ def main():
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     torch.save(result["influence"], os.path.join(save_dir, "scores.pt"))
-    torch.save(result["src_ids"], os.path.join(save_dir, "train_ids.pt"))
-    torch.save(result["tgt_ids"], os.path.join(save_dir, "test_ids.pt"))
+    torch.save(result["src_ids"], os.path.join(save_dir, "test_ids.pt"))
+    torch.save(result["tgt_ids"], os.path.join(save_dir, "train_ids.pt"))
 
 
 if __name__ == "__main__":
