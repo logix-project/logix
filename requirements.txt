@@ -1,7 +1,6 @@
 numpy
-pandas
-torch
 einops
-
 pyyaml
+torch
+tqdm
 

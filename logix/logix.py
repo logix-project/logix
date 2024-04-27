@@ -2,8 +2,10 @@ import os
 
 from typing import Optional, Iterable, Dict, Any, List, Union
 from dataclasses import asdict
-import yaml
 from functools import reduce
+from copy import deepcopy
+
+import yaml
 
 import torch
 import torch.nn as nn
@@ -287,14 +289,15 @@ class LogIX:
             )
         return self.log_dataloader
 
-    def get_log(self) -> Dict[str, Dict[str, torch.Tensor]]:
+    def get_log(self, copy=False) -> Dict[str, Dict[str, torch.Tensor]]:
         """
         Returns the current log, including data identifiers and logged information.
 
         Returns:
             dict: The current log.
         """
-        return self.binfo.data_id, self.binfo.log
+        log = (self.binfo.data_id, self.binfo.log)
+        return log if not copy else deepcopy(log)
 
     def get_covariance_state(self) -> Dict[str, Dict[str, torch.Tensor]]:
         """
