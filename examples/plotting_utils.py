@@ -112,35 +112,43 @@ def get_color(algo_name: str) -> str:
         return "#729c9c"
     elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_dampingNone_tag_model_id0":
         return "#e31a1c"
+    elif algo_name == "initrandom_rank64_lorarandom_hessianekfac_damping1e-10_tag_model_id0":
+        return "#FF0000"
+    elif algo_name == "initpca_rank64_lorapca_hessianekfac_damping1e-10_tag_model_id0":
+        return "#a2ff00"
     else:
         return "#000000"
 
 
 def get_name(algo_name: str) -> str:
     if algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id_10":
-        return "loraEnsembleFullCov"
+        return "loraFullCovDamp1e-10 (ensemble)"
     elif algo_name == "initrandom_rank64_use_loraFalse_use_full_covarianceFalse_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
-        return "noLoraSingle"
+        return "noLora"
     elif algo_name ==  "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
-        return "loraSingleFullCovDamp1e-10"
+        return "loraFullCovDamp1e-10"
     elif algo_name == "trak_30_model0":
-        return "trakSingle3Epochs"
+        return "trak3Epochs"
     elif algo_name == "Trak_30_model0_epoch25_our_ckpt":
-        return "trakSingleLastEpoch"
+        return "trak"
     elif algo_name == "trak_30":
         return "trakEnsemble"
     elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceFalse_sampleFalse_ekfacTrue_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
-        return "loraSingleEkfac"
+        return "loraEkfac"
     elif algo_name == "initrandom_rank64_use_loraTrue_ekfacTrue_damping1e-10_tag_model_id0_logit_lossTrue":
         return "logitLoss"
-    elif algo_name == "trak_30_single":
-        return "trakSingle"
+    elif algo_name == "trak_30":
+        return "trak"
     elif algo_name == "initrandom_rank64_damping1e-10_tag_model_id0":
-        return "noLoraSingle"
+        return "noLora"
     elif algo_name == "initrandom_rank64_use_loraTrue_ekfacTrue_damping1e-10_tag_model_id0":
-        return "loraSingleEkfac"
+        return "loraEkfac"
     elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_dampingNone_tag_model_id0":
-        return "loraSingleFullCovDampNone"
+        return "loraFullCovDampNone"
+    elif algo_name == "initrandom_rank64_lorarandom_hessianekfac_damping1e-10_tag_model_id0":
+        return "loraEkfac"
+    elif algo_name == "initpca_rank64_lorapca_hessianekfac_damping1e-10_tag_model_id0":
+        return "loraPca"
     else:
         return algo_name
          

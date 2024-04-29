@@ -29,14 +29,14 @@ class SequenceClassificationModel(nn.Module):
     def __init__(self, data_name: str) -> None:
         super().__init__()
         self.config = AutoConfig.from_pretrained(
-            "bert-base-cased",
+            "roberta-base",
             num_labels=2,
             finetuning_task=data_name,
             trust_remote_code=True,
         )
 
         self.model = AutoModelForSequenceClassification.from_pretrained(
-            "bert-base-cased",
+            "roberta-base",
             from_tf=False,
             config=self.config,
             ignore_mismatched_sizes=False,
@@ -73,7 +73,7 @@ def get_hyperparameters(data_name: str) -> Dict[str, float]:
         wd = 0.01
     else:
         raise NotImplementedError()
-    return {"lr": lr, "wd": wd, "epochs": 3}
+    return {"lr": lr, "wd": wd, "epochs": 4}
 
 
 def get_loaders(
@@ -133,7 +133,7 @@ def get_dataloader(
     assert num_labels == 2
 
     tokenizer = AutoTokenizer.from_pretrained(
-        "bert-base-cased", use_fast=True, trust_remote_code=True
+        "roberta-base", use_fast=True, trust_remote_code=True
     )
 
     sentence1_key, sentence2_key = GLUE_TASK_TO_KEYS[data_name]
@@ -149,7 +149,7 @@ def get_dataloader(
             else (examples[sentence1_key], examples[sentence2_key])
         )
         result = tokenizer(
-            *texts, padding=padding, max_length=max_seq_length, truncation=True
+            *texts, padding=padding, max_length=max_seq_length, truncation=True, return_token_type_ids=True
         )
         if "label" in examples:
             result["labels"] = examples["label"]

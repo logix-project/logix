@@ -103,7 +103,7 @@ def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
     )
     num_train = len(eval_train_loader.dataset)
 
-    seed_ids = list(range(3))
+    seed_ids = list(range(5))
     remove_intervals = get_remove_intervals(data_name)
     expt_name = "base"
     file_name = get_file_name(expt_name=expt_name, data_name=data_name.lower())

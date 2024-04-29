@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=if
-#SBATCH --output=train_log/myjob2_%a.out
-#SBATCH --error=train_log/myjob2_%a.err
+#SBATCH --output=train_log/myjob_%a.out
+#SBATCH --error=train_log/myjob_%a.err
 #SBATCH --partition=general
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -32,14 +32,14 @@ run_command() {
 
 # run_command python compute_influence_ensemble.py \
 # --model_id $SLURM_ARRAY_TASK_ID \
-# --data fmnist \
+# --data cifar10 \
 
 run_command python compute_brittleness_ensemble.py \
 --startIdx $(($SLURM_ARRAY_TASK_ID*10)) \
 --endIdx $(($SLURM_ARRAY_TASK_ID*10+10)) \
 --model_id 0 \
---data fmnist \
+--data rte \
 --damping 1e-10 \
---scoreFileName "trak_30_single"
+--scoreFileName "Trak"
 
 #they should have same args, if score file name automatically generated.

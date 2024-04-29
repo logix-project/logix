@@ -48,7 +48,7 @@ class LoraLinear(nn.Module):
         (
             top_r_singular_vector_forward,
             top_r_singular_value_forward,
-        ) = compute_top_k_singular_vectors(covariance[FORWARD], self.rank_forward)
+        ) = compute_top_k_singular_vectors(covariance[FORWARD], self.rank)
         (
             top_r_singular_vector_backward,
             top_r_singular_value_backward,
@@ -109,7 +109,7 @@ class LoraConv2d(nn.Module):
         (
             top_r_singular_vector_forward,
             top_r_singular_value_forward,
-        ) = compute_top_k_singular_vectors(covariance[FORWARD], self.rank_forward)
+        ) = compute_top_k_singular_vectors(covariance[FORWARD], self.rank)
         (
             top_r_singular_vector_backward,
             top_r_singular_value_backward,
