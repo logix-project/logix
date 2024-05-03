@@ -20,7 +20,6 @@ parser.add_argument("--data", type=str, default="cifar10")
 parser.add_argument("--damping", type=float, default=None)
 parser.add_argument("--resume", action="store_true")
 parser.add_argument("--use_augmented_data", action="store_true")
-parser.add_argument("--grad_sim", action="store_true")
 parser.add_argument("--tag", type=str, default="")
 parser.add_argument("--model_id", type=int, default=0)
 args = parser.parse_args()
@@ -59,7 +58,7 @@ file_name = get_ensemble_file_name(
 )
 if os.path.exists(file_name):
     print("File already exists")
-    exit()
+    # exit()
 else:
     print(f"File to save: {file_name}")
 # Gradient & Hessian logging
@@ -119,7 +118,7 @@ if logix.config.scheduler.save == "none":
             train_log = logix.get_log()
         if_score = logix.influence.compute_influence(
             test_log, train_log, damping=args.damping,
-            precondition = args.grad_sim
+            precondition=logix.config.scheduler.hessian != "none"
         )
         if_scores_total.append(if_score['influence'])
     if_scores = torch.cat(if_scores_total, dim=-1)
@@ -128,7 +127,7 @@ else:
     for train_log in tqdm(log_loader):
         if_score = logix.influence.compute_influence(
             test_log, train_log, damping=args.damping,
-            precondition = args.grad_sim
+            precondition=logix.config.scheduler.hessian != "none"
         )
         if_scores_total.append(if_score['influence'])
     if_scores = torch.cat(if_scores_total, dim=-1)

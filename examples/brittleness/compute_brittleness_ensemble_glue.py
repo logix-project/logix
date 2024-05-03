@@ -96,7 +96,7 @@ def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
     os.makedirs(BASE_PATH, exist_ok=True)
     os.makedirs(f"{BASE_PATH}/data_{data_name.lower()}/", exist_ok=True)
 
-    valid_target_num = 100
+    valid_target_num = 200
     _, eval_train_loader, valid_loader = get_loaders(
         data_name=data_name.lower(),
         valid_indices=list(range(valid_target_num)),
@@ -125,9 +125,9 @@ def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
             "mean": torch.mean(torch.stack(valid_acc_lst)).item(),
             "std": torch.std(torch.stack(valid_acc_lst)).item(),
             "div_factor": torch.from_numpy(
-                (np.array(valid_raw_acc_lst).mean(0) >= 0.5)
+                (np.array(valid_raw_acc_lst).mean(0) >= 1.0)
             ).sum(),
-            "mask": torch.from_numpy((np.array(valid_raw_acc_lst).mean(0) >= 0.5)),
+            "mask": torch.from_numpy((np.array(valid_raw_acc_lst).mean(0) >= 1.0)),
         }
         save_tensor(tensor=base_results, file_name=file_name, overwrite=False)
     mask = base_results["mask"]
@@ -217,6 +217,7 @@ def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
 
                     while len(success_lst) < len(remove_intervals):
                         success_lst.append(1)
+
                     total_success_lst.append(success_lst)
             results = {"results": total_success_lst}
             save_tensor(tensor=results, file_name=file_name, overwrite=False)
@@ -225,10 +226,10 @@ def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("CIFAR Influence Analysis")
     parser.add_argument("--startIdx", type=int, default=0)
-    parser.add_argument("--endIdx", type=int, default=10)
+    parser.add_argument("--endIdx", type=int, default=20)
     parser.add_argument("--scoreFileName", type=str)
 
-    parser.add_argument("--data", type=str, default="fmnist")
+    parser.add_argument("--data", type=str, default="rte")
     parser.add_argument("--damping", type=float, default=None)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--use_augmented_data", action="store_true")

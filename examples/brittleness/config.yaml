@@ -1,7 +1,7 @@
 lora:
-  init: random
+  init: none
   rank: 64
 scheduler:
-  lora: random
-  hessian: ekfac
+  lora: none
+  hessian: none
   save: none
