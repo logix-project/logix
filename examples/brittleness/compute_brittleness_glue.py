@@ -136,8 +136,8 @@ def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
     expt_name = "random"
     print(expt_name)
     file_name = get_file_name(expt_name=expt_name, data_name=data_name.lower())
-    file_name = f"{file_name[:-3]}_{startIdx}_{endIdx}.pt"
-    if os.path.exists(file_name):
+    partial_file_name = f"{file_name[:-3]}_{startIdx}_{endIdx}.pt"
+    if os.path.exists(file_name) or os.path.exists(partial_file_name):
         print(f"Found existing results at {file_name}.")
     else:
         total_success_lst = []

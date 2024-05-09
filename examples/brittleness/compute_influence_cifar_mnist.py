@@ -58,7 +58,7 @@ file_name = get_ensemble_file_name(
 )
 if os.path.exists(file_name):
     print("File already exists")
-    # exit()
+    exit()
 else:
     print(f"File to save: {file_name}")
 # Gradient & Hessian logging

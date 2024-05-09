@@ -94,8 +94,8 @@ def get_color(algo_name: str) -> str:
         return "#FF0000"
     elif algo_name == "initrandom_rank64_use_loraTrue_use_full_covarianceTrue_sampleFalse_ekfacFalse_damping1e-10_use_augmented_dataFalse_grad_simFalse_tag_model_id0":
         return "#00FF00"
-    elif algo_name == "trak_30":
-        return "#a6cee3"
+    elif algo_name == "trak_30" or algo_name == "TrakRobertaV2":
+        return "#1f78b4"
     elif algo_name == "trak_30_model0":
         return "#1f78b4"
     elif algo_name == "Trak_30_model0_epoch25_our_ckpt":
@@ -116,6 +116,8 @@ def get_color(algo_name: str) -> str:
         return "#FF0000"
     elif algo_name == "initpca_rank64_lorapca_hessianekfac_damping1e-10_tag_model_id0":
         return "#a2ff00"
+    elif algo_name == "rank64_damping1e-10_tag_model_id0":
+        return "#cc6699"
     else:
         return "#000000"
 
@@ -137,8 +139,8 @@ def get_name(algo_name: str) -> str:
         return "loraEkfac"
     elif algo_name == "initrandom_rank64_use_loraTrue_ekfacTrue_damping1e-10_tag_model_id0_logit_lossTrue":
         return "logitLoss"
-    elif algo_name == "trak_30":
-        return "trak"
+    elif algo_name == "TrakRobertaV2":
+        return "trakV2"
     elif algo_name == "initrandom_rank64_damping1e-10_tag_model_id0":
         return "noLora"
     elif algo_name == "initrandom_rank64_use_loraTrue_ekfacTrue_damping1e-10_tag_model_id0":
@@ -149,6 +151,8 @@ def get_name(algo_name: str) -> str:
         return "loraEkfac"
     elif algo_name == "initpca_rank64_lorapca_hessianekfac_damping1e-10_tag_model_id0":
         return "loraPca"
+    elif algo_name == "rank64_damping1e-10_tag_model_id0":
+        return "gradSim"
     else:
         return algo_name
          
