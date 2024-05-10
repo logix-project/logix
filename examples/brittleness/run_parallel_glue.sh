@@ -11,7 +11,7 @@ sbatch <<EOT
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:A6000:1
 #SBATCH --time=24:00:00
 #SBATCH --mem=4G
 #SBATCH --array=0-$(($NUM_GPUS-1))
@@ -48,7 +48,6 @@ run_command python compute_brittleness_glue.py \
 --endIdx \$((\$SLURM_ARRAY_TASK_ID == $(($NUM_GPUS-1)) ? $(($TOTAL_INDICES - 1)) : (\$SLURM_ARRAY_TASK_ID + 1) * \$INDICES_PER_TASK - 1)) \
 --model_id 0 \
 --data rte \
---damping 1e-10 \
---scoreFileName "TrakRobertaV2"
+# --damping 1e-10 \
 
 EOT

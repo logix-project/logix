@@ -27,6 +27,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BASE_PATH = "../files/ensemble_results"
 
 alpha = 0.0
+TEST_SAMPLE = 200
 data_name = args.data
 os.makedirs(BASE_PATH, exist_ok=True)
 os.makedirs(f"{BASE_PATH}/data_{data_name}/", exist_ok=True)
@@ -45,7 +46,7 @@ model.eval()
 
 _, eval_train_loader ,valid_loader = get_loaders(
     data_name=data_name,
-    eval_batch_size = 200, # use 200 valid samples
+    eval_batch_size = 16, # use 200 valid samples
 )
 
 # Set-up LogIX
@@ -93,65 +94,72 @@ if not args.resume:
 else:
     logix.initialize_from_log()
 
+
+if_scores_total_test = []
+test_processed = 0
+for test_batch in valid_loader:
     # Influence Analysis
-print("logix finalized on train set\n")
-query_iter = iter(valid_loader)
-test_batch = next(query_iter)
-test_id = tokenizer.batch_decode(test_batch["input_ids"])
-logix.eval()
+    if test_processed > 200:
+        break
+    print("logix finalized on train set\n")
+    test_id = tokenizer.batch_decode(test_batch["input_ids"])
+    logix.eval()
 
-with run(data_id=test_id):
-    model.zero_grad()
-    test_out = model(
-        test_batch["input_ids"].to(device=DEVICE),
-        test_batch["token_type_ids"].to(device=DEVICE),
-        test_batch["attention_mask"].to(device=DEVICE),
-    )
-    test_target = test_batch["labels"].to(device=DEVICE)
-    test_loss = torch.nn.functional.cross_entropy(
-        test_out, test_target, reduction="sum"
-    )
-    test_loss.backward()
-    test_log = copy.deepcopy(logix.get_log())
-
-_, eval_train_loader ,_ = get_loaders(
-    data_name=data_name,
-    eval_batch_size = 16,
-)
-if_scores_total = []
-
-if run.config.scheduler.save == "none":
-    for batch in tqdm(eval_train_loader):
-        # Determine if this is an RTE task and generate the data_id accordingly.
-        data_id = tokenizer.batch_decode(batch["input_ids"])
-        labels = batch.pop("labels").view(-1).to(device=DEVICE)
-        mask = batch["attention_mask"].to(device=DEVICE)
-        # For RTE, we also need token_type_ids.
-        token_type_ids = batch["token_type_ids"].to(device=DEVICE)
-        input_ids = batch["input_ids"].to(device=DEVICE)
-
-        with run(data_id=data_id):
-            model.zero_grad()
-            outs = model(input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=mask)
-            loss = torch.nn.functional.cross_entropy(outs, labels, reduction="sum")
-            loss.backward()
-            train_log = run.get_log()
-            
-        # Compute influence.
-        if_score = run.influence.compute_influence(
-            test_log, train_log, damping=args.damping,
-            precondition = run.config.scheduler.hessian != "none"
+    with run(data_id=test_id):
+        model.zero_grad()
+        test_out = model(
+            test_batch["input_ids"].to(device=DEVICE),
+            test_batch["token_type_ids"].to(device=DEVICE),
+            test_batch["attention_mask"].to(device=DEVICE),
         )
-        if_scores_total.append(if_score['influence'])
-    if_scores = torch.cat(if_scores_total, dim=-1)
-else:
-    log_loader = run.build_log_dataloader()
-    for train_log in tqdm(log_loader):
-        if_score = run.influence.compute_influence(
-            test_log, train_log, damping=args.damping,
-            precondition = run.config.scheduler.hessian != "none"
+        test_target = test_batch["labels"].to(device=DEVICE)
+        test_loss = torch.nn.functional.cross_entropy(
+            test_out, test_target, reduction="sum"
         )
-        if_scores_total.append(if_score['influence'])
-    if_scores = torch.cat(if_scores_total, dim=-1)
+        test_loss.backward()
+        test_log = copy.deepcopy(logix.get_log())
 
-torch.save(if_scores, file_name)
+    _, eval_train_loader ,_ = get_loaders(
+        data_name=data_name,
+        eval_batch_size = 16,
+    )
+    if_scores_total_train = []
+
+    if run.config.scheduler.save == "none":
+        for batch in tqdm(eval_train_loader):
+            # Determine if this is an RTE task and generate the data_id accordingly.
+            data_id = tokenizer.batch_decode(batch["input_ids"])
+            labels = batch.pop("labels").view(-1).to(device=DEVICE)
+            mask = batch["attention_mask"].to(device=DEVICE)
+            # For RTE, we also need token_type_ids.
+            token_type_ids = batch["token_type_ids"].to(device=DEVICE)
+            input_ids = batch["input_ids"].to(device=DEVICE)
+
+            with run(data_id=data_id):
+                model.zero_grad()
+                outs = model(input_ids=input_ids, token_type_ids=token_type_ids, attention_mask=mask)
+                loss = torch.nn.functional.cross_entropy(outs, labels, reduction="sum")
+                loss.backward()
+                train_log = run.get_log()
+                
+            # Compute influence.
+            if_score = run.influence.compute_influence(
+                test_log, train_log, damping=args.damping,
+                precondition = run.config.scheduler.hessian != "none"
+            )
+            if_scores_total_train.append(if_score['influence'])
+        if_scores = torch.cat(if_scores_total_train, dim=-1)
+    else:
+        log_loader = run.build_log_dataloader()
+        for train_log in tqdm(log_loader):
+            if_score = run.influence.compute_influence(
+                test_log, train_log, damping=args.damping,
+                precondition = run.config.scheduler.hessian != "none"
+            )
+            if_scores_total_train.append(if_score['influence'])
+        if_scores = torch.cat(if_scores_total_train, dim=-1)
+    test_processed += if_scores.shape[0]
+    if_scores_total_test.append(if_scores)
+
+if_scores_total_test_stacked = torch.vstack(if_scores_total_test)
+torch.save(if_scores_total_test_stacked, file_name)
