@@ -30,5 +30,5 @@ for file_path in files:
 torch.save({"results": ans},  (f"../../files/ensemble_brittleness_results/data_{data_name.lower()}/{algo_name}.pt"))
 
 #delete
-# for file_path in files:
-#     os.remove(file_path)
+for file_path in files:
+    os.remove(file_path)

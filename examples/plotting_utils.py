@@ -116,8 +116,10 @@ def get_color(algo_name: str) -> str:
         return "#FF0000"
     elif algo_name == "initpca_rank64_lorapca_hessianekfac_damping1e-10_tag_model_id0":
         return "#a2ff00"
-    elif algo_name == "rank64_damping1e-10_tag_model_id0":
+    elif algo_name == "rank64_damping1e-10_tag_model_id0" or algo_name == "rank64_dampingNone_tag_model_id0":
         return "#cc6699"
+    elif algo_name == "initpca_rank64_lorapca_hessianekfac_dampingNone_tag_model_id0":
+        return "#1f78b4"
     else:
         return "#000000"
 
@@ -151,8 +153,10 @@ def get_name(algo_name: str) -> str:
         return "loraEkfac"
     elif algo_name == "initpca_rank64_lorapca_hessianekfac_damping1e-10_tag_model_id0":
         return "loraPca"
-    elif algo_name == "rank64_damping1e-10_tag_model_id0":
+    elif algo_name == "rank64_damping1e-10_tag_model_id0" or algo_name == "rank64_dampingNone_tag_model_id0":
         return "gradSim"
+    elif algo_name == "initpca_rank64_lorapca_hessianekfac_dampingNone_tag_model_id0":
+        return "loraPcaDampNone"
     else:
         return algo_name
          

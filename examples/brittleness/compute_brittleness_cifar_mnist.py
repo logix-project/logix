@@ -219,7 +219,7 @@ def main(data_name: str, algo_name_lst: List[str], startIdx, endIdx) -> None:
                         success_lst.append(1)
                     total_success_lst.append(success_lst)
             results = {"results": total_success_lst}
-            save_tensor(tensor=results, file_name=file_name, overwrite=False)
+            save_tensor(tensor=results, file_name=partial_file_name, overwrite=False)
 
 
 if __name__ == "__main__":

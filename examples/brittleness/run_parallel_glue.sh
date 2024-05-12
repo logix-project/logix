@@ -41,11 +41,11 @@ run_command() {
     return 1
 }
 
-echo "Running command for indices \$((\$SLURM_ARRAY_TASK_ID * \$INDICES_PER_TASK)) to \$((\$SLURM_ARRAY_TASK_ID == $NUM_GPUS-1 ? $(($TOTAL_INDICES-1)) : (\$SLURM_ARRAY_TASK_ID + 1) * \$INDICES_PER_TASK - 1))"
+echo "Running command for indices \$((\$SLURM_ARRAY_TASK_ID * \$INDICES_PER_TASK)) to \$((\$SLURM_ARRAY_TASK_ID == $NUM_GPUS-1 ? $(($TOTAL_INDICES)) : (\$SLURM_ARRAY_TASK_ID + 1) * \$INDICES_PER_TASK))"
 
 run_command python compute_brittleness_glue.py \
 --startIdx \$((\$SLURM_ARRAY_TASK_ID * \$INDICES_PER_TASK)) \
---endIdx \$((\$SLURM_ARRAY_TASK_ID == $(($NUM_GPUS-1)) ? $(($TOTAL_INDICES - 1)) : (\$SLURM_ARRAY_TASK_ID + 1) * \$INDICES_PER_TASK - 1)) \
+--endIdx \$((\$SLURM_ARRAY_TASK_ID == $(($NUM_GPUS-1)) ? $(($TOTAL_INDICES)) : (\$SLURM_ARRAY_TASK_ID + 1) * \$INDICES_PER_TASK)) \
 --model_id 0 \
 --data rte \
 # --damping 1e-10 \

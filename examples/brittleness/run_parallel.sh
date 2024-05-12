@@ -5,14 +5,14 @@ export TOTAL_INDICES=100
 sbatch <<EOT
 #!/bin/bash
 #SBATCH --job-name=if
-#SBATCH --output=train_log/myjob_%a.out
-#SBATCH --error=train_log/myjob_%a.err
+#SBATCH --output=train_log/cifar_%a.out
+#SBATCH --error=train_log/cifar_%a.err
 #SBATCH --partition=general
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
-#SBATCH --gres=gpu:1
-#SBATCH --time=24:00:00
+#SBATCH --gres=gpu:A6000:1
+#SBATCH --time=48:00:00
 #SBATCH --mem=4G
 #SBATCH --array=0-$(($NUM_GPUS-1))
 
@@ -41,14 +41,14 @@ run_command() {
     return 1
 }
 
-echo "Running command for indices \$((\$SLURM_ARRAY_TASK_ID * \$INDICES_PER_TASK)) to \$((\$SLURM_ARRAY_TASK_ID == $NUM_GPUS-1 ? $(($TOTAL_INDICES-1)) : (\$SLURM_ARRAY_TASK_ID + 1) * \$INDICES_PER_TASK - 1))"
+echo "Running command for indices \$((\$SLURM_ARRAY_TASK_ID * \$INDICES_PER_TASK)) to \$((\$SLURM_ARRAY_TASK_ID == $NUM_GPUS-1 ? $(($TOTAL_INDICES)) : (\$SLURM_ARRAY_TASK_ID + 1) * \$INDICES_PER_TASK))"
 
 run_command python compute_brittleness_cifar_mnist.py \
 --startIdx \$((\$SLURM_ARRAY_TASK_ID * \$INDICES_PER_TASK)) \
---endIdx \$((\$SLURM_ARRAY_TASK_ID == $(($NUM_GPUS-1)) ? $(($TOTAL_INDICES - 1)) : (\$SLURM_ARRAY_TASK_ID + 1) * \$INDICES_PER_TASK - 1)) \
+--endIdx \$((\$SLURM_ARRAY_TASK_ID == $(($NUM_GPUS-1)) ? $(($TOTAL_INDICES)) : (\$SLURM_ARRAY_TASK_ID + 1) * \$INDICES_PER_TASK)) \
 --model_id 0 \
 --data cifar10 \
-# --damping none \
+# --damping 1e-10 \
 # --scoreFileName "TrakRobertaV2"
 
 EOT
