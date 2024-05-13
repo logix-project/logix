@@ -35,9 +35,7 @@ def main():
 
     # prepare model & data loader
     model = get_model(model_name=args.model_name, cache_dir=args.cache_dir)
-    tokenizer = get_tokenizer(
-        model_name=args.model_name, cache_dir=args.cache_dir
-    )
+    tokenizer = get_tokenizer(model_name=args.model_name, cache_dir=args.cache_dir)
     data_loader = get_loader(
         model_name=args.model_name,
         tokenizer=tokenizer,
@@ -69,9 +67,7 @@ def main():
     test_ids = []
     merged_test_logs = []
     for idx, batch in enumerate(tqdm(data_loader)):
-        data_id = tokenizer.batch_decode(
-            batch["input_ids"], skip_special_tokens=True
-        )
+        data_id = tokenizer.batch_decode(batch["input_ids"], skip_special_tokens=True)
         targets = batch.pop("labels")
         with run(data_id=data_id, mask=batch["attention_mask"]):
             model.zero_grad()

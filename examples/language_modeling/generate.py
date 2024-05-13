@@ -69,7 +69,7 @@ def batch_generate(
         max_new_tokens=args.maxlen,
         do_sample=True,
         top_k=top_k,
-top_p=top_p,
+        top_p=top_p,
         temperature=temperature,
         repetition_penalty=repetition_penalty,
         eos_token_id=tokenizer.eos_token_id,
@@ -164,4 +164,3 @@ if __name__ == "__main__":
     with open(out_file, "w") as f:
         json.dump(data_json, f, indent=4)
     print(f"Generated data saved to {out_file}")
-

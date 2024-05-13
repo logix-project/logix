@@ -8,8 +8,12 @@ experiment = "pythia-1.4b_random_raw_openwebtext_mlp/generated"
 mode = "cosine"
 
 scores = torch.load(os.path.join(experiment, f"scores_{mode}.pt"), map_location="cpu")
-train_ids = torch.load(os.path.join(experiment, f"train_ids_{mode}.pt"), map_location="cpu")
-test_ids = torch.load(os.path.join(experiment, f"test_ids_{mode}.pt"), map_location="cpu")
+train_ids = torch.load(
+    os.path.join(experiment, f"train_ids_{mode}.pt"), map_location="cpu"
+)
+test_ids = torch.load(
+    os.path.join(experiment, f"test_ids_{mode}.pt"), map_location="cpu"
+)
 print(len(train_ids), len(test_ids), scores.shape)
 assert len(train_ids) == scores.shape[1]
 assert len(test_ids) == scores.shape[0]

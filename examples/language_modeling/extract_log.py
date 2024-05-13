@@ -31,9 +31,7 @@ def main():
 
     # prepare model & data loader
     model = get_model(model_name=args.model_name, cache_dir=args.cache_dir)
-    tokenizer = get_tokenizer(
-        model_name=args.model_name, cache_dir=args.cache_dir
-    )
+    tokenizer = get_tokenizer(model_name=args.model_name, cache_dir=args.cache_dir)
     data_loader = get_loader(
         model_name=args.model_name,
         tokenizer=tokenizer,
