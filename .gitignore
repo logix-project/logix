@@ -177,4 +177,3 @@ files/
 # Generated Config files.
 examples/**/*.yaml
 **/config.yaml
-examples/language_modeling/scripts
