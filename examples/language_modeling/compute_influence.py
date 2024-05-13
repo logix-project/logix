@@ -11,6 +11,7 @@ from logix.utils import merge_logs
 from tqdm import tqdm
 
 from utils import get_model, get_tokenizer, get_loader, set_seed
+os.environ["HF_HOME"] = "/data/tir/projects/tir3/users/hahn2/logix/examples/language_modeling/cache"
 
 
 if torch.cuda.is_available():
@@ -23,52 +24,38 @@ def main():
     parser.add_argument(
         "--cache_dir",
         type=str,
-        default="/data/tir/projects/tir3/users/sangkeuc/huggingface",
+        default="/data/tir/projects/tir3/users/hahn2/logix/examples/language_modeling/cache",
     )
-    parser.add_argument(
-        "--save_dir",
-        type=str,
-        default="/data/tir/projects/tir3/users/sangkeuc/gpt/results",
-    )
-    parser.add_argument("--model_name", type=str, default="gpt2-xl")
-    parser.add_argument("--data_path", type=str, default="wikitext")
-    parser.add_argument("--data_name", type=str, default=None)
-    parser.add_argument("--batch_size", type=int, default=1)
-    parser.add_argument("--hessian", type=str, default="raw")
+    parser.add_argument("--model_name", type=str, default="gpt2")
+    parser.add_argument("--hessian", type=str, default="kfac")
     parser.add_argument("--lora", type=str, default="random")
-    parser.add_argument("--split", type=str, default="train")
+    parser.add_argument("--split", type=str, default="valid")
     parser.add_argument("--mlp_only", action="store_true")
-    parser.add_argument("--layerwise", action="store_true")
+    parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument("--damping", type=float, default=1e-5)
+    parser.add_argument("--data_name", type=str, default="openwebtext")
+    parser.add_argument("--mode", type=str, default="dot")
     args = parser.parse_args()
 
     set_seed(0)
     accelerator = Accelerator()
-    influence_groups = None
-    if args.layerwise:
-        layer_id = "h" if args.model_name == "gpt2-xl" else "layers"
-        layer_num = 48 if args.model_name == "gpt2-xl" else 32
-    influence_groups = [f".{layer_id}.{i}." for i in range(layer_num)]
 
     # prepare model & data loader
     model = get_model(model_name=args.model_name, cache_dir=args.cache_dir)
-    tokenizer = get_tokenizer(
-        model_name=args.model_name, cache_dir=args.cache_dir, add_padding_token=True
-    )
+    tokenizer = get_tokenizer(model_name=args.model_name, cache_dir=args.cache_dir)
     data_loader = get_loader(
         model_name=args.model_name,
-        data_path=args.data_path,
-        data_name=args.data_name,
         tokenizer=tokenizer,
         batch_size=args.batch_size,
         cache_dir=args.cache_dir,
         split=args.split,
+        data_name=args.data_name,
     )
     model, data_loader = accelerator.prepare(model, data_loader)
 
     # Set-up LogIX
     model_name_strip = args.model_name.split("/")[-1]
-    project = f"{model_name_strip}_{args.lora}_{args.hessian}"
+    project = f"{model_name_strip}_{args.lora}_{args.hessian}_{args.data_name}"
     name_filter = ["att", "mlp"]
     if args.mlp_only:
         project += "_mlp"
@@ -82,6 +69,9 @@ def main():
     # Influence analysis
     logix.setup({"log": "grad"})
     logix.eval()
+    if_scores = []
+    train_ids = None
+    test_ids = []
     merged_test_logs = []
     for idx, batch in enumerate(tqdm(data_loader)):
         data_id = tokenizer.batch_decode(batch["input_ids"], skip_special_tokens=True)
@@ -103,23 +93,29 @@ def main():
         test_log = logix.get_log()
         merged_test_logs.append(copy.deepcopy(test_log))
 
-        if idx == 12 or idx == len(data_loader) - 1:
+        # if idx == 7 or idx == len(data_loader) - 1:
+        if idx == len(data_loader) - 1:
             merged_test_log = merge_logs(merged_test_logs)
-            result = run.influence.compute_influence_all(
-                merged_test_log, log_loader, influence_groups=influence_groups
+            if_score, train_ids_batch = run.influence.compute_influence_all(
+                merged_test_log, log_loader, mode=args.mode,
             )
+            if_scores.append(if_score)
+            if train_ids is None:
+                train_ids = train_ids_batch
+            else:
+                assert train_ids == train_ids_batch
+            test_ids.extend(merged_test_log[0])
+            if_scores = torch.cat(if_scores, dim=0)
             merged_test_logs = []
             break
 
-    post_fix = f"{args.split}_{model_name_strip}_{args.lora}_{args.hessian}"
-    if args.mlp_only:
-        post_fix += "_mlp"
-    save_dir = os.path.join(args.save_dir, post_fix)
+    base_dir = "/data/tir/projects/tir3/users/hahn2/logix/examples/language_modeling"
+    save_dir = os.path.join(base_dir, project, f"{args.split}")
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    torch.save(result["influence"], os.path.join(save_dir, "scores.pt"))
-    torch.save(result["src_ids"], os.path.join(save_dir, "test_ids.pt"))
-    torch.save(result["tgt_ids"], os.path.join(save_dir, "train_ids.pt"))
+    torch.save(if_scores, os.path.join(save_dir, f"scores_{args.mode}.pt"))
+    torch.save(train_ids, os.path.join(save_dir, f"train_ids_{args.mode}.pt"))
+    torch.save(test_ids, os.path.join(save_dir, f"test_ids_{args.mode}.pt"))
 
 
 if __name__ == "__main__":

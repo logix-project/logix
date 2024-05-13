@@ -9,7 +9,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
-from datasets import load_dataset, load_from_disk
+from datasets import load_dataset, load_from_disk, Dataset
 from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
@@ -74,9 +74,7 @@ def get_model(model_name, cache_dir) -> nn.Module:
     return LanguageModel(model_name, cache_dir)
 
 
-def get_tokenizer(
-    model_name, cache_dir, add_padding_token=False
-) -> PreTrainedTokenizer:
+def get_tokenizer(model_name, cache_dir) -> PreTrainedTokenizer:
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
         use_fast=True,
@@ -84,7 +82,7 @@ def get_tokenizer(
         cache_dir=cache_dir,
     )
 
-    if tokenizer.pad_token is None and add_padding_token:
+    if tokenizer.pad_token is None:
         print("No pad token found. Setting `<pad>` as a pad token.")
         tokenizer.pad_token = "<pad>"
         if "<pad>" not in tokenizer.get_vocab():
@@ -97,60 +95,61 @@ def get_tokenizer(
 def get_dataset(
     model_name: str,
     tokenizer: PreTrainedTokenizer,
-    data_path: str,
-    data_name: Optional[str] = None,
     split: str = "train",
-    sample_ratio: float = 0.005,
     cache_dir: str = None,
+    data_name = "openwebtext",
 ) -> torch.utils.data.DataLoader:
-    model_name_strip = model_name.split("/")[-1]
-    save_data_name = data_path if data_name is None else data_name
-    save_data_name = save_data_name.split("/")[-1]
-    if os.path.exists(
-        os.path.join(cache_dir, f"{model_name_strip}_{save_data_name}.pt")
-    ):
-        print("[*] Loading from cached data...")
-        lm_datasets = load_from_disk(
-            os.path.join(cache_dir, f"{model_name_strip}_{save_data_name}.pt")
-        )
-        return lm_datasets[split]
+    assert split in ["train", "valid", "generated", "external"]
+
+    model_name_split = model_name.split("/")[-1]
+    # data_name = "wiki" if split in ["train", "valid"] else split
+    # data_name = "openwebtext" if split in ["train", "valid"] else split
+    split_key = "validation" if split == "valid" else "train"
+    seed = 42
+    fname = f"{model_name_split}_{data_name}_{seed}.pt"
+    if split in ["train", "valid"] and os.path.exists(os.path.join(cache_dir, fname)):
+        print(f"[*] Loading from cached data... {fname}")
+        lm_datasets = load_from_disk(os.path.join(cache_dir, fname))
+        num_tokens = 1_000_000_000
+        seq_len = len(lm_datasets["train"][0]["input_ids"])
+        num_examples = min(num_tokens // seq_len, len(lm_datasets["train"]))
+        lm_datasets[split_key] = lm_datasets[split_key].select(range(num_examples))
+        print(f"Using {num_examples} examples for training. {num_examples} * {seq_len} = {num_tokens:,}")
+        return lm_datasets[split_key]
 
     # Prepare raw dataset
-    if data_path == "external":
-        data_kwargs = {
-            "path": "json",
-            "data_files": "./custom_data/external/data.json",
-            "cache_dir": cachd_dir,
-            "num_proc": 4,
-        }
-    elif data_path == "generated":
-        data_kwargs = {
-            "path": "json",
-            "data_files": f"./custom_data/generated/{model_name_strip}/data.json",
-            "cache_dir": cache_dir,
-            "num_proc": 4,
-        }
+    if split in ["train", "valid"]:
+        # data_path = "wikitext"
+        # data_kwargs = {"name": "wikitext-103-raw-v1"}
+        data_path = "openwebtext"
+        data_kwargs = {}
+    elif split in ["external"]:
+        data_path = "json"
+        data_kwargs = {"data_files": "./custom_data/external/data.json"}
     else:
+        data_path = "json"
         data_kwargs = {
-            "path": data_path,
-            "name": data_name,
-            "cache_dir": cache_dir,
-            "num_proc": 4,
+            "data_files": f"./custom_data/generated/{model_name_split}/data.json"
         }
-    raw_datasets = load_dataset(**data_kwargs)
-
-    if sample_ratio is not None:
-        sampled_train = raw_datasets["train"].train_test_split(
-            test_size=0.005, shuffle=True, seed=42
+    print(f"[*] Loading data from {data_path} {data_kwargs}...")
+    raw_datasets = load_dataset(data_path, **data_kwargs)
+    if split in ["train", "valid"]:
+        print(f"[*] Splitting data...")
+        raw_datasets = raw_datasets[split].train_test_split(
+            test_size=0.95, seed=seed
         )
-        raw_datasets["train"] = sampled_train["test"]
+        if split == "train":
+            raw_datasets.pop("test")
 
     # Tokenize dataset
     column_names = raw_datasets["train"].column_names
     text_column_name = "text" if "text" in column_names else column_names[0]
 
     def tokenize_function(examples):
-        return tokenizer(examples[text_column_name])
+        ret = tokenizer(examples[text_column_name])
+        if "prompt" in examples:
+            ret["prompt"] = tokenizer(examples["prompt"])["input_ids"]
+        return ret
 
     tokenized_datasets = raw_datasets.map(
         tokenize_function,
@@ -162,7 +161,7 @@ def get_dataset(
     )
 
     # Group text
-    if data_path not in ["generated", "external"]:
+    if split in ["train", "valid"]:
         block_size = 512
 
         def group_texts(examples):
@@ -187,40 +186,40 @@ def get_dataset(
                 for idx, token in enumerate(label):
                     if token == tokenizer.pad_token_id:
                         label[idx] = -100
+            if "prompt" in examples:
+                for idx, (prompt, label) in enumerate(zip(examples["prompt"], examples["labels"])):
+                    for _ in range(len(prompt)):
+                        label[_] = -100
+                    examples["labels"][idx] = label
             return examples
 
     lm_datasets = tokenized_datasets.map(
         group_texts,
         batched=True,
-        num_proc=4,
+        num_proc=1,
         load_from_cache_file=True,
         desc=f"Grouping texts in chunks of {block_size}",
     )
 
-    print("[*] Saving data to disk...")
-    lm_datasets.save_to_disk(
-        os.path.join(cache_dir, f"{model_name_strip}_{save_data_name}.pt")
-    )
+    if split in ["train", "valid"]:
+        print(f"[*] Saving data to disk...")
+        lm_datasets.save_to_disk(os.path.join(cache_dir, fname))
 
-    return lm_datasets[split]
+    if "prompt" in lm_datasets[split_key].column_names:
+        lm_datasets[split_key] = lm_datasets[split_key].remove_columns("prompt")
+    return lm_datasets[split_key]
 
 
 def get_loader(
     model_name: str,
     tokenizer: PreTrainedTokenizer,
     batch_size: int,
-    data_path: str,
-    data_name: Optional[str] = None,
     split: str = "train",
     cache_dir: str = None,
+    data_name = "openwebtext",
 ) -> torch.utils.data.DataLoader:
     dataset = get_dataset(
-        model_name=model_name,
-        tokenizer=tokenizer,
-        data_path=data_path,
-        data_name=data_name,
-        split=split,
-        cache_dir=cache_dir,
+        model_name=model_name, tokenizer=tokenizer, split=split, cache_dir=cache_dir, data_name=data_name
     )
     dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=batch_size, shuffle=False, collate_fn=default_data_collator
