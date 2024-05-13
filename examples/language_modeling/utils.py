@@ -1,23 +1,14 @@
-import gc
+import copy
 import os
 import random
-import struct
 from itertools import chain
-import copy
-from typing import List, Optional, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
-from datasets import load_dataset, load_from_disk, Dataset
-from transformers import (
-    AutoConfig,
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    default_data_collator,
-    DataCollatorWithPadding,
-    PreTrainedTokenizer,
-)
+from datasets import Dataset, load_dataset, load_from_disk
+from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
+                          PreTrainedTokenizer, default_data_collator)
 from transformers.pytorch_utils import Conv1D
 
 
@@ -87,7 +78,9 @@ def get_tokenizer(model_name, cache_dir) -> PreTrainedTokenizer:
         tokenizer.pad_token = "<pad>"
         if "<pad>" not in tokenizer.get_vocab():
             tokenizer.add_tokens("<pad>")
-        tokenizer.pad_token_id = tokenizer.convert_tokens_to_ids(tokenizer.pad_token)
+        tokenizer.pad_token_id = tokenizer.convert_tokens_to_ids(
+            tokenizer.pad_token
+        )
 
     return tokenizer
 
@@ -97,30 +90,32 @@ def get_dataset(
     tokenizer: PreTrainedTokenizer,
     split: str = "train",
     cache_dir: str = None,
-    data_name = "openwebtext",
+    data_name="openwebtext",
 ) -> torch.utils.data.DataLoader:
     assert split in ["train", "valid", "generated", "external"]
 
     model_name_split = model_name.split("/")[-1]
-    # data_name = "wiki" if split in ["train", "valid"] else split
-    # data_name = "openwebtext" if split in ["train", "valid"] else split
     split_key = "validation" if split == "valid" else "train"
     seed = 42
     fname = f"{model_name_split}_{data_name}_{seed}.pt"
-    if split in ["train", "valid"] and os.path.exists(os.path.join(cache_dir, fname)):
+    if split in ["train", "valid"] and os.path.exists(
+        os.path.join(cache_dir, fname)
+    ):
         print(f"[*] Loading from cached data... {fname}")
         lm_datasets = load_from_disk(os.path.join(cache_dir, fname))
-        num_tokens = 1_000_000_000
+        num_tokens = 1_000_000_000  # we take 1B tokens
         seq_len = len(lm_datasets["train"][0]["input_ids"])
         num_examples = min(num_tokens // seq_len, len(lm_datasets["train"]))
-        lm_datasets[split_key] = lm_datasets[split_key].select(range(num_examples))
-        print(f"Using {num_examples} examples for training. {num_examples} * {seq_len} = {num_tokens:,}")
+        lm_datasets[split_key] = lm_datasets[split_key].select(
+            range(num_examples)
+        )
+        print(
+            f"Using {num_examples} examples for training. {num_examples} * {seq_len} = {num_tokens:,}"
+        )
         return lm_datasets[split_key]
 
     # Prepare raw dataset
     if split in ["train", "valid"]:
-        # data_path = "wikitext"
-        # data_kwargs = {"name": "wikitext-103-raw-v1"}
         data_path = "openwebtext"
         data_kwargs = {}
     elif split in ["external"]:
@@ -171,7 +166,10 @@ def get_dataset(
             total_length = len(concatenated_examples[list(examples.keys())[0]])
             total_length = (total_length // block_size) * block_size
             result = {
-                k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
+                k: [
+                    t[i : i + block_size]
+                    for i in range(0, total_length, block_size)
+                ]
                 for k, t in concatenated_examples.items()
             }
             result["labels"] = copy.deepcopy(result["input_ids"])
@@ -187,7 +185,9 @@ def get_dataset(
                     if token == tokenizer.pad_token_id:
                         label[idx] = -100
             if "prompt" in examples:
-                for idx, (prompt, label) in enumerate(zip(examples["prompt"], examples["labels"])):
+                for idx, (prompt, label) in enumerate(
+                    zip(examples["prompt"], examples["labels"])
+                ):
                     for _ in range(len(prompt)):
                         label[_] = -100
                     examples["labels"][idx] = label
@@ -206,7 +206,9 @@ def get_dataset(
         lm_datasets.save_to_disk(os.path.join(cache_dir, fname))
 
     if "prompt" in lm_datasets[split_key].column_names:
-        lm_datasets[split_key] = lm_datasets[split_key].remove_columns("prompt")
+        lm_datasets[split_key] = lm_datasets[split_key].remove_columns(
+            "prompt"
+        )
     return lm_datasets[split_key]
 
 
@@ -216,13 +218,20 @@ def get_loader(
     batch_size: int,
     split: str = "train",
     cache_dir: str = None,
-    data_name = "openwebtext",
+    data_name="openwebtext",
 ) -> torch.utils.data.DataLoader:
     dataset = get_dataset(
-        model_name=model_name, tokenizer=tokenizer, split=split, cache_dir=cache_dir, data_name=data_name
+        model_name=model_name,
+        tokenizer=tokenizer,
+        split=split,
+        cache_dir=cache_dir,
+        data_name=data_name,
     )
     dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=batch_size, shuffle=False, collate_fn=default_data_collator
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        collate_fn=default_data_collator,
     )
     return dataloader
 

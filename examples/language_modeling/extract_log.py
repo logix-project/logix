@@ -1,16 +1,12 @@
-import os
 import argparse
 
-from tqdm import tqdm
+import logix
 import torch
 import torch.nn.functional as F
 from accelerate import Accelerator
-from accelerate.utils import GradScalerKwargs
-import logix
-from logix.statistic import Covariance
+from tqdm import tqdm
 
-from utils import get_model, get_tokenizer, get_loader, set_seed
-
+from utils import get_loader, get_model, get_tokenizer, set_seed
 
 # Enable TF32 if possible
 if torch.cuda.is_available():
@@ -20,11 +16,7 @@ if torch.cuda.is_available():
 def main():
     parser = argparse.ArgumentParser("GPT2 Influence Analysis")
     parser.add_argument("--config_path", type=str, default="./config.yaml")
-    parser.add_argument(
-        "--cache_dir",
-        type=str,
-        default="/data/tir/projects/tir3/users/hahn2/logix/examples/language_modeling/cache",
-    )
+    parser.add_argument("--cache_dir", type=str, default=None)
     parser.add_argument("--model_name", type=str, default="gpt2")
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--hessian", type=str, default="kfac")
@@ -39,7 +31,9 @@ def main():
 
     # prepare model & data loader
     model = get_model(model_name=args.model_name, cache_dir=args.cache_dir)
-    tokenizer = get_tokenizer(model_name=args.model_name, cache_dir=args.cache_dir)
+    tokenizer = get_tokenizer(
+        model_name=args.model_name, cache_dir=args.cache_dir
+    )
     data_loader = get_loader(
         model_name=args.model_name,
         tokenizer=tokenizer,

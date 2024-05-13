@@ -1,18 +1,15 @@
-import os
-import copy
 import argparse
+import copy
+import os
 
+import logix
 import torch
 import torch.nn.functional as F
 from accelerate import Accelerator
-import logix
-from logix.analysis import InfluenceFunction
 from logix.utils import merge_logs
 from tqdm import tqdm
 
-from utils import get_model, get_tokenizer, get_loader, set_seed
-os.environ["HF_HOME"] = "/data/tir/projects/tir3/users/hahn2/logix/examples/language_modeling/cache"
-
+from utils import get_loader, get_model, get_tokenizer, set_seed
 
 if torch.cuda.is_available():
     torch.backends.cuda.matmul.allow_tf32 = True
@@ -21,11 +18,7 @@ if torch.cuda.is_available():
 def main():
     parser = argparse.ArgumentParser("GPT2 Influence Analysis")
     parser.add_argument("--config_path", type=str, default="./config.yaml")
-    parser.add_argument(
-        "--cache_dir",
-        type=str,
-        default="/data/tir/projects/tir3/users/hahn2/logix/examples/language_modeling/cache",
-    )
+    parser.add_argument("--cache_dir", type=str, default=None)
     parser.add_argument("--model_name", type=str, default="gpt2")
     parser.add_argument("--hessian", type=str, default="kfac")
     parser.add_argument("--lora", type=str, default="random")
@@ -42,7 +35,9 @@ def main():
 
     # prepare model & data loader
     model = get_model(model_name=args.model_name, cache_dir=args.cache_dir)
-    tokenizer = get_tokenizer(model_name=args.model_name, cache_dir=args.cache_dir)
+    tokenizer = get_tokenizer(
+        model_name=args.model_name, cache_dir=args.cache_dir
+    )
     data_loader = get_loader(
         model_name=args.model_name,
         tokenizer=tokenizer,
@@ -74,7 +69,9 @@ def main():
     test_ids = []
     merged_test_logs = []
     for idx, batch in enumerate(tqdm(data_loader)):
-        data_id = tokenizer.batch_decode(batch["input_ids"], skip_special_tokens=True)
+        data_id = tokenizer.batch_decode(
+            batch["input_ids"], skip_special_tokens=True
+        )
         targets = batch.pop("labels")
         with run(data_id=data_id, mask=batch["attention_mask"]):
             model.zero_grad()
@@ -93,11 +90,12 @@ def main():
         test_log = logix.get_log()
         merged_test_logs.append(copy.deepcopy(test_log))
 
-        # if idx == 7 or idx == len(data_loader) - 1:
         if idx == len(data_loader) - 1:
             merged_test_log = merge_logs(merged_test_logs)
             if_score, train_ids_batch = run.influence.compute_influence_all(
-                merged_test_log, log_loader, mode=args.mode,
+                merged_test_log,
+                log_loader,
+                mode=args.mode,
             )
             if_scores.append(if_score)
             if train_ids is None:
@@ -109,7 +107,7 @@ def main():
             merged_test_logs = []
             break
 
-    base_dir = "/data/tir/projects/tir3/users/hahn2/logix/examples/language_modeling"
+    base_dir = os.path.dirname(os.path.abspath(__file__))  # current file's directory
     save_dir = os.path.join(base_dir, project, f"{args.split}")
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)

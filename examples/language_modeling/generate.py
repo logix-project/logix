@@ -114,11 +114,7 @@ def iterative_generate(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="gpt2 Generation")
     parser.add_argument("--model_name", type=str, default="gpt2-xl")
-    parser.add_argument(
-        "--cache_dir",
-        type=str,
-        default="/data/tir/projects/tir3/users/hahn2/logix/examples/language_modeling/cache",
-    )
+    parser.add_argument("--cache_dir", type=str, default=None)
     parser.add_argument("--prompt", type=str, default=None)
     parser.add_argument("--topk", type=int, default=50)
     parser.add_argument("--topp", type=float, default=0.95)
@@ -153,12 +149,6 @@ if __name__ == "__main__":
         temperature=args.temperature,
         repetition_penalty=args.repetition_penalty,
     )
-    # for p, g in zip(prompts, generated):
-    #     prompt_start = g.find(p)
-    #     prompt_end = prompt_start + len(p)
-    #     colored = f"{g[:prompt_start]}{p}{g[prompt_end:]}"
-    #     print(colored)
-    #     input()
 
     # write prompt and generation into a csv file
     model_name = args.model_name.split("/")[-1]
