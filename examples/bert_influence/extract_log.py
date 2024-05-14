@@ -15,6 +15,9 @@ def main():
     parser.add_argument("--config_path", type=str, default="./config.yaml")
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--data_name", type=str, default="sst2")
+    parser.add_argument("--lora", type=str, default="random")
+    parser.add_argument("--hessian", type=str, default="raw")
+    parser.add_argument("--save", type=str, default="grad")
     args = parser.parse_args()
 
     set_seed(0)
@@ -31,7 +34,9 @@ def main():
 
     # LogIX
     run = logix.init(args.project, config=args.config_path)
-    scheduler = logix.LogIXScheduler(run, lora=True)
+    scheduler = logix.LogIXScheduler(
+        run, lora=args.lora, hessian=args.hessian, save=args.save
+    )
 
     logix.watch(model)
     for _ in scheduler:

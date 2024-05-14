@@ -14,7 +14,7 @@ def main():
     parser.add_argument("--project", type=str, default="sst2")
     parser.add_argument("--config_path", type=str, default="./config.yaml")
     parser.add_argument("--data_name", type=str, default="sst2")
-    parser.add_argument("--damping", type=float, default=1e-5)
+    parser.add_argument("--damping", type=float, default=None)
     args = parser.parse_args()
 
     # prepare model & data loader
