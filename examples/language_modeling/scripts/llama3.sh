@@ -1,12 +1,12 @@
 #!/usr/bin/bash
 #SBATCH --job-name=pythia
-#SBATCH --output /home/sangkeuc/logs/\%j.out
-#SBATCH --err /home/sangkeuc/logs/\%j.err
+#SBATCH --output ./logs/\%j.out
+#SBATCH --err ./logs/\%j.err
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:A100_80GB:1
 #SBATCH --mem=80GB
 #SBATCH --time 24:00:00
-#SBATCH --mail-user=sangkeuc@andrew.cmu.edu
+#SBATCH --mail-user=//delete
 #SBATCH --mail-type=START,END,FAIL
 #SBATCH --partition=general
 

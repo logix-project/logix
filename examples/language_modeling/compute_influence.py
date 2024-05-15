@@ -23,12 +23,12 @@ def main():
     parser.add_argument(
         "--cache_dir",
         type=str,
-        default="/data/tir/projects/tir3/users/sangkeuc/huggingface",
+        default="./huggingface",
     )
     parser.add_argument(
         "--save_dir",
         type=str,
-        default="/data/tir/projects/tir3/users/sangkeuc/gpt/results",
+        default="./gpt/results",
     )
     parser.add_argument("--model_name", type=str, default="gpt2-xl")
     parser.add_argument("--data_path", type=str, default="wikitext")

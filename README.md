@@ -1,10 +1,4 @@
 <p align="center">
-  <a href="https://github.com/sangkeun00/logix/">
-    <img src="assets/logo_light.png" alt="" width="40%" align="top" style="border-radius: 10px; padding-left: 120px; padding-right: 120px; background-color: white;">
-  </a>
-</p>
-
-<p align="center">
   <em><strong>LogIX</strong>: Logging for Interpretable and Explainable AI <br></em>
 </p>
 
@@ -131,19 +125,13 @@ billion-scale models. Below are a few features that LogIX currently supports:
 ## Contributing
 
 We welcome contributions from the community. Please see our [contributing
-guidelines](CONTRIBUTING.md) for details on how to contribute to LogIX.
+guidelines(Deleted for Anonymization)](CONTRIBUTING.md) for details on how to contribute to LogIX.
 
 ## Citation
 To cite this repository:
 
 ```
-@software{logix2024github,
-  author = {Sang Keun Choe, Hwijeen Ahn, Juhan Bae, Minsoo Kang, Youngseog Chung, Kewen Zhao},
-  title = {{LogIX}: Scalable Logging and Analysis Tool for Neural Networks},
-  url = {http://github.com/sangkeun00/logix},
-  version = {0.0.1},
-  year = {2024},
-}
+@ deleted for anonymiztion
 ```
 
 ## License
