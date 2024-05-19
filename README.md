@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/sangkeun00/logix/">
-    <img src="assets/logo_light.png" alt="" width="40%" align="top" style="border-radius: 10px; padding-left: 120px; padding-right: 120px; background-color: white;">
+    <img src="assets/logo.jpg" alt="" width="40%" align="top" style="border-radius: 10px; padding-left: 120px; padding-right: 120px; background-color: white;">
   </a>
 </p>
 
