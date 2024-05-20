@@ -24,6 +24,15 @@ class InfluenceFunction:
         # state
         self._state = state
 
+        self.influence_scores = {}
+        self.self_influence_scores = {}
+
+    def get_influence_scores(self):
+        return self.influence_scores
+
+    def get_self_influence_scores(self):
+        return self.self_influence_scores
+
     @torch.no_grad()
     def precondition(
         self,
@@ -227,6 +236,7 @@ class InfluenceFunction:
         loader: torch.utils.data.DataLoader,
         mode: Optional[str] = "dot",
         precondition: Optional[bool] = True,
+        save: Optional[bool] = False,
         hessian: Optional[str] = "auto",
         influence_groups: Optional[List[str]] = None,
         damping: Optional[float] = None,
@@ -245,7 +255,7 @@ class InfluenceFunction:
         if precondition:
             src_log = self.precondition(src_log, hessian=hessian, damping=damping)
 
-        result_all = None
+        result_all = {}
         for tgt_log in tqdm(loader, desc="Compute IF"):
             result = self.compute_influence(
                 src_log=src_log,
@@ -257,9 +267,15 @@ class InfluenceFunction:
                 damping=damping,
             )
 
-            if result_all is None:
-                result_all = result
-            else:
-                merge_influence_results(result_all, result)
+            # if result_all is None:
+            #     result_all = result
+            # else:
+            merge_influence_results(result_all, result, axis="tgt")
+
+        if save:
+            # if self.influence_scores is None:
+            #     self.influence_scores = result_all
+            # else:
+            merge_influence_results(self.influence_scores, result_all, axis="src")
 
         return result_all

@@ -1,5 +1,6 @@
 import argparse
 
+import torch
 import torch.nn.functional as F
 from accelerate import Accelerator
 from tqdm import tqdm
@@ -31,6 +32,8 @@ def main():
         project=args.project,
         config=args.config_path,
         lora=True,
+        hessian="raw",
+        save="grad",
         initialize_from_log=True,
         log_batch_size=args.batch_size,
     )
@@ -50,7 +53,8 @@ def main():
         args=training_args,
         logix_args=logix_args,
     )
-    trainer.influence()
+    if_scores = trainer.influence()
+    torch.save(if_scores, "bert_influence.pt")
 
 
 if __name__ == "__main__":

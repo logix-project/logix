@@ -53,18 +53,34 @@ class LogIXCallback(TrainerCallback):
     def on_step_end(self, args, state, control, **kwargs):
         if self.args.mode == "influence":
             test_log = self.logix.get_log()
-            self.logix.compute_influence_all(test_log, self.log_dataloader())
+            self.logix.influence.compute_influence_all(
+                test_log,
+                self.log_dataloader(),
+                mode=self.args.influence_mode,
+                damping=self.args.influence_damping,
+                save=True,
+            )
         elif self.args.mode == "self_influence":
             test_log = self.logix.get_log()
-            self.logix.compute_self_influence(test_log)
+            self.logix.influence.compute_self_influence(
+                test_log, damping=self.args.influence_damping
+            )
 
     def on_substep_end(self, args, state, control, **kwargs):
         if self.args.mode == "influence":
             test_log = self.logix.get_log()
-            self.logix.compute_influence_all(test_log, self.log_dataloader())
+            self.logix.influence.compute_influence_all(
+                test_log,
+                self.log_dataloader(),
+                mode=self.args.influence_mode,
+                damping=self.args.influence_damping,
+                save=True,
+            )
         elif self.args.mode == "self_influence":
             test_log = self.logix.get_log()
-            self.logix.compute_self_influence(test_log)
+            self.logix.influence.compute_self_influence(
+                test_log, damping=self.args.influence_damping
+            )
 
     def log_dataloader(self):
         if self._log_dataloader is None:

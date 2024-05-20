@@ -29,7 +29,8 @@ def main():
         project=args.project,
         config=args.config_path,
         lora=True,
-        ekfac=True,
+        hessian="raw",
+        save="grad",
         label_key="input_ids",
     )
     training_args = TrainingArguments(

@@ -39,7 +39,9 @@ def patch_trainer(TrainerClass):
             # Initialize LogIX
             self.logix_args = logix_args
             self.logix = LogIX(project=logix_args.project, config=logix_args.config)
-            self.logix_scheduler = LogIXScheduler(self.logix, ekfac=logix_args.ekfac)
+            self.logix_scheduler = LogIXScheduler(
+                self.logix, hessian=logix_args.hessian, save=logix_args.save
+            )
             self.data_id_generator = DataIDGenerator()
             logix_callback = LogIXCallback(
                 self.logix, self.logix_scheduler, self.logix_args

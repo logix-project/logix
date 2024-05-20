@@ -27,7 +27,13 @@ def main():
     model.eval()
     train_dataset = get_datasets(args.data_name)[1]
 
-    logix_args = LogIXArgument(project=args.project, config=args.config_path, lora=True)
+    logix_args = LogIXArgument(
+        project=args.project,
+        config=args.config_path,
+        lora=True,
+        hessian="raw",
+        save="grad",
+    )
     training_args = TrainingArguments(
         output_dir="./output",
         num_train_epochs=1,

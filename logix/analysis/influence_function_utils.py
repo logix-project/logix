@@ -85,15 +85,29 @@ def cross_dot_product(src: torch.Tensor, tgt: torch.Tensor) -> torch.Tensor:
     return dot_product_result
 
 
-def merge_influence_results(result_all, result) -> None:
-    result_all["tgt_ids"].extend(result["tgt_ids"])
+def merge_influence_results(
+    result_all: Dict[str, Dict[str, torch.Tensor]],
+    result: Dict[str, Dict[str, torch.Tensor]],
+    axis: str = "tgt",
+) -> None:
+    assert axis in ["src", "tgt"], f"Unsupported axis {axis}."
+
+    # If merged result is empty, just copy the result and return
+    if not result_all:
+        result_all.update(result)
+        return
+
+    dim = int(axis == "tgt")
+    id_key = f"{axis}_ids"
+
+    result_all[id_key].extend(result[id_key])
     if isinstance(result["influence"], dict):
         for key in result_all["influence"].keys():
             result_all["influence"][key] = torch.cat(
-                [result_all["influence"][key], result["influence"][key]], dim=1
+                [result_all["influence"][key], result["influence"][key]], dim=dim
             )
     else:
         assert isinstance(result["influence"], torch.Tensor)
         result_all["influence"] = torch.cat(
-            [result_all["influence"], result["influence"]], dim=1
+            [result_all["influence"], result["influence"]], dim=dim
         )

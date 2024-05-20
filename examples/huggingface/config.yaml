@@ -5,5 +5,3 @@ logging:
 lora:
   init: random
   rank: 64
-influence:
-  flatten: true

@@ -59,6 +59,12 @@ class HookLogger:
 
         return log
 
+    def save_log(self):
+        # save log to disk
+        if any(self.opt.save.values()):
+            self.log_saver.buffer_write(binfo=self.binfo)
+            self.log_saver.flush()
+
     def update(self):
         # Update statistics
         for stat in self.opt.statistic["grad"]:
@@ -78,9 +84,7 @@ class HookLogger:
             torch.cuda.current_stream().synchronize()
 
         # Write and flush the buffer if necessary
-        if any(self.opt.save.values()):
-            self.log_saver.buffer_write(binfo=self.binfo)
-            self.log_saver.flush()
+        self.save_log()
 
     def _forward_hook_fn(
         self, module: nn.Module, inputs: Tuple[torch.Tensor], module_name: str

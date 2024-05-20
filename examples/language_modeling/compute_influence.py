@@ -38,19 +38,13 @@ def main():
     parser.add_argument("--lora", type=str, default="random")
     parser.add_argument("--split", type=str, default="train")
     parser.add_argument("--mlp_only", action="store_true")
-    parser.add_argument("--layerwise", action="store_true")
     parser.add_argument("--damping", type=float, default=1e-5)
     args = parser.parse_args()
 
     set_seed(0)
     accelerator = Accelerator()
-    influence_groups = None
-    if args.layerwise:
-        layer_id = "h" if args.model_name == "gpt2-xl" else "layers"
-        layer_num = 48 if args.model_name == "gpt2-xl" else 32
-    influence_groups = [f".{layer_id}.{i}." for i in range(layer_num)]
 
-    # prepare model & data loader
+    # prepare model, tokenizer, data loader
     model = get_model(model_name=args.model_name, cache_dir=args.cache_dir)
     tokenizer = get_tokenizer(
         model_name=args.model_name, cache_dir=args.cache_dir, add_padding_token=True
@@ -60,7 +54,7 @@ def main():
         data_path=args.data_path,
         data_name=args.data_name,
         tokenizer=tokenizer,
-        batch_size=args.batch_size,
+        batch_size=1,
         cache_dir=args.cache_dir,
         split=args.split,
     )
@@ -103,20 +97,13 @@ def main():
         test_log = logix.get_log()
         merged_test_logs.append(copy.deepcopy(test_log))
 
-        if idx == 12 or idx == len(data_loader) - 1:
-            merged_test_log = merge_logs(merged_test_logs)
-            result = run.influence.compute_influence_all(
-                merged_test_log, log_loader, influence_groups=influence_groups
-            )
-            merged_test_logs = []
+        if idx == args.batch_size - 1:
             break
 
-    post_fix = f"{args.split}_{model_name_strip}_{args.lora}_{args.hessian}"
-    if args.mlp_only:
-        post_fix += "_mlp"
-    save_dir = os.path.join(args.save_dir, post_fix)
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
+    merged_test_log = merge_logs(merged_test_logs)
+    result = run.influence.compute_influence_all(merged_test_log, log_loader)
+
+    save_dir = "./save"
     torch.save(result["influence"], os.path.join(save_dir, "scores.pt"))
     torch.save(result["src_ids"], os.path.join(save_dir, "test_ids.pt"))
     torch.save(result["tgt_ids"], os.path.join(save_dir, "train_ids.pt"))

@@ -1,5 +1,6 @@
 import argparse
 
+import torch
 import torch.nn.functional as F
 from accelerate import Accelerator
 from tqdm import tqdm
@@ -29,7 +30,8 @@ def main():
         project=args.project,
         config=args.config_path,
         lora=True,
-        ekfac=True,
+        hessian="raw",
+        save="grad",
         label_key="input_ids",
         initialize_from_log=True,
         log_batch_size=args.batch_size,
@@ -51,7 +53,7 @@ def main():
         logix_args=logix_args,
     )
     if_scores = trainer.influence()
-    if_scores.to_csv("scores.csv", index=True, header=True)
+    torch.save(if_scores, "gpt_influence.pt")
 
 
 if __name__ == "__main__":

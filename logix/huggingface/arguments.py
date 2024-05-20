@@ -13,7 +13,8 @@ class LogIXArgument:
         default="config.yaml", metadata={"help": "The path to the config file."}
     )
     lora: bool = field(default=False, metadata={"help": "Enable LoRA."})
-    ekfac: bool = field(default=False, metadata={"help": "Enable EKFAC."})
+    hessian: str = field(default="none", metadata={"help": "Hessian type."})
+    save: str = field(default="none", metadata={"help": "Save type."})
     initialize_from_log: bool = field(
         default=False, metadata={"help": "Initialize from the log."}
     )
@@ -31,6 +32,12 @@ class LogIXArgument:
     )
     input_key: str = field(
         default="input_ids", metadata={"help": "The dictionary key for 'input_ids'."}
+    )
+    influence_damping: float = field(
+        default=None, metadata={"help": "A damping term in influence functions."}
+    )
+    influence_mode: str = field(
+        default="dot", metadata={"help": "Influence function mode."}
     )
     label_key: str = field(
         default="labels", metadata={"help": "The dictionary key for 'labels'."}
