@@ -1,7 +1,0 @@
-root_dir: ./logix
-logging:
-  flush_threshold: 1000000000
-  cpu_offload: true
-lora:
-  init: pca
-  rank: 64
