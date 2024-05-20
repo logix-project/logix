@@ -1,27 +1,24 @@
 # Data Valuation with (Large) Language Models
 
 This directory contains the codes for running data valuation with large scale
-language models like LLAMA3. In essence, the code ranks the pretraining data
+language models like Llama3. In essence, the code ranks the pretraining data
 based on the importance of each data point in the generation of a target sentence.
 The procedure to rank the data points is as follows:
 
 ### Data Preparation
-Generate the model outputs that we will analyze. This is a simple code that
-generates the output based on the prompt. We experimented with
-`Meta-Llama-3-8B-Instruct`, `pythia-1.4b` and `gpt2-xl`. Use `generate_llama3.py`
-for `Meta-Llama-3-8B-Instruct` and `generate.py` for `pythia-1.4b` and `gpt2-xl`.
+We here provide a simple code to generate the response of Llama3-8B-Instruct
+given the user prompt. Responses, along with prompts, will be saved in
+`custom_data` in a json format and will be used for data valuation later.
 
 ```python
-python generate_llama3.py
 python generate.py
 ```
 
 ### Extract Log
 
-`extract_log.py` extracts training gradients for each pretraining data point,
-compresses them using LoGra, and saves them in files. Note that by default we
-use 1B tokens from `openwebtext` data, leveraging data parallelism. An example
-running command is as follows. This is the most time consuming part of the pipeline.
+`extract_log.py` extracts the Hessian, projected gradients for each (pre)training
+data point using LoGra, and saves them in memory-mapped files. Users can plug in
+their own datasets just by rewriting the data loading part.
 
 ```python
 accelerate launch --num_processes 2 --num_machines 1 --multi_gpu extract_log.py \
@@ -31,6 +28,7 @@ accelerate launch --num_processes 2 --num_machines 1 --multi_gpu extract_log.py 
   --mlp_only
   --data_name openwebtext
 ```
+
 As a result, the code will generate a folder containing the compressed gradients
 for each data point and other statistics necessary for running LoGra (e.g. the
 random initialization of LoGra parameters, the covariance of the gradients, etc.).
