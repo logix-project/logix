@@ -21,8 +21,13 @@
 pip install logix-ai
 ```
 
+
+> [!WARNING]
+> This repository is under active development. If you have suggestions or find bugs in LogIX, please open an github issue or reach out.
+
+
 ## Basics
-It turns out that most _interpretable & explainable AI_ research (e.g., training data attribution,
+It turns out that most _interpretable & explainable AI_ research (e.g., training data valuation/attribution,
 saliency maps, mechanistic interpretability) simply require **(1)** intercepting various training logs
 (e.g., activation, gradient) and **(2)** doing some computational analyses with these logs. Therefore,
 **LogIX** focuses on simple, efficient, and interoperable logging of training artifacts for maximal
@@ -63,7 +68,8 @@ for input, target in data_loader:
     # print(log[1]["model.layers.23.mlp.down_proj"]["grad"])
     # or perform any custom analysis
 
-# Synchronize statistics (e.g. grad variance) and write logs to disk
+# Synchronize statistics (e.g. grad covariance) and
+# write remaining logs to disk
 run.finalize()
 ```
 
@@ -95,7 +101,7 @@ frameworks (e.g. Lightning) in the future.
 from transformers import Trainer, Seq2SeqTrainer
 from logix.huggingface import patch_trainer, LogIXArguments
 
-logix_args = LogIXArguments(project, config, lora=True, ekfac=True)
+logix_args = LogIXArguments(project, config, lora=True, hessian="raw", save="grad")
 LogIXTrainer = patch_trainer(Trainer)
 
 trainer = LogIXTrainer(logix_args=logix_args, # pass LogIXArguments as TrainingArguments
@@ -110,7 +116,7 @@ trainer.influence()
 trainer.self_influence()
 ```
 
-Please check out [Examples](/examples) for more advanced features!
+Please check out [Examples](/examples) for more detailed examples!
 
 
 ## Features
