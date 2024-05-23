@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://github.com/sangkeun00/logix/">
+  <a href="https://github.com/logix-project/logix">
     <img src="assets/logo.jpg" alt="" width="40%" align="top" style="border-radius: 10px; padding-left: 120px; padding-right: 120px; background-color: white;">
   </a>
 </p>
@@ -11,10 +11,8 @@
 <div align="center">
 
   [![Build](https://badgen.net/badge/build/check-status/green)](#build-pipeline-status)
-  [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/leopard-ai/betty/blob/main/LICENSE)
+  [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/logix-project/logix/blob/main/LICENSE)
   <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="code style: black"></a>
-  <a href="https://discord.gg/3vTgFnFX"><img alt="Discord" src="https://img.shields.io/discord/1159141589738868796?logo=discord&label=Discord&color=white&link=https%3A%2F%2Fdiscord.gg%2F3vTgFnFX"></a>
-
 </div>
 
 ```bash
@@ -23,7 +21,7 @@ pip install logix-ai
 
 
 > [!WARNING]
-> This repository is under active development. If you have suggestions or find bugs in LogIX, please open an github issue or reach out.
+> This repository is under active development. If you have suggestions or find bugs in LogIX, please open a GitHub issue or reach out.
 
 
 ## Basics
@@ -85,10 +83,11 @@ with run(data_id=test_input):
     test_out = model(test_input)
     test_loss = loss_fn(test_out, test_target, reduction="sum")
     test_loss.backward()
-test_log = run.get_log() # extract a log for test data
+# Extract a log for test data
+test_log = run.get_log()
 
-run.influence.compute_influence_all(test_log, log_loader) # data attribution
-run.influence.compute_self_influence(test_log) # uncertainty
+run.influence.compute_influence_all(test_log, log_loader) # Data attribution
+run.influence.compute_self_influence(test_log) # Uncertainty estimation
 ```
 
 ### HuggingFace Integration
@@ -104,13 +103,14 @@ from logix.huggingface import patch_trainer, LogIXArguments
 logix_args = LogIXArguments(project, config, lora=True, hessian="raw", save="grad")
 LogIXTrainer = patch_trainer(Trainer)
 
-trainer = LogIXTrainer(logix_args=logix_args, # pass LogIXArguments as TrainingArguments
+# Pass LogIXArguments as TrainingArguments
+trainer = LogIXTrainer(logix_args=logix_args,
                        model=model,
                        train_dataset=train_dataset,
                        *args,
                        **kwargs)
 
-# Instead of trainer.train(),
+# Instead of trainer.train(), use
 trainer.extract_log()
 trainer.influence()
 trainer.self_influence()
@@ -146,7 +146,7 @@ To cite this repository:
 @software{logix2024github,
   author = {Sang Keun Choe, Hwijeen Ahn, Juhan Bae, Minsoo Kang, Youngseog Chung, Kewen Zhao},
   title = {{LogIX}: Scalable Logging and Analysis Tool for Neural Networks},
-  url = {http://github.com/sangkeun00/logix},
+  url = {https://github.com/logix-project/logix},
   version = {0.0.1},
   year = {2024},
 }

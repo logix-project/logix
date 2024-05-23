@@ -1,12 +1,12 @@
 # Contributing
 
 We welcome and greatly appreciate contributions from the community! You can
-help make AnaLog even better by either
+help make LogIX even better by either
 
 1. [Creating a PR](#create-a-pr) to fix a bug or add functionality.
-2. [Reporting a bug](#report-a-bug) that you found in AnaLog.
+2. [Reporting a bug](#report-a-bug) that you found in LogIX.
 3. [Requesting a feature](#request-a-feature) that you would like to
-   see in AnaLog.
+   see in LogIX.
 
 ## Create a PR
 
@@ -22,12 +22,12 @@ To create a PR:
 
 ### What kind of additional features are we looking for?
 
-If there is an important metric that you believe is missing from AnaLog, we would
+If there is an important metric that you believe is missing from LogIX, we would
 be grateful if you submitted a PR adding this metric. For other types of features,
 ask yourself:
 
 * Does this change add a new feature that will have a positive effect on the
-  majority of AnaLog's users?
+  majority of LogIX's users?
 * Does this change make the codebase more confusing or difficult to deal with?
 * Does this change add heavy or niche dependencies?
 
@@ -65,7 +65,7 @@ your issue, please give a description of how to reproduce the bug.
 ## Request a Feature
 
 For any feature request, submit an issue with [REQUEST] in the title.
-As part of the issue, describe why this would be beneficial for AnaLog and give
+As part of the issue, describe why this would be beneficial for LogIX and give
 an example use case of how the feature would be used.
 
 ## Maintainers
