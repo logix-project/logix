@@ -20,8 +20,10 @@ python_requires = ">=3.6.0,<3.11.0"
 
 if __name__ == "__main__":
     setup(
-        name="logix",
+        name="logix-ai",
         version=version,
+        description="AI Logging for Interpretability and Explainability",
+        license="Apache-2.0",
         packages=find_packages(
             exclude=[
                 "examples",
