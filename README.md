@@ -147,7 +147,7 @@ To cite this repository:
   author = {Sang Keun Choe, Hwijeen Ahn, Juhan Bae, Minsoo Kang, Youngseog Chung, Kewen Zhao},
   title = {{LogIX}: Scalable Logging and Analysis Tool for Neural Networks},
   url = {https://github.com/logix-project/logix},
-  version = {0.0.1},
+  version = {0.1.0},
   year = {2024},
 }
 ```
