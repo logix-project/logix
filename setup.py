@@ -1,4 +1,6 @@
 from setuptools import setup, find_packages
+import re
+import ast
 
 
 def fetch_requirements(path: str):
@@ -7,12 +9,19 @@ def fetch_requirements(path: str):
         return requirements
 
 
+_version_re = re.compile(r"__version__\s+=\s+(.*)")
+
+with open("logix/__init__.py", "rb") as f:
+    version = str(
+        ast.literal_eval(_version_re.search(f.read().decode("utf-8")).group(1))
+    )
+
 python_requires = ">=3.6.0,<3.11.0"
 
 if __name__ == "__main__":
     setup(
         name="logix",
-        version="0.0.0",
+        version=version,
         packages=find_packages(
             exclude=[
                 "examples",
