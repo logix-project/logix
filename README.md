@@ -10,9 +10,11 @@
 
 <div align="center">
 
-  [![Build](https://badgen.net/badge/build/check-status/green)](#build-pipeline-status)
-  [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/logix-project/logix/blob/main/LICENSE)
+  ![PyPI - Version](https://img.shields.io/pypi/v/logix-ai)
+  ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/logix-project/logix/python-test.yml)
+  ![GitHub License](https://img.shields.io/github/license/logix-ai/logix)
   <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="code style: black"></a>
+  <a href="https://arxiv.org/abs/2405.13954">![arXiv](https://img.shields.io/badge/arXiv-2405.13954-b31b1b.svg)</a>
 </div>
 
 ```bash
@@ -143,12 +145,11 @@ guidelines](CONTRIBUTING.md) for details on how to contribute to LogIX.
 To cite this repository:
 
 ```
-@software{logix2024github,
-  author = {Sang Keun Choe, Hwijeen Ahn, Juhan Bae, Minsoo Kang, Youngseog Chung, Kewen Zhao},
-  title = {{LogIX}: Scalable Logging and Analysis Tool for Neural Networks},
-  url = {https://github.com/logix-project/logix},
-  version = {0.1.0},
-  year = {2024},
+@article{choe2024your,
+  title={What is Your Data Worth to GPT? LLM-Scale Data Valuation with Influence Functions},
+  author={Choe, Sang Keun and Ahn, Hwijeen and Bae, Juhan and Zhao, Kewen and Kang, Minsoo and Chung, Youngseog and Pratapa, Adithya and Neiswanger, Willie and Strubell, Emma and Mitamura, Teruko and others},
+  journal={arXiv preprint arXiv:2405.13954},
+  year={2024}
 }
 ```
 
