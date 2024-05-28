@@ -60,7 +60,7 @@ def precondition_raw(
     damping: Optional[float] = None,
 ) -> Dict[str, Dict[str, torch.Tensor]]:
     preconditioned = nested_dict()
-    cov_inverse = state.get_covariance_inverse_state()
+    cov_inverse = state.get_covariance_inverse_state(damping=damping)
     for module_name in src.keys():
         device = src[module_name]["grad"].device
         grad_cov_inverse = cov_inverse[module_name]["grad"].to(device=device)

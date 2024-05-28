@@ -20,6 +20,7 @@ parser.add_argument("--damping", type=float, default=1e-5)
 parser.add_argument("--hessian", type=str, default="none")
 parser.add_argument("--lora", type=str, default="none")
 parser.add_argument("--save", type=str, default="grad")
+parser.add_argument("--flatten", action="store_true")
 args = parser.parse_args()
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -56,7 +57,9 @@ for epoch in scheduler:
     logix.finalize()
 
 # Influence Analysis
-log_loader = logix.build_log_dataloader(batch_size=64, num_workers=0)
+log_loader = logix.build_log_dataloader(
+    batch_size=64, num_workers=0, flatten=args.flatten
+)
 
 # logix.add_analysis({"influence": InfluenceFunction})
 logix.setup({"log": "grad"})

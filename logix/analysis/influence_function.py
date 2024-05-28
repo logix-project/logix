@@ -116,7 +116,7 @@ class InfluenceFunction:
                 log=src, path=self._state.get_state("model_module")["path"]
             )
             tgt = tgt.to(device=src.device)
-            total_influence += cross_dot_product(src, tgt)
+            total_influence["total"] += cross_dot_product(src, tgt)
         else:
             synchronize_device(src, tgt)
             for module_name in src.keys():
@@ -158,8 +158,8 @@ class InfluenceFunction:
             assert value.shape[1] == len(tgt_ids)
             total_influence[key] = value.cpu()
 
-        result["src_ids"] = src_ids
-        result["tgt_ids"] = tgt_ids
+        result["src_ids"] = list(src_ids)
+        result["tgt_ids"] = list(tgt_ids)
         result["influence"] = (
             total_influence.pop("total")
             if influence_groups is None
@@ -266,16 +266,9 @@ class InfluenceFunction:
                 influence_groups=influence_groups,
                 damping=damping,
             )
-
-            # if result_all is None:
-            #     result_all = result
-            # else:
             merge_influence_results(result_all, result, axis="tgt")
 
         if save:
-            # if self.influence_scores is None:
-            #     self.influence_scores = result_all
-            # else:
             merge_influence_results(self.influence_scores, result_all, axis="src")
 
         return result_all

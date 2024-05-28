@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Optional, Dict, Tuple
 
 import torch
 import torch.distributed as dist
@@ -84,38 +85,41 @@ class LogIXState:
                 )
 
     @torch.no_grad()
-    def covariance_inverse(self, set_attr: bool = False) -> None:
+    def covariance_inverse(self, damping: Optional[float] = None) -> None:
         """
         Compute the inverse of the covariance.
         """
         self.register_state("covariance_inverse_state", save=True)
 
         for module_name, module_state in self.covariance_state.items():
-            for mode, covariance in module_state.items():
+            for mode, cov in module_state.items():
+                damping_module = (
+                    0.1 * torch.trace(cov) / cov.size(0) if damping is None else damping
+                )
                 self.covariance_inverse_state[module_name][mode] = torch.inverse(
-                    covariance
-                    + 0.1
-                    * torch.trace(covariance)
-                    * torch.eye(covariance.shape[0]).to(device=covariance.device)
-                    / covariance.shape[0]
+                    cov + damping_module * torch.eye(cov.size(0)).to(device=cov.device)
                 )
 
-    def get_covariance_state(self):
+    def get_covariance_state(self) -> Dict[str, Dict[str, torch.Tensor]]:
         """
         Return the covariance state.
         """
         return self.covariance_state
 
-    def get_covariance_inverse_state(self):
+    def get_covariance_inverse_state(
+        self, damping: Optional[float] = None
+    ) -> Dict[str, Dict[str, torch.Tensor]]:
         """
         Return the covariance inverse state. If the state is not computed, compute
         it first.
         """
         if not hasattr(self, "covariance_inverse_state"):
-            self.covariance_inverse()
+            self.covariance_inverse(damping=damping)
         return self.covariance_inverse_state
 
-    def get_covariance_svd_state(self):
+    def get_covariance_svd_state(
+        self,
+    ) -> Tuple[Dict[str, Dict[str, torch.Tensor]], Dict[str, Dict[str, torch.Tensor]]]:
         """
         Return the covariance SVD state. If the state is not computed, compute
         it first.
@@ -213,7 +217,7 @@ class LogIXState:
             state_dict = torch.load(os.path.join(state_log_dir, f"{state_name}.pt"))
             setattr(self, state_name, state_dict)
 
-    def set_state(self, state_name, **kwargs):
+    def set_state(self, state_name: str, **kwargs) -> None:
         """
         set_state sets the state for the given state_name with input kwargs.
         """
@@ -223,7 +227,7 @@ class LogIXState:
             state = getattr(self, state_name)
             state[key] = value
 
-    def get_state(self, state_name):
+    def get_state(self, state_name: str) -> Dict[str, Dict[str, torch.Tensor]]:
         return getattr(self, state_name)
 
     def clear_log_state(self) -> None:
