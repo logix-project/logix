@@ -236,7 +236,7 @@ class DataIDGenerator:
             data_id.append(hashlib.sha256(ndarray.tobytes()).hexdigest())
         return data_id
 
-    def generate_index_id(self, data: Any) -> List[int]:
+    def generate_index_id(self, data: Any) -> List[str]:
         """
         Given data, generate id based on the index.
         """

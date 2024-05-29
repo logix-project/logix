@@ -9,7 +9,7 @@ import torch
 from logix.utils import get_rank
 
 
-def init_config_from_yaml(project: str, logix_config: str):
+def init_config_from_yaml(project: str, logix_config: Optional[str] = None):
     config_dict = {}
     if logix_config is not None:
         assert os.path.exists(logix_config), f"{logix_config} doesn't exist!"

@@ -1,6 +1,5 @@
 from logix import LogIX
 from logix.statistic import Covariance
-from logix.utils import get_logger
 
 
 class LogIXScheduler:

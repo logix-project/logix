@@ -1,7 +1,8 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 import torch.nn as nn
 
+from logix.config import LoRAConfig
 from logix.state import LogIXState
 from logix.lora.modules import LoraLinear, LoraConv2d, LoraEmbedding
 from logix.lora.utils import find_parameter_sharing_group, _get_submodules
@@ -15,7 +16,7 @@ class LoRAHandler:
 
     _SUPPORTED_MODULES = {nn.Linear, nn.Conv1d, nn.Conv2d}
 
-    def __init__(self, config: Dict[str, Any], state: LogIXState):
+    def __init__(self, config: LoRAConfig, state: LogIXState):
         self._state = state
 
         self.init_strategy = config.init
@@ -26,8 +27,8 @@ class LoRAHandler:
     def add_lora(
         self,
         model: nn.Module,
-        type_filter: List[nn.Module],
-        name_filter: List[str],
+        type_filter: Optional[List[nn.Module]],
+        name_filter: Optional[List[str]],
     ):
         """
         Add LoRA modules to a model.

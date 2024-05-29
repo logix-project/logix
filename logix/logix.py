@@ -1,6 +1,6 @@
 import os
 
-from typing import Optional, Iterable, Dict, Any, List, Union
+from typing import Optional, Iterable, Dict, Any, List, Union, Tuple
 from dataclasses import asdict
 from functools import reduce
 from copy import deepcopy
@@ -86,8 +86,8 @@ class LogIX:
     def watch(
         self,
         model: nn.Module,
-        type_filter: List[nn.Module] = None,
-        name_filter: List[str] = None,
+        type_filter: Optional[List[nn.Module]] = None,
+        name_filter: Optional[List[str]] = None,
     ) -> None:
         """
         Sets up modules in the model to be watched based on optional type and name filters.
@@ -151,6 +151,7 @@ class LogIX:
         clear: bool = True,
         type_filter: Optional[List[nn.Module]] = None,
         name_filter: Optional[List[str]] = None,
+        lora_path: Optional[str] = None,
         lora_config: Optional[LoRAConfig] = None,
     ) -> None:
         """
@@ -171,6 +172,13 @@ class LogIX:
             clear (bool, optional):
                 Whether to clear the internal states after adding LoRA. Defaults to
                 `True`.
+            type_filter (Optional[List[nn.Module]], optional):
+                A list of module types to be watched.
+            name_filter (Optional[List[str]], optional):
+                A list of module names to be watched.
+            lora_path (Optional[str], optional):
+                The path to the LoRA state file. If None, the LoRA state is not loaded.
+            lora_config (Optional[LoRAConfig], optional): LoRA configuration.
         """
         if lora_config is not None:
             self.set_lora_config(lora_config)
@@ -187,12 +195,22 @@ class LogIX:
             name_filter=name_filter or self.name_filter,
         )
 
+        # If lora_path is not none, load lora weights from this path
+        if lora_path is not None:
+            lora_dir = os.path.join(os.path.join(lora_path, "lora"))
+            lora_state = torch.load(os.path.join(lora_dir, "lora_state_dict.pt"))
+            for name in lora_state:
+                assert name in self.model.state_dict(), f"{name} not in model!"
+            model.load_state_dict(lora_state, strict=False)
+
         # Clear state and logger
         if clear:
             msg = "LogIX will clear the previous Hessian, Storage, and Logging "
             msg += "handlers after adding LoRA for gradient compression.\n"
             get_logger().info(msg)
             self.clear()
+
+        # (Re-)watch lora-added model
         if watch:
             self.watch(model)
 
@@ -210,7 +228,7 @@ class LogIX:
 
     def __call__(
         self,
-        data_id: Iterable[Any] = None,
+        data_id: Iterable[Any],
         mask: Optional[torch.Tensor] = None,
     ):
         """
@@ -289,7 +307,7 @@ class LogIX:
             )
         return self.log_dataloader
 
-    def get_log(self, copy=False) -> Dict[str, Dict[str, torch.Tensor]]:
+    def get_log(self, copy=False) -> Tuple[str, Dict[str, Dict[str, torch.Tensor]]]:
         """
         Returns the current log, including data identifiers and logged information.
 
@@ -305,7 +323,9 @@ class LogIX:
         """
         return self.state.get_covariance_state()
 
-    def get_covariance_svd_state(self) -> Dict[str, Dict[str, torch.Tensor]]:
+    def get_covariance_svd_state(
+        self,
+    ) -> Tuple[Dict[str, Dict[str, torch.Tensor]], Dict[str, Dict[str, torch.Tensor]]]:
         """
         Returns the SVD of the covariance from the Hessian handler.
         """
@@ -313,8 +333,8 @@ class LogIX:
 
     def compute_influence(
         self,
-        src_log: Dict[str, Dict[str, torch.Tensor]],
-        tgt_log: Dict[str, Dict[str, torch.Tensor]],
+        src_log: Tuple[str, Dict[str, Dict[str, torch.Tensor]]],
+        tgt_log: Tuple[str, Dict[str, Dict[str, torch.Tensor]]],
         mode: Optional[str] = "dot",
         precondition: Optional[bool] = True,
     ) -> Dict[str, Union[List[str], torch.Tensor, Dict[str, torch.Tensor]]]:
@@ -334,10 +354,10 @@ class LogIX:
 
     def compute_influence_all(
         self,
-        src_log: Optional[Dict[str, Dict[str, torch.Tensor]]] = None,
+        src_log: Optional[Tuple[str, Dict[str, Dict[str, torch.Tensor]]]] = None,
         loader: Optional[torch.utils.data.DataLoader] = None,
         mode: Optional[str] = "dot",
-        precondition: Optional[str] = True,
+        precondition: Optional[bool] = True,
     ) -> Dict[str, Union[List[str], torch.Tensor, Dict[str, torch.Tensor]]]:
         """
         Front-end interface for computing influence scores against all train data in the log.
@@ -357,7 +377,7 @@ class LogIX:
 
     def compute_self_influence(
         self,
-        src_log: Optional[Dict[str, Dict[str, torch.Tensor]]] = None,
+        src_log: Optional[Tuple[str, Dict[str, Dict[str, torch.Tensor]]]] = None,
         precondition: Optional[bool] = True,
     ) -> Dict[str, Union[List[str], torch.Tensor, Dict[str, torch.Tensor]]]:
         """
@@ -400,9 +420,15 @@ class LogIX:
                 os.makedirs(log_dir)
             torch.save(lora_state_dict, os.path.join(log_dir, "lora_state_dict.pt"))
 
-    def initialize_from_log(self) -> None:
+    def initialize_from_log(
+        self, state_path: Optional[str] = None, lora_path: Optional[str] = None
+    ) -> None:
         """
         Load all states from disk.
+
+        Args:
+            state_path (str, optional): Path to the state file.
+            lora_path (str, optional): Path to the LoRA state file.
         """
         # Load logix config
         assert os.path.exists(self.log_dir), f"{self.log_dir} does not exist!"
@@ -411,7 +437,7 @@ class LogIX:
         self.config.load_config(config_file)
 
         # Load LoRA state
-        lora_dir = os.path.join(self.log_dir, "lora")
+        lora_dir = os.path.join(lora_path or self.log_dir, "lora")
         if os.path.exists(lora_dir) and self.model is not None:
             if not is_lora(self.model):
                 self.add_lora()
@@ -421,7 +447,7 @@ class LogIX:
             self.model.load_state_dict(lora_state, strict=False)
 
         # Load state
-        self.state.load_state(self.log_dir)
+        self.state.load_state(state_path or self.log_dir)
 
     def finalize(
         self,
