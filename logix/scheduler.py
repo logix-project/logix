@@ -6,15 +6,16 @@ class LogIXScheduler:
     def __init__(
         self,
         logix: LogIX,
-        lora: str = "none",
-        hessian: str = "none",
-        save: str = "none",
     ):
         self.logix = logix
 
         self._epoch = -1
         self._lora_epoch = -1
         self._logix_state_schedule = []
+
+        lora = logix.config.scheduler.lora
+        hessian = logix.config.scheduler.hessian
+        save = logix.config.scheduler.save
 
         self.sanity_check(lora, hessian, save)
         self.configure_lora_epoch(lora)
