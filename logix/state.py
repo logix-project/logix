@@ -42,6 +42,12 @@ class LogIXState:
     ):
         """
         Register a state to be logged.
+
+        Args:
+            state_name: Name of the state.
+            synchronize: Whether to synchronize the state across processes.
+            save: Whether to save the state to disk.
+            not_clear: Whether to clear the state.
         """
         if state_name in self._states:
             return
@@ -59,6 +65,10 @@ class LogIXState:
     def register_normalize_pair(self, state_name: str, counter_name: str):
         """
         Add a normalization pair to the state.
+
+        Args:
+            state_name: Name of the state.
+            counter_name: Name of the counter.
         """
         if (state_name, counter_name) in self._states_to_normalize:
             return
@@ -88,6 +98,9 @@ class LogIXState:
     def covariance_inverse(self, damping: Optional[float] = None) -> None:
         """
         Compute the inverse of the covariance.
+
+        Args:
+            damping: Damping for the covariance.
         """
         self.register_state("covariance_inverse_state", save=True)
 
@@ -176,13 +189,23 @@ class LogIXState:
             counter_dict = getattr(self, counter_name)
             _normalize(state_dict, counter_dict)
 
-    def finalize(self) -> None:
+    def finalize(self, log_dir: str) -> None:
         """
         Finalize the state.
+
+        Args:
+            log_dir: Directory to save the state.
         """
+        # If we are in distributed mode, synchronize the states across processes
         if get_world_size() > 1:
             self.synchronize()
+
+        # Normalize the states with the counter
         self.normalize()
+
+        # Save the states to disk
+        if get_rank() == 0:
+            self.save_state(log_dir=log_dir)
 
     def save_state(self, log_dir: str) -> None:
         """
@@ -230,14 +253,10 @@ class LogIXState:
     def get_state(self, state_name: str) -> Dict[str, Dict[str, torch.Tensor]]:
         return getattr(self, state_name)
 
-    def clear_log_state(self) -> None:
-        """
-        Clear the log state.
-        """
-        # self.log_state = nested_dict()
-        self.log_state.clear()
-
     def clear(self) -> None:
+        """
+        Clear all states.
+        """
         for state_name in self._states:
             if state_name in self._states_to_not_clear:
                 continue

@@ -12,7 +12,7 @@ import torch.nn as nn
 
 from logix.analysis import InfluenceFunction
 from logix.batch_info import BatchInfo
-from logix.config import init_config_from_yaml, LoggingConfig, LoRAConfig
+from logix.config import init_config_from_yaml, LoggingConfig, LoRAConfig, Config
 from logix.logging import HookLogger
 from logix.logging.log_loader import LogDataset
 from logix.logging.log_loader_utils import collate_nested_dicts
@@ -54,34 +54,37 @@ class LogIX:
         config: Optional[str] = None,
         logging_config: Optional[LoggingConfig] = None,
     ) -> None:
-        self.project = project
+        self.project: str = project
 
-        self.model = None
+        self.model: Optional[nn.Module] = None
 
         # Config
-        self.config = init_config_from_yaml(project=project, logix_config=config)
+        self.config: Config = init_config_from_yaml(
+            project=project, logix_config=config
+        )
         if logging_config is not None:
             self.set_logging_config(logging_config)
-        self.log_dir = self.config.log_dir
+        self.log_dir: str = self.config.log_dir
 
         # LogIX state
-        self.state = LogIXState()
-        self.binfo = BatchInfo()
+        self.state: LogIXState = LogIXState()
+        self.binfo: BatchInfo = BatchInfo()
 
         # Initialize logger
-        self.logger = HookLogger(
+        self.logger: HookLogger = HookLogger(
             config=self.get_logging_config(), state=self.state, binfo=self.binfo
         )
 
         # Log data
-        self.log_dataset = None
-        self.log_dataloader = None
+        self.log_dataset: Optional[torch.utils.data.Dataset] = None
+        self.log_dataloader: Optional[torch.utils.data.DataLoader] = None
 
         # Analysis
-        self.influence = InfluenceFunction(state=self.state)
+        self.influence: InfluenceFunction = InfluenceFunction(state=self.state)
 
-        self.type_filter = None
-        self.name_filter = None
+        # Misc
+        self.type_filter: Optional[List[nn.Module]] = None
+        self.name_filter: Optional[List[str]] = None
 
     def watch(
         self,
@@ -146,7 +149,6 @@ class LogIX:
 
     def add_lora(
         self,
-        model: Optional[nn.Module] = None,
         watch: bool = True,
         clear: bool = True,
         type_filter: Optional[List[nn.Module]] = None,
@@ -186,28 +188,26 @@ class LogIX:
         if not hasattr(self, "lora_handler"):
             self.lora_handler = LoRAHandler(self.get_lora_config(), self.state)
 
-        if model is None:
-            model = self.model
-
         self.lora_handler.add_lora(
-            model=model,
+            model=self.model,
             type_filter=type_filter or self.type_filter,
             name_filter=name_filter or self.name_filter,
         )
 
-        # If lora_path is not none, load lora weights from this path
+        # If lora_path is not none, directly load lora weights from this path
         if lora_path is not None:
             lora_dir = os.path.join(os.path.join(lora_path, "lora"))
             lora_state = torch.load(os.path.join(lora_dir, "lora_state_dict.pt"))
             for name in lora_state:
                 assert name in self.model.state_dict(), f"{name} not in model!"
-            model.load_state_dict(lora_state, strict=False)
+            self.model.load_state_dict(lora_state, strict=False)
 
+        # Save lora state dict
         if get_rank() == 0:
             self.save_lora()
 
         # Clear state and logger
-        if clear:
+        if clear or watch:
             msg = "LogIX will clear the previous Hessian, Storage, and Logging "
             msg += "handlers after adding LoRA for gradient compression.\n"
             get_logger().info(msg)
@@ -215,9 +215,9 @@ class LogIX:
 
         # (Re-)watch lora-added model
         if watch:
-            self.watch(model)
+            self.watch(self.model)
 
-    def log(self, data_id: Any, mask: Optional[torch.Tensor] = None) -> None:
+    def log(self, data_id: Iterable[Any], mask: Optional[torch.Tensor] = None) -> None:
         """
         Logs the data. This is an experimental feature for now.
 
@@ -274,6 +274,9 @@ class LogIX:
         Constructs the log dataset from the stored logs. This dataset can then be used
         for analysis or visualization.
 
+        Args:
+            flatten (bool, optional): Whether to flatten the nested dictionary structure. Defaults to False.
+
         Returns:
             LogDataset:
                 An instance of LogDataset containing the logged data.
@@ -291,7 +294,13 @@ class LogIX:
     ) -> torch.utils.data.DataLoader:
         """
         Constructs a DataLoader for the log dataset. This is useful for batch processing
-        of logged data during analysis.
+        of logged data during analysis. It also follows PyTorch DataLoader conventions.
+
+        Args:
+            batch_size (int, optional): The batch size for the DataLoader. Defaults to 16.
+            num_workers (int, optional): The number of workers for the DataLoader. Defaults to 0.
+            pin_memory (bool, optional): Whether to pin memory for the DataLoader. Defaults to False.
+            flatten (bool, optional): Whether to flatten the nested dictionary structure. Defaults to False.
 
         Return:
             DataLoader:
@@ -310,9 +319,14 @@ class LogIX:
             )
         return self.log_dataloader
 
-    def get_log(self, copy=False) -> Tuple[str, Dict[str, Dict[str, torch.Tensor]]]:
+    def get_log(
+        self, copy: bool = False
+    ) -> Tuple[str, Dict[str, Dict[str, torch.Tensor]]]:
         """
         Returns the current log, including data identifiers and logged information.
+
+        Args:
+           copy (bool, optional): Whether to return a copy of the log. Defaults to False.
 
         Returns:
             dict: The current log.
@@ -320,26 +334,15 @@ class LogIX:
         log = (self.binfo.data_id, self.binfo.log)
         return log if not copy else deepcopy(log)
 
-    def get_covariance_state(self) -> Dict[str, Dict[str, torch.Tensor]]:
-        """
-        Returns the covariance state from the Hessian handler.
-        """
-        return self.state.get_covariance_state()
-
-    def get_covariance_svd_state(
-        self,
-    ) -> Tuple[Dict[str, Dict[str, torch.Tensor]], Dict[str, Dict[str, torch.Tensor]]]:
-        """
-        Returns the SVD of the covariance from the Hessian handler.
-        """
-        return self.state.get_covariance_svd_state()
-
     def compute_influence(
         self,
         src_log: Tuple[str, Dict[str, Dict[str, torch.Tensor]]],
         tgt_log: Tuple[str, Dict[str, Dict[str, torch.Tensor]]],
         mode: Optional[str] = "dot",
         precondition: Optional[bool] = True,
+        hessian: Optional[str] = "auto",
+        influence_groups: Optional[List[str]] = None,
+        damping: Optional[float] = None,
     ) -> Dict[str, Union[List[str], torch.Tensor, Dict[str, torch.Tensor]]]:
         """
         Front-end interface for computing influence scores. It calls the
@@ -350,10 +353,20 @@ class LogIX:
             tgt_log (Tuple[str, Dict[str, Dict[str, torch.Tensor]]]): Log of target gradients
             mode (str, optional): Influence function mode. Defaults to "dot".
             precondition (bool, optional): Whether to precondition the gradients. Defaults to True.
+            hessian (str, optional): Hessian computation mode. Defaults to "auto".
+            influence_groups (List[str], optional): List of influence groups. Defaults to None.
+            damping (float, optional): Damping factor. Defaults to None.
         """
-        return self.influence.compute_influence(
-            src_log, tgt_log, mode=mode, precondition=precondition
+        result = self.influence.compute_influence(
+            src_log=src_log,
+            tgt_log=tgt_log,
+            mode=mode,
+            precondition=precondition,
+            hessian=hessian,
+            influence_groups=influence_groups,
+            damping=damping,
         )
+        return result
 
     def compute_influence_all(
         self,
@@ -361,6 +374,9 @@ class LogIX:
         loader: Optional[torch.utils.data.DataLoader] = None,
         mode: Optional[str] = "dot",
         precondition: Optional[bool] = True,
+        hessian: Optional[str] = "auto",
+        influence_groups: Optional[List[str]] = None,
+        damping: Optional[float] = None,
     ) -> Dict[str, Union[List[str], torch.Tensor, Dict[str, torch.Tensor]]]:
         """
         Front-end interface for computing influence scores against all train data in the log.
@@ -371,17 +387,31 @@ class LogIX:
             loader (torch.utils.data.DataLoader): DataLoader of train data
             mode (str, optional): Influence function mode. Defaults to "dot".
             precondition (bool, optional): Whether to precondition the gradients. Defaults to True.
+            hessian (str, optional): Hessian computation mode. Defaults to "auto".
+            influence_groups (List[str], optional): List of influence groups. Defaults to None.
+            damping (float, optional): Damping factor. Defaults to None.
         """
         src_log = src_log if src_log is not None else self.get_log()
         loader = loader if loader is not None else self.build_log_dataloader()
-        return self.influence.compute_influence_all(
-            src_log, loader, mode=mode, precondition=precondition
+
+        result = self.influence.compute_influence_all(
+            src_log=src_log,
+            loader=loader,
+            mode=mode,
+            precondition=precondition,
+            hessian=hessian,
+            influence_groups=influence_groups,
+            damping=damping,
         )
+        return result
 
     def compute_self_influence(
         self,
         src_log: Optional[Tuple[str, Dict[str, Dict[str, torch.Tensor]]]] = None,
         precondition: Optional[bool] = True,
+        hessian: Optional[str] = "auto",
+        influence_groups: Optional[List[str]] = None,
+        damping: Optional[float] = None,
     ) -> Dict[str, Union[List[str], torch.Tensor, Dict[str, torch.Tensor]]]:
         """
         Front-end interface for computing self-influence scores. It calls the
@@ -390,9 +420,19 @@ class LogIX:
         Args:
             src_log (Tuple[str, Dict[str, Dict[str, torch.Tensor]]]): Log of source gradients
             precondition (bool, optional): Whether to precondition the gradients. Defaults to True.
+            heissian (str, optional): Hessian computation mode. Defaults to "auto".
+            influence_groups (List[str], optional): List of influence groups. Defaults to None.
+            damping (float, optional): Damping factor. Defaults to None.
         """
         src_log = src_log if src_log is not None else self.get_log()
-        return self.influence.compute_self_influence(src_log, precondition=precondition)
+        result = self.influence.compute_self_influence(
+            src_log=src_log,
+            precondition=precondition,
+            hessian=hessian,
+            influence_groups=influence_groups,
+            damping=damping,
+        )
+        return result
 
     def save_config(self) -> None:
         """
@@ -433,11 +473,10 @@ class LogIX:
             state_path (str, optional): Path to the state file.
             lora_path (str, optional): Path to the LoRA state file.
         """
-        # Load logix config
         assert os.path.exists(self.log_dir), f"{self.log_dir} does not exist!"
 
-        config_file = os.path.join(self.log_dir, "config.yaml")
-        self.config.load_config(config_file)
+        # Load config
+        self.config.load_config(os.path.join(self.log_dir, "config.yaml"))
 
         # Load LoRA state
         lora_dir = os.path.join(lora_path or self.log_dir, "lora")
@@ -457,16 +496,15 @@ class LogIX:
     ) -> None:
         """
         Finalizes the logging session.
-
-        Args:
-            clear (bool, optional): Whether to clear the internal states or not.
         """
-        self.state.finalize()
+        # Finalizing `state` synchronizes the state across all processes
+        self.state.finalize(log_dir=self.log_dir)
+
+        # Finalizing `logger` flushes and writes the remaining log buffer to disk
         self.logger.finalize()
 
-        if get_rank() == 0:
-            self.save_config()
-            self.save_state()
+        # Save configurations
+        self.config.save_config(log_dir=self.log_dir)
 
     def setup(self, log_option_kwargs: Dict[str, Any]) -> None:
         """

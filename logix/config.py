@@ -1,7 +1,7 @@
 import os
 
 from typing import List, Dict, Optional, Any, Union
-from dataclasses import dataclass, field, is_dataclass
+from dataclasses import dataclass, field, is_dataclass, asdict
 import yaml
 
 import torch
@@ -176,3 +176,14 @@ class Config:
 
         load_config_from_dict(self, config_dict)
         self.configure_log_dir()
+
+    def save_config(self, log_dir: Optional[str] = None) -> None:
+        """
+        Save configuration to a YAML file.
+        """
+        if get_rank() == 0:
+            config_file = os.path.join(log_dir or self.log_dir, "config.yaml")
+            config_dict = asdict(self)
+
+            with open(config_file, "w", encoding="utf-8") as f:
+                yaml.dump(config_dict, f, default_flow_style=False)
