@@ -203,6 +203,9 @@ class LogIX:
                 assert name in self.model.state_dict(), f"{name} not in model!"
             model.load_state_dict(lora_state, strict=False)
 
+        if get_rank() == 0:
+            self.save_lora()
+
         # Clear state and logger
         if clear:
             msg = "LogIX will clear the previous Hessian, Storage, and Logging "
@@ -464,7 +467,6 @@ class LogIX:
         if get_rank() == 0:
             self.save_config()
             self.save_state()
-            self.save_lora()
 
     def setup(self, log_option_kwargs: Dict[str, Any]) -> None:
         """

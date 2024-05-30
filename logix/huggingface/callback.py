@@ -20,9 +20,15 @@ class LogIXCallback(TrainerCallback):
         self._log_dataloader = None
 
     def on_init_end(self, args, state, control, **kwargs):
+        model = kwargs["model"]
+        self.logix.watch(
+            model=model,
+            name_filter=self.args.name_filter,
+            type_filter=self.args.type_filter,
+        )
+
         if self.args.lora:
-            model = kwargs["model"]
-            self.logix.add_lora(model, watch=False)
+            self.logix.add_lora()
 
     def on_epoch_begin(self, args, state, control, **kwargs):
         if self.args.mode == "log":
@@ -33,13 +39,6 @@ class LogIXCallback(TrainerCallback):
             self.logix.finalize()
 
     def on_train_begin(self, args, state, control, **kwargs):
-        model = kwargs["model"]
-        self.logix.watch(
-            model=model,
-            name_filter=self.args.name_filter,
-            type_filter=self.args.type_filter,
-        )
-
         if self.args.initialize_from_log:
             self.logix.initialize_from_log()
 
