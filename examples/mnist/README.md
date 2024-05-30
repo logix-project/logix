@@ -16,5 +16,5 @@ scores. Users can specify the gradient projection strategy
 (e.g. LoGra) and the Hessian computation strategy.
 
 ```bash
-python compute_influences.py --lora none --hessian raw --save grad
+python compute_influences.py --lora none --hessian kfac --save grad
 ```
