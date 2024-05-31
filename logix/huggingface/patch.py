@@ -5,7 +5,7 @@ from transformers.trainer import *
 from logix import LogIX, LogIXScheduler
 from logix.utils import DataIDGenerator
 from logix.huggingface.callback import LogIXCallback
-from logix.huggingface.arguments import LogIXArgument
+from logix.huggingface.arguments import LogIXArguments
 
 
 def patch_trainer(TrainerClass):
@@ -19,9 +19,9 @@ def patch_trainer(TrainerClass):
     class PatchedTrainer(TrainerClass):
         def __init__(
             self,
-            logix_args: Optional[LogIXArgument] = None,
+            logix_args: LogIXArguments,
             model: Union[PreTrainedModel, nn.Module] = None,
-            args: TrainingArguments = None,
+            args: Optional[TrainingArguments] = None,
             data_collator: Optional[DataCollator] = None,
             train_dataset: Optional[Dataset] = None,
             eval_dataset: Optional[Union[Dataset, Dict[str, Dataset]]] = None,
@@ -59,6 +59,7 @@ def patch_trainer(TrainerClass):
                 args = TrainingArguments(output_dir=output_dir)
             args.num_train_epochs = len(self.logix_scheduler)
             args.report_to = []
+            args.save_strategy = "no"
 
             super().__init__(
                 model,

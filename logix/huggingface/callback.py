@@ -3,7 +3,7 @@ from typing import Optional
 from transformers.trainer import TrainerCallback
 
 from logix import LogIX, LogIXScheduler
-from logix.huggingface.arguments import LogIXArgument
+from logix.huggingface.arguments import LogIXArguments
 
 
 class LogIXCallback(TrainerCallback):
@@ -11,7 +11,7 @@ class LogIXCallback(TrainerCallback):
         self,
         logix: LogIX,
         logix_scheduler: LogIXScheduler,
-        args: LogIXArgument,
+        args: LogIXArguments,
     ):
         self.logix = logix
         self.logix_scheduler = iter(logix_scheduler)
