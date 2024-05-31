@@ -17,6 +17,7 @@ def main():
     parser.add_argument("--config_path", type=str, default="./config.yaml")
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--data_name", type=str, default="sst2")
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
     args = parser.parse_args()
 
     set_seed(0)
@@ -41,6 +42,7 @@ def main():
         output_dir="./output",
         num_train_epochs=1,
         per_device_train_batch_size=args.batch_size,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
         report_to="none",
     )
 

@@ -434,21 +434,6 @@ class LogIX:
         )
         return result
 
-    def save_config(self) -> None:
-        """
-        Save LogIX state to disk.
-        """
-        config_file = os.path.join(self.log_dir, "config.yaml")
-        config_dict = asdict(self.config)
-        with open(config_file, "w", encoding="utf-8") as f:
-            yaml.dump(config_dict, f, default_flow_style=False)
-
-    def save_state(self) -> None:
-        """
-        Save Hessian state to disk.
-        """
-        self.state.save_state(self.log_dir)
-
     def save_lora(self) -> None:
         """
         Save LoRA state to disk.

@@ -3,6 +3,7 @@ from typing import Optional
 from transformers.trainer import TrainerCallback
 
 from logix import LogIX, LogIXScheduler
+from logix.utils import merge_logs
 from logix.huggingface.arguments import LogIXArguments
 
 
@@ -16,6 +17,8 @@ class LogIXCallback(TrainerCallback):
         self.logix = logix
         self.logix_scheduler = iter(logix_scheduler)
         self.args = args
+
+        self.accumulated_log = []
 
         self._log_dataloader = None
 
@@ -51,35 +54,31 @@ class LogIXCallback(TrainerCallback):
 
     def on_step_end(self, args, state, control, **kwargs):
         if self.args.mode == "influence":
-            test_log = self.logix.get_log()
+            self.accumulated_log.append(self.logix.get_log(copy=True))
+            accumulated_log = merge_logs(self.accumulated_log)
+
             self.logix.influence.compute_influence_all(
-                test_log,
+                accumulated_log,
                 self.log_dataloader(),
                 mode=self.args.influence_mode,
                 damping=self.args.influence_damping,
                 save=True,
-            )
-        elif self.args.mode == "self_influence":
-            test_log = self.logix.get_log()
-            self.logix.influence.compute_self_influence(
-                test_log, damping=self.args.influence_damping
             )
 
-    def on_substep_end(self, args, state, control, **kwargs):
-        if self.args.mode == "influence":
-            test_log = self.logix.get_log()
-            self.logix.influence.compute_influence_all(
-                test_log,
-                self.log_dataloader(),
-                mode=self.args.influence_mode,
-                damping=self.args.influence_damping,
-                save=True,
-            )
+            self.accumulated_log = []
         elif self.args.mode == "self_influence":
-            test_log = self.logix.get_log()
+            self.accumulated_log.append(self.logix.get_log(copy=True))
+            accumulated_log = merge_logs(self.accumulated_log)
+
             self.logix.influence.compute_self_influence(
-                test_log, damping=self.args.influence_damping
+                accumulated_log, damping=self.args.influence_damping
             )
+
+            self.accumulated_log = []
+
+    def on_substep_end(self, args, state, control, **kwargs):
+        if self.args.mode in ["influence", "self_influence"]:
+            self.accumulated_log.append(self.logix.get_log(copy=True))
 
     def log_dataloader(self):
         if self._log_dataloader is None:
