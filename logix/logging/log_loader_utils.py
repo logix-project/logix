@@ -114,6 +114,13 @@ def get_flatten_item(mmap, offset, block_size, dtype="float32"):
     return torch.from_numpy(array).clone()
 
 
+def unflatten_tensor(flat_tensor, shape, start):
+    num_elements = reduce(lambda x, y: x * y, shape)
+    end = start + num_elements
+    unflattened_tensor = flat_tensor[start:end].view(*shape)
+    return unflattened_tensor, end
+
+
 def _init_collate_structure(nested_dict):
     # Initialize the collate structure based on the first item
     if isinstance(nested_dict, dict):
