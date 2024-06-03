@@ -46,7 +46,7 @@ class LogIXCallback(TrainerCallback):
             self.logix.initialize_from_log()
 
         if self.args.mode in ["influence", "self_influence"]:
-            self.logix.setup({"log": "grad"})
+            self.logix.setup({"grad": ["log"]})
             self.logix.eval()
 
             state.epoch = 0

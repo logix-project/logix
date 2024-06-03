@@ -62,7 +62,7 @@ log_loader = logix.build_log_dataloader(
 )
 
 # logix.add_analysis({"influence": InfluenceFunction})
-logix.setup({"log": "grad"})
+logix.setup({"grad": ["log"]})
 logix.eval()
 for test_input, test_target in test_loader:
     with logix(data_id=id_gen(test_input)):

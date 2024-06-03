@@ -1,5 +1,5 @@
 from logix import LogIX
-from logix.statistic import Covariance
+from logix.statistic import Covariance, Log, CorrectedEigval
 
 
 class LogIXScheduler:
@@ -10,65 +10,81 @@ class LogIXScheduler:
         hessian: str = "none",
         save: str = "none",
     ):
-        self.logix = logix
+        self._logix = logix
+
+        self._lora = lora
+        self._hessian = hessian
+        self._save = save
 
         self._epoch = -1
-        self._lora_epoch = -1
         self._logix_state_schedule = []
 
-        self.sanity_check(lora, hessian, save)
-        self.configure_lora_epoch(lora)
+        self.sanity_check(lora, hessian)
         self.configure_schedule(lora, hessian, save)
 
         self._schedule_iterator = iter(self._logix_state_schedule)
 
-    def sanity_check(self, lora: str, hessian: str, save: str):
+    def sanity_check(self, lora: str, hessian: str):
         assert lora in ["none", "random", "pca"]
         assert hessian in ["none", "raw", "kfac", "ekfac"]
-        assert save in ["none", "grad"]
 
-    def configure_lora_epoch(self, lora: str):
+    def get_lora_epoch(self, lora: str) -> int:
         if lora == "random":
-            self._lora_epoch = 0
+            return 0
         elif lora == "pca":
-            self._lora_epoch = 1
+            return 1
+        return -1
 
-    def configure_schedule(self, lora: str, hessian: str, save: str):
-        # (log, hessian, save) for logix
+    def get_save_epoch(self, save: str) -> int:
+        if save != "none":
+            return len(self) - 1
+        return -1
+
+    def configure_schedule(self, lora: str, hessian: str, save: str) -> None:
         if lora == "pca":
-            self._logix_state_schedule.append({"statistic": "kfac"})
+            self._logix_state_schedule.append(
+                {"forward": [Covariance], "backward": [Covariance]}
+            )
 
         if hessian == "ekfac":
-            self._logix_state_schedule.append({"statistic": "kfac"})
+            self._logix_state_schedule.append(
+                {"forward": [Covariance], "backward": [Covariance]}
+            )
 
-        last_state = {}
-        # log
-        if save in ["grad"] or hessian in ["raw", "ekfac"]:
-            last_state["log"] = "grad"
-        # statistic
-        if hessian in ["kfac", "ekfac"]:
-            last_state["statistic"] = hessian
-        elif hessian in ["raw"]:
-            last_state["statistic"] = {
-                "grad": [Covariance],
-                "forward": [],
-                "backward": [],
-            }
-        # save
-        if save in ["grad"]:
-            last_state["save"] = save
+        last_state = {"forward": [], "backward": [], "grad": []}
+        if save != "none":
+            last_state[save].append(Log)
+        if hessian == "kfac":
+            last_state["forward"].append(Covariance)
+            last_state["backward"].append(Covariance)
+        elif hessian == "ekfac":
+            if Log not in last_state["grad"]:
+                last_state["grad"].append(Log)
+            last_state["grad"].append(CorrectedEigval)
+        elif hessian == "raw":
+            if Log not in last_state["grad"]:
+                last_state["grad"].append(Log)
+            last_state["grad"].append(Covariance)
         self._logix_state_schedule.append(last_state)
 
     def __iter__(self):
         return self
 
-    def __next__(self):
+    def __next__(self) -> int:
         logix_state = next(self._schedule_iterator)
         self._epoch += 1
-        if self._epoch == self._lora_epoch:
-            self.logix.add_lora()
-        self.logix.setup(logix_state)
+
+        # maybe add lora
+        if self._epoch == self.get_lora_epoch(self._lora):
+            self._logix.add_lora()
+
+        # maybe setup save
+        if self._epoch == self.get_save_epoch(self._save):
+            self._logix.save(True)
+
+        self._logix.setup(logix_state)
+
         return self._epoch
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._logix_state_schedule)
