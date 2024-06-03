@@ -269,6 +269,34 @@ class LogIX:
         """
         self.logger.update()
 
+    def start(
+        self, data_id: Iterable[Any], mask: Optional[torch.Tensor] = None
+    ) -> None:
+        """
+        This is another programming interface for logging. Instead of using the context manager, we also
+        allow users to manually specify `start` and `end` points for logging. In the `start` point,
+        users should specify `data_id` and optionally `mask`.
+
+        Args:
+            data_id: A unique identifier associated with the data for the logging session.
+            mask (torch.Tensor, optional): Mask for the data.
+        """
+        # Set up batch information
+        self.binfo.clear()
+        self.binfo.data_id = data_id
+        self.binfo.mask = mask
+
+        # Set up logger
+        self.logger.clear(hook=True, module=False, buffer=False)
+        self.logger.register_all_module_hooks()
+
+    def end(self, save: bool = False) -> None:
+        """
+        This is another programming interface for logging. Instead of using the context manager, we also
+        allow users to manually specify "start" and "end" points for logging.
+        """
+        self.logger.update()
+
     def build_log_dataset(self, flatten: bool = False) -> torch.utils.data.Dataset:
         """
         Constructs the log dataset from the stored logs. This dataset can then be used
