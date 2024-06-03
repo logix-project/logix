@@ -1,14 +1,67 @@
-from typing import Any
+from typing import List, Any
 
-from logix.statistic import Covariance, CorrectedEigval
+from logix.statistic import Log, Mean, Variance, Covariance, CorrectedEigval
 from logix.utils import get_logger
+
+
+_PLUGIN_MAPPING = {
+    "log": Log,
+    "mean": Mean,
+    "variance": Variance,
+    "covariance": Covariance,
+    "corrected_eigval": CorrectedEigval,
+}
+_PLUGIN_LIST = [Log, Mean, Variance, Covariance, CorrectedEigval]
+
+
+def _reorder_plugins(plugins):
+    """
+    Reorder the plugins to ensure that the plugins are in the correct order. Especially,
+    it is important to ensure that the Log plugin is the first plugin.
+    Args:
+        plugins: List of plugins.
+    Returns:
+        List of plugins in the correct order.
+    """
+    order = [Log, Mean, Variance, Covariance, CorrectedEigval]
+    ordered_plugins = []
+    for plugin in order:
+        if plugin in plugins:
+            ordered_plugins.append(plugin)
+    return ordered_plugins
+
+
+def _to_plugins(plugins: List[Any], is_grad: bool = False):
+    """
+    Convert and reorder the list of plugins to the actual plugins.
+    """
+    # Convert the string plugins to the actual plugins.
+    for idx, plugin in enumerate(plugins):
+        if isinstance(plugin, str):
+            assert plugin in _PLUGIN_MAPPING
+            plugins[idx] = _PLUGIN_MAPPING[plugin]
+        assert plugins[idx] in _PLUGIN_LIST
+
+    # reorder the plugins to ensure that the plugins are in the correct order.
+    plugins = _reorder_plugins(plugins)
+
+    if is_grad:
+        # Ensure that the Log plugin is the first plugin.
+        if len(plugins) > 0 and Log not in plugins:
+            get_logger().warning(
+                "The `Log` plugin is not in the list of plugins. "
+                "The `Log` plugin will be inserted at the beginning of the list."
+            )
+            plugins.insert(0, Log)
+
+    return plugins
 
 
 class LogOption:
     def __init__(self):
-        self._log = {}
-        self._save = {}
-        self._statistic = {}
+        self.forward = []
+        self.backward = []
+        self.grad = []
 
         self.clear()
 
@@ -21,108 +74,20 @@ class LogOption:
             save: Saving configurations.
             statistic: Statistic configurations.
         """
-        log = log_option_kwargs.get("log", None)
-        save = log_option_kwargs.get("save", None)
-        statistic = log_option_kwargs.get("statistic", None)
         self.clear()
 
-        if log is not None:
-            if isinstance(log, str):
-                self._log[log] = True
-            elif isinstance(log, list):
-                for l in log:
-                    self._log[l] = True
-            elif isinstance(log, dict):
-                self._log = log
-            else:
-                raise ValueError(f"Unsupported log type: {type(log)}")
+        forward = log_option_kwargs.get("forward", [])
+        backward = log_option_kwargs.get("backward", [])
+        grad = log_option_kwargs.get("grad", [])
 
-        if save is not None:
-            if isinstance(save, str):
-                self._save[save] = True
-            elif isinstance(save, list):
-                for s in save:
-                    self._save[s] = True
-            elif isinstance(save, dict):
-                self._save = save
-            else:
-                raise ValueError(f"Unsupported save type: {type(save)}")
+        self.forward = _to_plugins(forward)
+        self.backward = _to_plugins(backward)
+        self.grad = _to_plugins(grad)
 
-        if statistic is not None:
-            if isinstance(statistic, str):
-                if statistic == "kfac":
-                    statistic = {
-                        "forward": [Covariance],
-                        "backward": [Covariance],
-                        "grad": [],
-                    }
-                elif statistic == "ekfac":
-                    statistic = {
-                        "forward": [],
-                        "backward": [],
-                        "grad": [CorrectedEigval],
-                    }
-                else:
-                    raise ValueError(f"Unknown statistic: {statistic}")
-
-            assert isinstance(statistic, dict)
-            self._statistic = statistic
-
-        self._sanity_check()
-
-    def _sanity_check(self):
-        # forward
-        if self._save["forward"] and not self._log["forward"]:
-            get_logger().warning(
-                "Saving forward activations without logging it is not allowed. "
-                + "Setting log['forward'] to True automatically."
-            )
-            self._log["forward"] = True
-
-        # backward
-        if self._save["backward"] and not self._log["backward"]:
-            get_logger().warning(
-                "Saving backward error signals without logging it is not allowed. "
-                + "Setting log['backward'] to True automatically."
-            )
-            self._log["backward"] = True
-
-        # grad
-        if (self._save["grad"] or len(self._statistic["grad"]) > 0) and not self._log[
-            "grad"
-        ]:
-            get_logger().warning(
-                "Saving gradients or computing statistic without logging it "
-                + "is not allowed. Setting log['grad'] to True automatically."
-            )
-            self._log["grad"] = True
-
-    def eval(self):
-        """
-        Enable the evaluation mode. This will turn of saving and updating
-        statistic.
-        """
-        self.clear(log=False, save=True, statistic=True)
-
-    def clear(self, log=True, save=True, statistic=True):
+    def clear(self):
         """
         Clear all logging configurations.
         """
-        if log:
-            self._log = {"forward": False, "backward": False, "grad": False}
-        if save:
-            self._save = {"forward": False, "backward": False, "grad": False}
-        if statistic:
-            self._statistic = {"forward": [], "backward": [], "grad": []}
-
-    @property
-    def log(self):
-        return self._log
-
-    @property
-    def save(self):
-        return self._save
-
-    @property
-    def statistic(self):
-        return self._statistic
+        self.forward = []
+        self.backward = []
+        self.grad = []

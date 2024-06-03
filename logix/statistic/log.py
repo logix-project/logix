@@ -22,7 +22,7 @@ class Log:
         """
         Put log into `binfo`
         """
-        module_log = binfo[module_name]
+        module_log = binfo.log[module_name]
         if log_type not in module_log:
             module_log[log_type] = data
         else:

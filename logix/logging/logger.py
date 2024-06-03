@@ -7,6 +7,7 @@ import torch.nn as nn
 from logix.batch_info import BatchInfo
 from logix.config import LoggingConfig
 from logix.state import LogIXState
+from logix.statistic import Log
 from logix.logging.option import LogOption
 from logix.logging.log_saver import LogSaver
 from logix.logging.utils import compute_per_sample_gradient
@@ -61,13 +62,12 @@ class HookLogger:
 
     def save_log(self):
         # save log to disk
-        if any(self.opt.save.values()):
-            self.log_saver.buffer_write(binfo=self.binfo)
-            self.log_saver.flush()
+        self.log_saver.buffer_write(binfo=self.binfo)
+        self.log_saver.flush()
 
-    def update(self):
-        # Update statistics
-        for stat in self.opt.statistic["grad"]:
+    def update(self, save: bool = False):
+        # gradient plugin has to be excecuted after accumulating all gradients
+        for stat in self.opt.grad[1:]:
             for module_name, _ in self.binfo.log.items():
                 stat.update(
                     state=self.state,
@@ -84,7 +84,8 @@ class HookLogger:
             torch.cuda.current_stream().synchronize()
 
         # Write and flush the buffer if necessary
-        self.save_log()
+        if save:
+            self.save_log()
 
     def _forward_hook_fn(
         self, module: nn.Module, inputs: Tuple[torch.Tensor], module_name: str
@@ -100,7 +101,6 @@ class HookLogger:
         assert len(inputs) == 1
 
         activations = inputs[0]
-        log = self.binfo.log[module_name]
 
         # If `mask` is not None, apply the mask to activations. This is
         # useful for example when you work with sequence models that use
@@ -118,14 +118,8 @@ class HookLogger:
         if self.dtype is not None:
             activations = activations.to(dtype=self.dtype)
 
-        if self.opt.log["forward"]:
-            if "forward" not in log:
-                log["forward"] = activations
-            else:
-                log["forward"] += activations
-
-        for stat in self.opt.statistic["forward"]:
-            stat.update(
+        for plugin in self.opt.forward:
+            plugin.update(
                 state=self.state,
                 binfo=self.binfo,
                 module=module,
@@ -154,19 +148,12 @@ class HookLogger:
         assert len(grad_outputs) == 1
 
         error = grad_outputs[0]
-        log = self.binfo.log[module_name]
 
         if self.dtype is not None:
             error = error.to(dtype=self.dtype)
 
-        if self.opt.log["backward"]:
-            if "backward" not in log:
-                log["backward"] = error
-            else:
-                log["backward"] += error
-
-        for stat in self.opt.statistic["backward"]:
-            stat.update(
+        for plugin in self.opt.backward:
+            plugin.update(
                 state=self.state,
                 binfo=self.binfo,
                 module=module,
@@ -194,13 +181,12 @@ class HookLogger:
         """
         assert len(inputs) == 1
 
-        log = self.binfo.log[module_name]
-
         # In case, the same module is used multiple times in the forward pass,
         # we need to accumulate the gradients. We achieve this by using the
         # additional tensor hook on the output of the module.
         def _grad_backward_hook_fn(grad: torch.Tensor):
-            if self.opt.log["grad"]:
+            if len(self.opt.grad) > 0:
+                assert self.opt.grad[0] == Log
                 per_sample_gradient = compute_per_sample_gradient(
                     inputs[0], grad, module
                 )
@@ -208,10 +194,16 @@ class HookLogger:
                 if self.dtype is not None:
                     per_sample_gradient = per_sample_gradient.to(dtype=self.dtype)
 
-                if "grad" not in log:
-                    log["grad"] = per_sample_gradient
-                else:
-                    log["grad"] += per_sample_gradient
+                for plugin in self.opt.grad[:1]:
+                    plugin.update(
+                        state=self.state,
+                        binfo=self.binfo,
+                        module=module,
+                        module_name=module_name,
+                        log_type="grad",
+                        data=per_sample_gradient,
+                        cpu_offload=self.cpu_offload,
+                    )
 
         tensor_hook = outputs.register_hook(_grad_backward_hook_fn)
         self.tensor_hooks.append(tensor_hook)
@@ -227,15 +219,11 @@ class HookLogger:
             tensor: The tensor triggering the hook.
             tensor_name (str): A string identifier for the tensor, useful for logging.
         """
-        log = self.binfo.log[tensor_name]
-
         if self.dtype is not None:
             tensor = tensor.to(dtype=self.dtype)
 
-        log["forward"] = tensor
-
-        for stat in self.opt.statistic["forward"]:
-            stat.update(
+        for plugin in self.opt.forward:
+            plugin.update(
                 state=self.state,
                 binfo=self.binfo,
                 module=None,
@@ -256,15 +244,11 @@ class HookLogger:
             grad: The gradient tensor triggering the hook.
             tensor_name (str): A string identifier for the tensor whose gradient is being tracked.
         """
-        log = self.binfo.log[tensor_name]
-
         if self.dtype is not None:
             grad = grad.to(dtype=self.dtype)
 
-        log["backward"] = grad
-
-        for stat in self.opt.statistic["backward"]:
-            stat.update(
+        for plugin in self.opt.backward:
+            plugin.update(
                 state=self.state,
                 binfo=self.binfo,
                 module=None,

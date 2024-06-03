@@ -64,7 +64,7 @@ for epoch in logix_scheduler:
 log_loader = logix.build_log_dataloader()
 
 logix.eval()
-logix.setup({"log": "grad"})
+logix.setup({"grad": ["log"]})
 for test_input, test_target in test_loader:
     with logix(data_id=id_gen(test_input)):
         test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)

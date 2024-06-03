@@ -69,6 +69,8 @@ class LogIX:
         # LogIX state
         self.state: LogIXState = LogIXState()
         self.binfo: BatchInfo = BatchInfo()
+        self._save: bool = False
+        self._save_batch: bool = False
 
         # Initialize logger
         self.logger: HookLogger = HookLogger(
@@ -233,6 +235,7 @@ class LogIX:
         self,
         data_id: Iterable[Any],
         mask: Optional[torch.Tensor] = None,
+        save: bool = False,
     ):
         """
         Args:
@@ -245,6 +248,8 @@ class LogIX:
         self.binfo.clear()
         self.binfo.data_id = data_id
         self.binfo.mask = mask
+
+        self._save_batch = save
 
         return self
 
@@ -267,7 +272,7 @@ class LogIX:
         This method is essential for ensuring that there are no lingering hooks that could
         interfere with further operations on the model or with future logging sessions.
         """
-        self.logger.update()
+        self.logger.update(save=self._save_batch or self._save)
 
     def start(
         self, data_id: Iterable[Any], mask: Optional[torch.Tensor] = None
@@ -295,7 +300,7 @@ class LogIX:
         This is another programming interface for logging. Instead of using the context manager, we also
         allow users to manually specify "start" and "end" points for logging.
         """
-        self.logger.update()
+        self.logger.update(save=save or self._save)
 
     def build_log_dataset(self, flatten: bool = False) -> torch.utils.data.Dataset:
         """
@@ -528,11 +533,17 @@ class LogIX:
         """
         self.logger.opt.setup(log_option_kwargs)
 
+    def save(self, enable: bool = True) -> None:
+        """
+        Turn on saving.
+        """
+        self._save = enable
+
     def eval(self) -> None:
         """
         Set the state of LogIX for testing.
         """
-        self.logger.opt.eval()
+        self.save(False)
 
     def clear(self) -> None:
         """

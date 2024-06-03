@@ -112,6 +112,7 @@ class TestSingleCheckpointInfluence(unittest.TestCase):
         # logix.add_analysis({"influence": InfluenceFunction})
         query_iter = iter(query_loader)
         logix.eval()
+        logix.setup({"grad": ["log"]})
         with logix(data_id=["test"]) as al:
             test_input, test_target = next(query_iter)
             test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)

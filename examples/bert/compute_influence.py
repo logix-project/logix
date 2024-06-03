@@ -35,7 +35,7 @@ def main():
     log_loader = logix.build_log_dataloader()
 
     # influence analysis
-    logix.setup({"log": "grad"})
+    logix.setup({"grad": ["log"]})
     logix.eval()
     for batch in test_loader:
         data_id = tokenizer.batch_decode(batch["input_ids"])

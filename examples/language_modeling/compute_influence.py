@@ -74,7 +74,7 @@ def main():
     log_loader = logix.build_log_dataloader(batch_size=64)
 
     # Influence analysis
-    logix.setup({"log": "grad"})
+    logix.setup({"grad": ["log"]})
     logix.eval()
     merged_test_logs = []
     for idx, batch in enumerate(tqdm(data_loader)):
