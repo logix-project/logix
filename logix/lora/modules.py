@@ -1,9 +1,22 @@
+# Copyright 2023-present the LogIX team.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import math
 
 import torch
 import torch.nn as nn
 
-from logix.constants import FORWARD, BACKWARD
 from logix.lora.utils import compute_top_k_singular_vectors
 
 
@@ -48,11 +61,11 @@ class LoraLinear(nn.Module):
         (
             top_r_singular_vector_forward,
             top_r_singular_value_forward,
-        ) = compute_top_k_singular_vectors(covariance[FORWARD], self.rank)
+        ) = compute_top_k_singular_vectors(covariance["forward"], self.rank)
         (
             top_r_singular_vector_backward,
             top_r_singular_value_backward,
-        ) = compute_top_k_singular_vectors(covariance[BACKWARD], self.rank)
+        ) = compute_top_k_singular_vectors(covariance["backward"], self.rank)
         self.logix_lora_A.weight.data.copy_(top_r_singular_vector_forward.T)
         self.logix_lora_C.weight.data.copy_(top_r_singular_vector_backward)
 
@@ -105,11 +118,11 @@ class LoraConv2d(nn.Module):
         (
             top_r_singular_vector_forward,
             top_r_singular_value_forward,
-        ) = compute_top_k_singular_vectors(covariance[FORWARD], self.rank)
+        ) = compute_top_k_singular_vectors(covariance["forward"], self.rank)
         (
             top_r_singular_vector_backward,
             top_r_singular_value_backward,
-        ) = compute_top_k_singular_vectors(covariance[BACKWARD], self.rank)
+        ) = compute_top_k_singular_vectors(covariance["backward"], self.rank)
         shape_A = self.logix_lora_A.weight.shape
         shape_C = self.logix_lora_C.weight.shape
         self.logix_lora_A.weight.data.copy_(
