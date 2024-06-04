@@ -25,7 +25,6 @@ from logix.logging.option import LogOption
 from logix.logging.utils import compute_per_sample_gradient
 from logix.state import LogIXState
 from logix.statistic import Log
-from logix.utils import get_logger
 
 
 class HookLogger:

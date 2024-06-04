@@ -1,12 +1,10 @@
 import argparse
-import time
 
 import torch
 from tqdm import tqdm
 from train import construct_rn9, get_cifar10_dataloader
 
 from logix import LogIX, LogIXScheduler
-from logix.analysis import InfluenceFunction
 from logix.utils import DataIDGenerator
 
 parser = argparse.ArgumentParser("CIFAR Influence Analysis")

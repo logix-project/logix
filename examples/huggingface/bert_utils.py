@@ -22,13 +22,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from datasets import load_dataset
-from torch.utils.data import DataLoader
-from transformers import (
-    AutoConfig,
-    AutoModelForSequenceClassification,
-    AutoTokenizer,
-    default_data_collator,
-)
+from transformers import AutoConfig, AutoModelForSequenceClassification, AutoTokenizer
 
 GLUE_TASK_TO_KEYS = {
     "cola": ("sentence", None),

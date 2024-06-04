@@ -1,12 +1,10 @@
 import argparse
-import time
 
 import torch
 from tqdm import tqdm
 from train import construct_mlp, get_fmnist_dataloader, get_mnist_dataloader
 
 from logix import LogIX, LogIXScheduler
-from logix.analysis import InfluenceFunction
 from logix.utils import DataIDGenerator
 
 parser = argparse.ArgumentParser("MNIST Influence Analysis")
@@ -44,7 +42,7 @@ id_gen = DataIDGenerator()
 
 for epoch in scheduler:
     for inputs, targets in tqdm(train_loader):
-        ### Start
+        # Start
         logix.start(data_id=id_gen(inputs))
 
         inputs, targets = inputs.to(DEVICE), targets.to(DEVICE)
@@ -53,7 +51,7 @@ for epoch in scheduler:
         loss = torch.nn.functional.cross_entropy(outs, targets, reduction="sum")
         loss.backward()
 
-        ### End
+        # End
         logix.end()
     logix.finalize()
 
@@ -66,7 +64,7 @@ log_loader = logix.build_log_dataloader(
 logix.setup({"grad": ["log"]})
 logix.eval()
 for test_input, test_target in test_loader:
-    ### Start
+    # Start
     logix.start(data_id=id_gen(test_input))
 
     test_input, test_target = test_input.to(DEVICE), test_target.to(DEVICE)
@@ -77,7 +75,7 @@ for test_input, test_target in test_loader:
     )
     test_loss.backward()
 
-    ### End
+    # End
     logix.end()
 
     test_log = logix.get_log()

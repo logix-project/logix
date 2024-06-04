@@ -25,13 +25,7 @@ from logix.analysis.influence_function_utils import (
     precondition_raw,
 )
 from logix.state import LogIXState
-from logix.utils import (
-    flatten_log,
-    get_logger,
-    nested_dict,
-    synchronize_device,
-    unflatten_log,
-)
+from logix.utils import flatten_log, get_logger, synchronize_device, unflatten_log
 
 
 class InfluenceFunction:

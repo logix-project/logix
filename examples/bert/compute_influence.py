@@ -1,12 +1,10 @@
 import argparse
 
-import torch
 import torch.nn.functional as F
 from accelerate import Accelerator
 from utils import construct_model, get_loaders
 
 import logix
-from logix.analysis import InfluenceFunction
 
 
 def main():

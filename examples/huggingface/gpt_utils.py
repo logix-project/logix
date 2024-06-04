@@ -12,23 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import gc
 import os
 import random
 import struct
 from itertools import chain
-from typing import List, Optional, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
 from datasets import load_dataset
-from transformers import (
-    AutoConfig,
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    default_data_collator,
-)
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 from transformers.pytorch_utils import Conv1D
 
 

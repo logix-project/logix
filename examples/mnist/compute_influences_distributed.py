@@ -7,7 +7,7 @@ from train import construct_mlp, get_fmnist_dataloader, get_mnist_dataloader
 
 from logix import LogIX
 from logix.analysis import InfluenceFunction
-from logix.utils import DataIDGenerator, get_rank, get_world_size
+from logix.utils import DataIDGenerator, get_rank
 
 
 def main():

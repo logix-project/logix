@@ -15,7 +15,7 @@
 import argparse
 
 import torch
-from scipy.stats import pearsonr, spearmanr
+from scipy.stats import pearsonr
 from transformers import AutoTokenizer
 from utils import get_loaders, set_seed
 

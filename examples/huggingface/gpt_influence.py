@@ -15,13 +15,9 @@
 import argparse
 
 import torch
-import torch.nn.functional as F
-from accelerate import Accelerator
 from gpt_utils import construct_model, get_datasets, set_seed
-from tqdm import tqdm
 from transformers import Trainer, TrainingArguments, default_data_collator
 
-import logix
 from logix.huggingface import LogIXArguments, patch_trainer
 
 

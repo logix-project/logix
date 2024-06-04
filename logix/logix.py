@@ -14,13 +14,11 @@
 
 import os
 from copy import deepcopy
-from dataclasses import asdict
 from functools import reduce
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
-import yaml
 
 from logix.analysis import InfluenceFunction
 from logix.batch_info import BatchInfo

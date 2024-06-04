@@ -13,12 +13,10 @@
 # limitations under the License.
 
 import copy
-import gc
 import os
 import random
-import struct
 from itertools import chain
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import torch
@@ -28,7 +26,6 @@ from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
     AutoTokenizer,
-    DataCollatorWithPadding,
     PreTrainedTokenizer,
     default_data_collator,
 )
@@ -134,7 +131,7 @@ def get_dataset(
         data_kwargs = {
             "path": "json",
             "data_files": "./custom_data/external/data.json",
-            "cache_dir": cachd_dir,
+            "cache_dir": cache_dir,
             "num_proc": 4,
         }
     elif data_path == "generated":

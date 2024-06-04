@@ -23,7 +23,6 @@ from tqdm import tqdm
 from utils import get_loader, get_model, get_tokenizer, set_seed
 
 import logix
-from logix.analysis import InfluenceFunction
 from logix.utils import merge_logs
 
 if torch.cuda.is_available():

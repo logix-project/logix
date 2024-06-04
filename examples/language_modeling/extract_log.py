@@ -13,17 +13,14 @@
 # limitations under the License.
 
 import argparse
-import os
 
 import torch
 import torch.nn.functional as F
 from accelerate import Accelerator
-from accelerate.utils import GradScalerKwargs
 from tqdm import tqdm
 from utils import get_loader, get_model, get_tokenizer, set_seed
 
 import logix
-from logix.statistic import Covariance
 
 # Enable TF32 if possible
 if torch.cuda.is_available():
