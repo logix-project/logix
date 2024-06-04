@@ -13,14 +13,15 @@
 # limitations under the License.
 
 from collections import OrderedDict
+
 from torch.utils.data import Dataset
 
 from logix.logging.log_loader_utils import (
-    unflatten_tensor,
+    find_chunk_indices,
     get_flatten_item,
     get_mmap_data,
     get_mmap_metadata,
-    find_chunk_indices,
+    unflatten_tensor,
 )
 
 

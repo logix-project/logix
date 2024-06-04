@@ -1,9 +1,8 @@
-from typing import List, Optional, Tuple, Union
-
 import gc
 import os
 import random
 import struct
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import torch

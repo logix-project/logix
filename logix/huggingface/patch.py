@@ -17,9 +17,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from transformers.trainer import *
 
 from logix import LogIX, LogIXScheduler
-from logix.utils import DataIDGenerator
-from logix.huggingface.callback import LogIXCallback
 from logix.huggingface.arguments import LogIXArguments
+from logix.huggingface.callback import LogIXCallback
+from logix.utils import DataIDGenerator
 
 
 def patch_trainer(TrainerClass):

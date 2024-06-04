@@ -14,12 +14,12 @@
 
 import logging
 import os
-from typing import Optional, Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import torch
 import torch.distributed as dist
 
-from logix.utils import nested_dict, get_world_size, get_rank
+from logix.utils import get_rank, get_world_size, nested_dict
 
 
 class LogIXState:

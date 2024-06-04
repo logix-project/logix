@@ -17,8 +17,8 @@ from typing import Optional
 from transformers.trainer import TrainerCallback
 
 from logix import LogIX, LogIXScheduler
-from logix.utils import merge_logs
 from logix.huggingface.arguments import LogIXArguments
+from logix.utils import merge_logs
 
 
 class LogIXCallback(TrainerCallback):

@@ -1,17 +1,13 @@
-import time
 import argparse
+import time
 
 import torch
 from accelerate import Accelerator
-from logix import LogIX
-from logix.utils import DataIDGenerator, get_world_size, get_rank
-from logix.analysis import InfluenceFunction
+from train import construct_mlp, get_fmnist_dataloader, get_mnist_dataloader
 
-from train import (
-    get_mnist_dataloader,
-    get_fmnist_dataloader,
-    construct_mlp,
-)
+from logix import LogIX
+from logix.analysis import InfluenceFunction
+from logix.utils import DataIDGenerator, get_rank, get_world_size
 
 
 def main():

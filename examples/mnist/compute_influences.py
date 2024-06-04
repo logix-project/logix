@@ -12,20 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 import argparse
+import time
 
-from tqdm import tqdm
 import torch
-from logix import LogIX, LogIXScheduler
-from logix.utils import DataIDGenerator
-from logix.analysis import InfluenceFunction
+from tqdm import tqdm
+from train import construct_mlp, get_fmnist_dataloader, get_mnist_dataloader
 
-from train import (
-    get_mnist_dataloader,
-    get_fmnist_dataloader,
-    construct_mlp,
-)
+from logix import LogIX, LogIXScheduler
+from logix.analysis import InfluenceFunction
+from logix.utils import DataIDGenerator
 
 parser = argparse.ArgumentParser("MNIST Influence Analysis")
 parser.add_argument("--data", type=str, default="mnist", help="mnist or fmnist")

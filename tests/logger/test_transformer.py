@@ -1,10 +1,9 @@
-import unittest
-
 import copy
+import unittest
 
 import torch
 import torch.nn.functional as F
-from transformers import BertForSequenceClassification, BertConfig
+from transformers import BertConfig, BertForSequenceClassification
 
 from logix import LogIX
 

@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import gc
 import os
 import random
 import struct
 from itertools import chain
-import copy
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -28,9 +28,9 @@ from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
     AutoTokenizer,
-    default_data_collator,
     DataCollatorWithPadding,
     PreTrainedTokenizer,
+    default_data_collator,
 )
 from transformers.pytorch_utils import Conv1D
 

@@ -1,6 +1,7 @@
-from setuptools import setup, find_packages
-import re
 import ast
+import re
+
+from setuptools import find_packages, setup
 
 
 def fetch_requirements(path: str):

@@ -15,7 +15,7 @@
 from typing import Dict, Optional
 
 import torch
-from einops import einsum, reduce, rearrange
+from einops import einsum, rearrange, reduce
 
 from logix.state import LogIXState
 from logix.statistic.utils import make_2d

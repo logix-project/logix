@@ -15,12 +15,13 @@
 import logging
 import os
 import re
-import numpy as np
-from typing import List
 from collections import OrderedDict
-from torch.utils.data import default_collate
-import torch
 from functools import reduce
+from typing import List
+
+import numpy as np
+import torch
+from torch.utils.data import default_collate
 
 from logix.logging.mmap import MemoryMapHandler
 

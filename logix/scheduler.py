@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from logix import LogIX
-from logix.statistic import Covariance, Log, CorrectedEigval
+from logix.statistic import CorrectedEigval, Covariance, Log
 
 
 class LogIXScheduler:

@@ -1,12 +1,11 @@
 import argparse
 
-from tqdm import tqdm
-
 import torch.nn.functional as F
 from accelerate import Accelerator
-import logix
-
+from tqdm import tqdm
 from utils import construct_model, get_loaders, set_seed
+
+import logix
 
 
 def main():

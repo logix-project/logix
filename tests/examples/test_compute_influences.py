@@ -1,9 +1,10 @@
-import unittest
-import torch
-import torchvision
-import torch.nn as nn
-import numpy as np
 import os
+import unittest
+
+import numpy as np
+import torch
+import torch.nn as nn
+import torchvision
 
 DEVICE = torch.device("cpu")
 

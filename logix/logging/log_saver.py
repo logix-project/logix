@@ -13,10 +13,11 @@
 # limitations under the License.
 
 from concurrent.futures import ThreadPoolExecutor
+
 import torch
 
-from logix.utils import nested_dict, to_numpy, get_rank
 from logix.logging.mmap import MemoryMapHandler
+from logix.utils import get_rank, nested_dict, to_numpy
 
 
 class LogSaver:

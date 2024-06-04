@@ -13,13 +13,11 @@
 # limitations under the License.
 
 import argparse
-from transformers import AutoTokenizer
 
 import torch
 from scipy.stats import pearsonr, spearmanr
-
-from utils import set_seed, get_loaders
-
+from transformers import AutoTokenizer
+from utils import get_loaders, set_seed
 
 parser = argparse.ArgumentParser("GPT2 Influence Score qualtitative analysis")
 parser.add_argument("--score_path", type=str)

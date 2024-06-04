@@ -1,8 +1,9 @@
 import random
+
 import numpy as np
 import torch
-import torchvision
 import torch.nn as nn
+import torchvision
 
 
 def set_seed(seed):

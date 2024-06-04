@@ -12,24 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from typing import Dict, Optional, Tuple, List
-from tqdm import tqdm
-import torch
+from typing import Dict, List, Optional, Tuple
 
+import torch
 from einops import reduce
-from logix.state import LogIXState
-from logix.utils import (
-    get_logger,
-    nested_dict,
-    flatten_log,
-    unflatten_log,
-    synchronize_device,
-)
+from tqdm import tqdm
+
 from logix.analysis.influence_function_utils import (
-    precondition_kfac,
-    precondition_raw,
     cross_dot_product,
     merge_influence_results,
+    precondition_kfac,
+    precondition_raw,
+)
+from logix.state import LogIXState
+from logix.utils import (
+    flatten_log,
+    get_logger,
+    nested_dict,
+    synchronize_device,
+    unflatten_log,
 )
 
 

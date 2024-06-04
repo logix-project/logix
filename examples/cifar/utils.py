@@ -2,10 +2,11 @@
 # https://github.com/MadryLab/trak/blob/main/examples/cifar_quickstart.ipynb.
 
 
+import random
+
+import numpy as np
 import torch
 import torchvision
-import numpy as np
-import random
 
 
 def set_seed(seed):

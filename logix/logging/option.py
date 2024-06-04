@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Any
+from typing import Any, List
 
-from logix.statistic import Log, Mean, Variance, Covariance, CorrectedEigval
+from logix.statistic import CorrectedEigval, Covariance, Log, Mean, Variance
 from logix.utils import get_logger
-
 
 _PLUGIN_MAPPING = {
     "log": Log,

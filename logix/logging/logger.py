@@ -13,18 +13,18 @@
 # limitations under the License.
 
 from functools import partial
-from typing import Optional, Dict, Tuple, Any
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 import torch.nn as nn
 
 from logix.batch_info import BatchInfo
 from logix.config import LoggingConfig
+from logix.logging.log_saver import LogSaver
+from logix.logging.option import LogOption
+from logix.logging.utils import compute_per_sample_gradient
 from logix.state import LogIXState
 from logix.statistic import Log
-from logix.logging.option import LogOption
-from logix.logging.log_saver import LogSaver
-from logix.logging.utils import compute_per_sample_gradient
 from logix.utils import get_logger
 
 

@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 import json
+import os
 from contextlib import contextmanager
 from functools import reduce
 
 import numpy as np
-
-from contextlib import contextmanager
 
 
 def extract_arrays(obj, base_path=()):

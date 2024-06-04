@@ -12,20 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import copy
 import argparse
+import copy
+import os
 
 import torch
 import torch.nn.functional as F
 from accelerate import Accelerator
+from tqdm import tqdm
+from utils import get_loader, get_model, get_tokenizer, set_seed
+
 import logix
 from logix.analysis import InfluenceFunction
 from logix.utils import merge_logs
-from tqdm import tqdm
-
-from utils import get_model, get_tokenizer, get_loader, set_seed
-
 
 if torch.cuda.is_available():
     torch.backends.cuda.matmul.allow_tf32 = True

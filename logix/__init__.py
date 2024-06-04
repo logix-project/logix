@@ -2,7 +2,6 @@ from logix.logix import LogIX
 from logix.scheduler import LogIXScheduler
 from logix.utils import get_logger
 
-
 __version__ = "0.1.1"
 
 _LOGIX_INSTANCE = None

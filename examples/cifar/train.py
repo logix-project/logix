@@ -4,15 +4,14 @@
 
 import os
 from pathlib import Path
-from tqdm.auto import tqdm
+
 import numpy as np
 import torch
 from torch.cuda.amp import GradScaler, autocast
 from torch.nn import CrossEntropyLoss
 from torch.optim import SGD, lr_scheduler
-
-from utils import get_cifar10_dataloader, construct_rn9
-from utils import set_seed
+from tqdm.auto import tqdm
+from utils import construct_rn9, get_cifar10_dataloader, set_seed
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

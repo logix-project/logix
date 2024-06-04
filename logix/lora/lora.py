@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 import torch.nn as nn
 
 from logix.config import LoRAConfig
+from logix.lora.modules import LoraConv2d, LoraEmbedding, LoraLinear
+from logix.lora.utils import _get_submodules, find_parameter_sharing_group
 from logix.state import LogIXState
-from logix.lora.modules import LoraLinear, LoraConv2d, LoraEmbedding
-from logix.lora.utils import find_parameter_sharing_group, _get_submodules
 from logix.utils import get_logger, module_check
 
 

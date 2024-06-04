@@ -1,8 +1,10 @@
 import glob
-import unittest
-import numpy as np
 import os
 import shutil
+import unittest
+
+import numpy as np
+
 from logix.logging.mmap import MemoryMapHandler
 
 

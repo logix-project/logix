@@ -1,5 +1,5 @@
-import unittest
 import copy
+import unittest
 
 import torch
 import torch.nn as nn

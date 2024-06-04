@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .patch import patch_trainer
 from .arguments import LogIXArguments
+from .patch import patch_trainer

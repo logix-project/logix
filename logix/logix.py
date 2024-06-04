@@ -13,20 +13,18 @@
 # limitations under the License.
 
 import os
-
-from typing import Optional, Iterable, Dict, Any, List, Union, Tuple
+from copy import deepcopy
 from dataclasses import asdict
 from functools import reduce
-from copy import deepcopy
-
-import yaml
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+import yaml
 
 from logix.analysis import InfluenceFunction
 from logix.batch_info import BatchInfo
-from logix.config import init_config_from_yaml, LoggingConfig, LoRAConfig, Config
+from logix.config import Config, LoggingConfig, LoRAConfig, init_config_from_yaml
 from logix.logging import HookLogger
 from logix.logging.log_loader import LogDataset
 from logix.logging.log_loader_utils import collate_nested_dicts
@@ -38,8 +36,8 @@ from logix.utils import (
     get_rank,
     get_repr_dim,
     get_world_size,
-    print_tracked_modules,
     module_check,
+    print_tracked_modules,
 )
 
 

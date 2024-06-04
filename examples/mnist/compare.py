@@ -1,6 +1,5 @@
-from scipy.stats import pearsonr
 import torch
-
+from scipy.stats import pearsonr
 
 kfac = torch.load("if_kfac.pt")
 ekfac = torch.load("if_ekfac.pt")

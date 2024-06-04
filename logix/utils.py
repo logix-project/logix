@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import logging as default_logging
-from typing import Any, List, Optional, Tuple, Dict
-from collections import defaultdict
-
 import hashlib
+import logging as default_logging
+import sys
+from collections import defaultdict
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.distributed as dist
+import torch.nn as nn
 
 _logger = None
 

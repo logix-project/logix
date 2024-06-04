@@ -1,6 +1,5 @@
-from scipy.stats import pearsonr
 import torch
-
+from scipy.stats import pearsonr
 
 logix_kfac = torch.load("if_baseline.pt")
 logix_lora_pca = torch.load("if_logix_pca.pt")

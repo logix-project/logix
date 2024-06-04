@@ -1,18 +1,16 @@
+import argparse
+import math
 import os
 import time
-import argparse
 from typing import Optional, Tuple
 
-from tqdm import tqdm
-import math
+import evaluate
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import evaluate
 from torch.nn import CrossEntropyLoss
-
-from utils import clear_gpu_cache, set_seed, construct_model, get_loaders
-
+from tqdm import tqdm
+from utils import clear_gpu_cache, construct_model, get_loaders, set_seed
 
 parser = argparse.ArgumentParser("SST2 Influence Analysis")
 parser.add_argument("--data_name", type=str, default="sst2")

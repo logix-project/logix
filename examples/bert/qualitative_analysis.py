@@ -1,5 +1,4 @@
 import torch
-
 from utils import get_loaders, set_seed
 
 set_seed(0)

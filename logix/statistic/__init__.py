@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .corrected_eigval import CorrectedEigval
+from .covariance import Covariance
 from .log import Log
 from .mean import Mean
 from .variance import Variance
-from .covariance import Covariance
-from .corrected_eigval import CorrectedEigval
