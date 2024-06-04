@@ -48,28 +48,20 @@ import logix
 # Initialze LogIX
 run = logix.init(project="my_project")
 
-# Users can specify artifacts they want to log
-run.setup({"log": "grad", "save": "grad", "statistic": "kfac"})
-
-# Users can specify specific modules they want to track logs for
+# Specify modules to be tracked for logging
 run.watch(model, name_filter=["mlp"], type_filter=[nn.Linear])
 
-for input, target in data_loader:
-    # Set data_id for the log from the current batch
-    with run(data_id=input):
-        out = model(input)
-        loss = loss_fn(out, target, reduction="sum")
-        loss.backward()
+# Specify plugins to be used in logging
+run.setup({"grad": ["log", "covariance"]})
+run.save(True)
+
+for batch in data_loader:
+    # Set `data_id` (and optionally `mask`) for the current batch 
+    with run(data_id=batch["input_ids"], mask=batch["attention_mask"]):
         model.zero_grad()
-
-    # Access log extracted in the LogIX context block
-    log = run.get_log() # (data_id, log_dict)
-    # For example, users can print gradient for the specific module
-    # print(log[1]["model.layers.23.mlp.down_proj"]["grad"])
-    # or perform any custom analysis
-
-# Synchronize statistics (e.g. grad covariance) and
-# write remaining logs to disk
+        loss = model(batch)
+        loss.backward()
+# Synchronize statistics (e.g. covariance) and write logs to disk
 run.finalize()
 ```
 
@@ -81,13 +73,11 @@ pre-implemented interpretability algorithms if there is a demand.
 # Build PyTorch DataLoader from saved log data
 log_loader = run.build_log_dataloader()
 
-with run(data_id=test_input):
-    test_out = model(test_input)
-    test_loss = loss_fn(test_out, test_target, reduction="sum")
+with run(data_id=test_batch["input_ids"]):
+    test_loss = model(test_batch)
     test_loss.backward()
-# Extract a log for test data
-test_log = run.get_log()
 
+test_log = run.get_log()
 run.influence.compute_influence_all(test_log, log_loader) # Data attribution
 run.influence.compute_self_influence(test_log) # Uncertainty estimation
 ```
