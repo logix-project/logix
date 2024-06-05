@@ -38,17 +38,19 @@ class LITMLP(L.LightningModule):
         return optimizer
 
 
-train_loader = get_mnist_dataloader(
-    batch_size=512, split="train", shuffle=False, subsample=True
+test_loader = get_mnist_dataloader(
+    batch_size=1, split="valid", shuffle=False, indices=[0]
 )
 
 logix_args = LogIXArguments(
     project="lightning",
     config="config.yaml",
     lora=False,
-    hessian="kfac",
+    hessian="ekfac",
     save="grad",
     model_key="model",
+    initialize_from_log=True,
+    influence_damping=1e-5,
 )
 hash_id = DataIDGenerator()
 
@@ -62,5 +64,10 @@ LogIXModule, LogIXTrainer = patch(
 )
 
 mlp = LogIXModule()
-trainer = LogIXTrainer()
-trainer.extract_log(mlp, train_loader)
+trainer = LogIXTrainer(max_steps=1)
+result = trainer.influence(mlp, test_loader)
+
+_, top_influential_data = torch.topk(result["influence"], k=10)
+if_scores = result["influence"].cpu().numpy().tolist()[0]
+torch.save(if_scores, "if_logix.pt")
+print("Top influential data indices:", top_influential_data.cpu().numpy().tolist())

@@ -26,7 +26,6 @@ class LogIXArguments:
     config: str = field(
         default="config.yaml", metadata={"help": "The path to the config file."}
     )
-    mode: str = field(default="log", metadata={"help": "LogIX mode"})
     lora: bool = field(default=False, metadata={"help": "Enable LoRA."})
     hessian: str = field(default="none", metadata={"help": "Hessian type."})
     save: str = field(default="none", metadata={"help": "Save type."})
@@ -54,3 +53,6 @@ class LogIXArguments:
     model_key: str = field(
         default="model", metadata={"help": "The dictionary key for 'model'."}
     )
+
+    def __post_init__(self):
+        self.mode = "log"

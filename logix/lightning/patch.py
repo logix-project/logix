@@ -31,9 +31,6 @@ def patch(
         run, hessian=logix_args.hessian, save=logix_args.save
     )
 
-    if logix_args.initialize_from_log:
-        run.initialize_from_log()
-
     logix_callback = LogIXCallback(
         logix=run,
         logix_scheduler=logix_scheduler,
@@ -58,24 +55,11 @@ def patch(
             if self.logix_args.lora:
                 self.logix.add_lora()
 
-        def configure_optimizer(self):
-            class DummyOptimizer:
-                def __init__(self, params):
-                    pass
-
-                def step(self):
-                    pass
-
-                def zero_grad(self):
-                    pass
-
-                def state_dict(self):
-                    return dict()
-
-            return DummyOptimizer(self._get_model().parameters())
+            if self.logix_args.initialize_from_log:
+                run.initialize_from_log()
 
         def _get_model(self):
-            return getattr(self, logix_args.model_key)
+            return getattr(self, self.logix_args.model_key)
 
     class PatchedTrainer(trainer_cls):
         def __init__(
@@ -120,14 +104,21 @@ def patch(
             reload_dataloaders_every_n_epochs=0,
             default_root_dir=None,
         ) -> None:
+            # add logix callback
             if callbacks is None:
                 callbacks = [logix_callback]
             else:
                 callbacks = callbacks + [logix_callback]
-            # TODO: check whether we can modify max_epochs with callback
-            max_epochs = len(logix_scheduler) if logix_args.mode == "log" else 1
-            val_check_interval = 0.0
+
+            # disable validation
+            check_val_every_n_epoch = 1_000_000_000
+
+            # disable checkpointing
+            enable_checkpointing = False
+
+            # disable logging
             logger = False
+
             super().__init__(
                 accelerator,
                 strategy,
@@ -174,19 +165,19 @@ def patch(
             self.logix_args = logix_args
 
         def extract_log(self, *args, **kwargs):
-            assert self.logix_args.mode == "log"
+            self.logix_args.mode = "log"
             self.fit(*args, **kwargs)
 
         def influence(self, *args, **kwargs):
-            assert self.logix_args.mode == "influence"
+            self.logix_args.mode = "influence"
             self.fit(*args, **kwargs)
 
             return self.logix.influence.get_influence_scores()
 
         def self_influence(self, *args, **kwargs):
-            assert self.logix_args.mode == "self_influence"
+            self.logix_args.mode = "self_influence"
             self.fit(*args, **kwargs)
 
             return
 
-    return run, PatchedModule, PatchedTrainer
+    return PatchedModule, PatchedTrainer

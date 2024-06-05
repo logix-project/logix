@@ -50,6 +50,10 @@ class LogIXCallback(Callback):
         if self.args.mode == "log":
             self.logix.finalize()
 
+        max_epochs = len(self.scheduler) if self.args.mode == "log" else 1
+        if trainer.current_epoch >= max_epochs - 1:
+            trainer.should_stop = True
+
     def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
         data_id = self.data_id_extractor(batch)
         mask = None if self.mask_extractor is None else self.mask_extractor(batch)
@@ -81,3 +85,6 @@ class LogIXCallback(Callback):
             self.logix.influence.compute_self_influence(
                 batch_log, damping=self.args.influence_damping
             )
+
+    def on_before_optimizer_step(self, trainer, pl_module, optimizer):
+        optimizer.zero_grad()
