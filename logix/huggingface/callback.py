@@ -74,6 +74,7 @@ class LogIXCallback(TrainerCallback):
                 self.log_dataloader(),
                 mode=self.args.influence_mode,
                 damping=self.args.influence_damping,
+                influence_groups=self.args.influence_groups,
                 save=True,
             )
 
@@ -83,7 +84,9 @@ class LogIXCallback(TrainerCallback):
             accumulated_log = merge_logs(self.accumulated_log)
 
             self.logix.influence.compute_self_influence(
-                accumulated_log, damping=self.args.influence_damping
+                accumulated_log,
+                damping=self.args.influence_damping,
+                influence_groups=self.args.influence_groups,
             )
 
             self.accumulated_log = []

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 import torch.nn as nn
 
@@ -47,11 +47,14 @@ class LogIXArguments:
     input_key: str = field(
         default="input_ids", metadata={"help": "The dictionary key for 'input_ids'."}
     )
-    influence_damping: float = field(
+    influence_damping: Optional[float] = field(
         default=None, metadata={"help": "A damping term in influence functions."}
     )
     influence_mode: str = field(
         default="dot", metadata={"help": "Influence function mode."}
+    )
+    influence_groups: Optional[List[str]] = field(
+        default=None, metadata={"help": "Influence function groups."}
     )
     label_key: str = field(
         default="labels", metadata={"help": "The dictionary key for 'labels'."}
