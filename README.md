@@ -29,7 +29,7 @@ AI/ML, with a similar logging interface? Try out LogIX that is built upon our cu
 [Huggingface Transformers](https://github.com/logix-project/logix/tree/main?tab=readme-ov-file#huggingface-integration) and
 [PyTorch Lightning](https://github.com/logix-project/logix/tree/main?tab=readme-ov-file#pytorch-lightning-integration) integrations)!
 
-- **PyPI** (Default)
+- **PyPI**
 ```bash
 pip install logix-ai
 ```
@@ -42,7 +42,84 @@ pip install -e .
 ```
 
 
-## Usage
+## Easy to Integrate
+
+Our software design allows for the seamless integration with popular high-level frameworks including
+[HuggingFace Transformer](https://github.com/huggingface/transformers/tree/main) and
+[PyTorch Lightning](https://github.com/Lightning-AI/pytorch-lightning), that conveniently handles
+distributed training, data loading, etc. Advanced users, who don't use high-level frameworks, can
+still integrate LogIX into their existing training code similarly to any traditional logging software
+(See our Tutorial).
+
+### HuggingFace Integration
+Our software design allows for the seamless integration with HuggingFace's
+[Transformer](https://github.com/huggingface/transformers/tree/main), a popular DL framework
+that conveniently handles distributed training, data loading, etc.
+
+```python
+from transformers import Trainer, Seq2SeqTrainer
+from logix.huggingface import patch_trainer, LogIXArguments
+
+# Define LogIX arguments
+logix_args = LogIXArguments(project="myproject",
+                            config="config.yaml",
+                            lora=True,
+                            hessian="raw",
+                            save="grad")
+
+# Patch HF Trainer
+LogIXTrainer = patch_trainer(Trainer)
+
+# Pass LogIXArguments as TrainingArguments
+trainer = LogIXTrainer(logix_args=logix_args,
+                       model=model,
+                       train_dataset=train_dataset,
+                       *args,
+                       **kwargs)
+
+# Instead of trainer.train(), use
+trainer.extract_log()
+trainer.influence()
+trainer.self_influence()
+```
+
+### PyTorch Lightning Integration
+Similarly, we also support the seamless integration with PyTorch Lightning. The code example
+is provided below.
+
+```python
+from lightning import LightningModule, Trainer
+from logix.lightning import patch, LogIXArguments
+
+class MyLitModule(LightningModule):
+    ...
+
+def data_id_extractor(batch):
+    return tokenizer.batch_decode(batch["input_ids"])
+
+# Define LogIX arguments
+logix_args = LogIXArguments(project="myproject",
+                            config="config.yaml",
+                            lora=True,
+                            hessian="raw",
+                            save="grad")
+
+# Patch Lightning Module and Trainer
+LogIXModule, LogIXTrainer = patch(MyLitModule,
+                                  Trainer,
+                                  logix_args=logix_args,
+                                  data_id_extractor=data_id_extractor)
+
+# Use patched Module and Trainer as before
+module = LogIXModule(user_args)
+trainer = LogIXTrainer(user_args)
+
+# Instead of trainer.fit(module, train_loader), use
+trainer.extract_log(module, train_loader)
+trainer.influence(module, train_loader)
+```
+
+## Getting Started
 ### Logging
 Training log extraction with LogIX is as simple as adding one `with` statement to the existing
 training code. LogIX automatically extracts user-specified logs using PyTorch hooks, and stores
@@ -87,74 +164,6 @@ with run(data_id=test_batch["input_ids"]):
 test_log = run.get_log()
 run.influence.compute_influence_all(test_log, log_loader) # Data attribution
 run.influence.compute_self_influence(test_log) # Uncertainty estimation
-```
-
-### HuggingFace Integration
-Our software design allows for the seamless integration with HuggingFace's
-[Transformer](https://github.com/huggingface/transformers/tree/main), a popular DL framework
-that conveniently handles distributed training, data loading, etc.
-
-```python
-from transformers import Trainer, Seq2SeqTrainer
-from logix.huggingface import patch_trainer, LogIXArguments
-
-# Define LogIX arguments
-logix_args = LogIXArguments(project="myproject",
-                            config="config.yaml",
-                            lora=True,
-                            hessian="raw",
-                            save="grad")
-
-# Patch HF Trainer
-LogIXTrainer = patch_trainer(Trainer)
-
-# Pass LogIXArguments as TrainingArguments
-trainer = LogIXTrainer(logix_args=logix_args,
-                       model=model,
-                       train_dataset=train_dataset,
-                       *args,
-                       **kwargs)
-
-# Instead of trainer.train(), use
-trainer.extract_log()
-trainer.influence()
-trainer.self_influence()
-```
-
-### PyTorch Lightning Integration
-Similarly, we also support the LogIX + PyTorch Lightning integration. The code example
-is provided below.
-
-```python
-from lightning import LightningModule, Trainer
-from logix.lightning import patch, LogIXArguments
-
-class MyLitModule(LightningModule):
-    ...
-
-def data_id_extractor(batch):
-    return tokenizer.batch_decode(batch["input_ids"])
-
-# Define LogIX arguments
-logix_args = LogIXArguments(project="myproject",
-                            config="config.yaml",
-                            lora=True,
-                            hessian="raw",
-                            save="grad")
-
-# Patch Lightning Module and Trainer
-LogIXModule, LogIXTrainer = patch(MyLitModule,
-                                  Trainer,
-                                  logix_args=logix_args,
-                                  data_id_extractor=data_id_extractor)
-
-# Use patched Module and Trainer as before
-module = LogIXModule(user_args)
-trainer = LogIXTrainer(user_args)
-
-# Instead of trainer.fit(module, train_loader), use
-trainer.extract_log(module, train_loader)
-trainer.influence(module, train_loader)
 ```
 
 Please check out [Examples](/examples) for more detailed examples!
