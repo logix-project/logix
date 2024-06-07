@@ -57,7 +57,7 @@ class LoggingConfig:
 
     log_dir: str = field(init=False)
     flush_threshold: int = field(
-        default=-1, metadata={"help": "Flush threshold for the log buffer."}
+        default=1000000000, metadata={"help": "Flush threshold for the log buffer."}
     )
     num_workers: int = field(
         default=1, metadata={"help": "Number of workers used for logging."}

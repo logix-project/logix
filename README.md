@@ -53,6 +53,8 @@ still integrate LogIX into their existing training code similarly to any traditi
 
 ### 🤗 HuggingFace Integration
 
+A full example can be found [here](https://github.com/logix-project/logix/tree/main/examples/huggingface).
+
 ```python
 from transformers import Trainer, Seq2SeqTrainer
 from logix.huggingface import patch_trainer, LogIXArguments
@@ -81,6 +83,8 @@ trainer.self_influence()
 ```
 
 ### ⚡ PyTorch Lightning Integration
+
+A full example can be found [here](https://github.com/logix-project/logix/tree/main/examples/lightning).
 
 ```python
 from lightning import LightningModule, Trainer
