@@ -17,22 +17,27 @@
   <a href="https://arxiv.org/abs/2405.13954">![arXiv](https://img.shields.io/badge/arXiv-2405.13954-b31b1b.svg)</a>
 </div>
 
-```bash
-pip install logix-ai
-```
-
 
 > [!WARNING]
 > This repository is under active development. If you have suggestions or find bugs in LogIX, please open a GitHub issue or reach out.
 
 
-## Basics
-It turns out that most _interpretable & explainable AI_ research (e.g., training data valuation/attribution,
-saliency maps, mechanistic interpretability) simply require **(1)** intercepting various training logs
-(e.g., activation, gradient) and **(2)** doing some computational analyses with these logs. Therefore,
-**LogIX** focuses on simple, efficient, and interoperable logging of training artifacts for maximal
-flexibility, while providing some pre-implemented interpretability algorithm (e.g., influence functions)
-for general users.
+## Introduction
+With a few additional lines of code, (traditional) **logging** supports tracking loss, hyperparameters, etc., providing _basic_ insights for users'
+AI/ML experiments. But...can we also enable _in-depth understanding of large-scale training data_, the most important ingredient in
+AI/ML, with a similar logging interface? Try out LogIX that is built upon our cutting-edge data valuation/attribution research!
+
+- **PyPI** (Default)
+```bash
+pip install logix-ai
+```
+
+- **From source** (Latest, recommended)
+```bash
+git clone https://github.com/logix-project/logix.git
+cd logix
+pip install -e .
+```
 
 
 ## Usage
