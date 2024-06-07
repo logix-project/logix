@@ -49,7 +49,7 @@ Our software design allows for the seamless integration with popular high-level 
 [PyTorch Lightning](https://github.com/Lightning-AI/pytorch-lightning), that conveniently handles
 distributed training, data loading, etc. Advanced users, who don't use high-level frameworks, can
 still integrate LogIX into their existing training code similarly to any traditional logging software
-(See our Tutorial).
+(See our [Tutorial](https://github.com/logix-project/logix/tree/main?tab=readme-ov-file#getting-started)).
 
 ### HuggingFace Integration
 Our software design allows for the seamless integration with HuggingFace's
