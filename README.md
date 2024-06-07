@@ -52,9 +52,6 @@ still integrate LogIX into their existing training code similarly to any traditi
 (See our [Tutorial](https://github.com/logix-project/logix/tree/main?tab=readme-ov-file#getting-started)).
 
 ### HuggingFace Integration
-Our software design allows for the seamless integration with HuggingFace's
-[Transformer](https://github.com/huggingface/transformers/tree/main), a popular DL framework
-that conveniently handles distributed training, data loading, etc.
 
 ```python
 from transformers import Trainer, Seq2SeqTrainer
@@ -84,8 +81,6 @@ trainer.self_influence()
 ```
 
 ### PyTorch Lightning Integration
-Similarly, we also support the seamless integration with PyTorch Lightning. The code example
-is provided below.
 
 ```python
 from lightning import LightningModule, Trainer
