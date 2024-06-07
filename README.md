@@ -25,7 +25,9 @@
 ## Introduction
 With a few additional lines of code, (traditional) **logging** supports tracking loss, hyperparameters, etc., providing _basic_ insights for users'
 AI/ML experiments. But...can we also enable _in-depth understanding of large-scale training data_, the most important ingredient in
-AI/ML, with a similar logging interface? Try out LogIX that is built upon our cutting-edge data valuation/attribution research!
+AI/ML, with a similar logging interface? Try out LogIX that is built upon our cutting-edge data valuation/attribution research (Support
+[Huggingface Transformers](https://github.com/logix-project/logix/tree/main?tab=readme-ov-file#huggingface-integration) and
+[PyTorch Lightning](https://github.com/logix-project/logix/tree/main?tab=readme-ov-file#pytorch-lightning-integration) integrations)!
 
 - **PyPI** (Default)
 ```bash
