@@ -51,7 +51,7 @@ distributed training, data loading, etc. Advanced users, who don't use high-leve
 still integrate LogIX into their existing training code similarly to any traditional logging software
 (See our [Tutorial](https://github.com/logix-project/logix/tree/main?tab=readme-ov-file#getting-started)).
 
-### HuggingFace Integration
+### 🤗 HuggingFace Integration
 
 ```python
 from transformers import Trainer, Seq2SeqTrainer
@@ -80,7 +80,7 @@ trainer.influence()
 trainer.self_influence()
 ```
 
-### PyTorch Lightning Integration
+### ⚡ PyTorch Lightning Integration
 
 ```python
 from lightning import LightningModule, Trainer
